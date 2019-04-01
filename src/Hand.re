@@ -5,7 +5,7 @@ let component = ReasonReact.statelessComponent("Hand");
 let make = (~cards, ~onCardSelected, _children) => {
   {
     ...component,
-    render: ({state: _state}) => {
+    render: _self => {
       <ul>
         {List.map(
            c => <Card key={Card.stringOfCard(c)} onCardSelected card=c />,
