@@ -17,6 +17,13 @@ let nextPlayer =
   | P3 => P4
   | P4 => P1;
 
+let prevPlayer =
+  fun
+  | P1 => P4
+  | P2 => P1
+  | P3 => P2
+  | P4 => P1;
+
 let toString =
   fun
   | P1 => "Player 1"

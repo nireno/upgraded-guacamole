@@ -67,6 +67,22 @@ module Rank = {
     | Queen => "Queen"
     | King => "King";
 
+  let intOfRank =
+    fun
+    | Two => 2
+    | Three => 3
+    | Four => 4
+    | Five => 5
+    | Six => 6
+    | Seven => 7
+    | Eight => 8
+    | Nine => 9
+    | Ten => 10
+    | Jack => 11
+    | Queen => 12
+    | King => 13
+    | Ace => 14;
+
   let first = Ace;
   let last = King;
   let next =
@@ -99,6 +115,12 @@ module Rank = {
 let stringOfCard = ((rank, suit)) =>
   Rank.stringOfRank(rank) ++ " of " ++ Suit.toString(suit);
 
+let stringOfCardSlot = cardSlot =>
+  switch (cardSlot) {
+  | None => "Empty"
+  | Some(card) => stringOfCard(card)
+  };
+
 type t = (Rank.t, Suit.t);
 
 type state = {card: t};
@@ -106,15 +128,23 @@ type state = {card: t};
 // type action =
 //   | Click;
 
-let make = (~card, ~onCardSelected=?, _children) => {
+let make = (~card, ~clickAction=?, _children) => {
   ...component,
   render: _self => {
-    let onClick =
-      switch (onCardSelected) {
-      | Some(onCardSelected) => Some(_event => onCardSelected(card))
-      | None => None
+    let (clickAction, isClickable) =
+      switch (clickAction) {
+      | None => (ignore, false)
+      | Some(ca) => (ca, true)
       };
-    <li ?onClick> {ReasonReact.string(stringOfCard(card))} </li>;
+    <li
+      style={
+        isClickable
+          ? ReactDOMRe.Style.make(~border="1px solid #ff9966", ())
+          : ReactDOMRe.Style.make()
+      }
+      onClick={_event => clickAction(card)}>
+      {ReasonReact.string(stringOfCard(card))}
+    </li>;
   },
   // reducer: (action, state) =>
   //   switch (action) {

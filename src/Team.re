@@ -1,9 +1,9 @@
-type teamNumber =
+type id =
   | T1
   | T2;
 
 type t = {
-  number: teamNumber,
+  number: id,
   points: int,
 };
 
