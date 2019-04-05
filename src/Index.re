@@ -21,6 +21,8 @@ let suitOfKickUnsafe =
   | None => failwith("suitOfKickUnsafe expected Some card but got None")
   | Some(card) => snd(card);
 
+/** The board is just a list of cards. It doesn't track which player played them.
+But if I know which player is the leader, I can tell which card belongs to which player */
 let playerBoardIndices = leader => {
   Player.(
     switch (leader) {
@@ -90,7 +92,10 @@ module App = {
           | _ => state
           };
 
-        Js.log("Playing card " ++ Card.stringOfCard(c));
+        Js.log(
+          Player.toString(player) ++ " played: " ++ Card.stringOfCard(c),
+        );
+
         let state = {...state, board: state.board @ [c]};
         let state =
           switch (state.maybePlayerTurn) {
@@ -100,6 +105,13 @@ module App = {
               maybePlayerTurn: Some(Player.nextPlayer(turn)),
             }
           };
+
+        Js.log(
+          "Player is: "
+          ++ Player.toString(player)
+          ++ "; Leader is: "
+          ++ Player.toString(state.leader),
+        );
 
         Player.nextPlayer(player) == state.leader
           ? ReasonReact.UpdateWithSideEffects(
@@ -351,7 +363,11 @@ module App = {
              ? <div> {ReasonReact.string("No take")} </div>
              : <div>
                  {List.map(
-                    trick => <Trick key={Trick.stringOfTrick(trick)} trick />,
+                    trick =>
+                      <div
+                        key={Trick.stringOfTrick(trick)} className="section">
+                        <Trick trick />
+                      </div>,
                     takes,
                   )
                   |> Belt.List.toArray
@@ -360,40 +376,60 @@ module App = {
         </div>;
 
       <div>
-        <h1> {ReasonReact.string("Deck")} </h1>
-        <ul
-          // {List.map(
-          //    c => <Card key={Card.stringOfCard(c)} card=c />,
-          //    state.deck,
-          //  )
-          //  |> Belt.List.toArray
-          //  |> ReasonReact.array}
-        />
-        <div>
-          {ReasonReact.string(string_of_int(List.length(state.deck)))}
+        <div className="section columns">
+          <div className="column">
+            <h1> {ReasonReact.string("Deck")} </h1>
+            <ul
+              // {List.map(
+              //    c => <Card key={Card.stringOfCard(c)} card=c />,
+              //    state.deck,
+              //  )
+              //  |> Belt.List.toArray
+              //  |> ReasonReact.array}
+            />
+            <div>
+              {ReasonReact.string(string_of_int(List.length(state.deck)))}
+            </div>
+          </div>
+          <div className="column">
+            <h1>
+              {ReasonReact.string(
+                 "Team 1 points: " ++ string_of_int(state.team1Points),
+               )}
+            </h1>
+            <h1>
+              {ReasonReact.string(
+                 "Team 2 points: " ++ string_of_int(state.team2Points),
+               )}
+            </h1>
+          </div>
+          <div className="column">
+            <h1> {ReasonReact.string("Trump")} </h1>
+            {switch (state.maybeTrumpCard) {
+             | None => <h2> {ReasonReact.string("No trump")} </h2>
+             | Some(kick) => <Card card=kick />
+             }}
+          </div>
+          <div className="column">
+            <h2> {ReasonReact.string("Board")} </h2>
+            {List.length(state.board) == 0
+               ? <div> {ReasonReact.string("No cards on the board")} </div>
+               : <div />}
+            <ul>
+              {List.map(
+                 c =>
+                   <Card
+                     key={Card.stringOfCard(c)}
+                     card=c
+                     clickAction=?None
+                   />,
+                 state.board,
+               )
+               |> Belt.List.toArray
+               |> ReasonReact.array}
+            </ul>
+          </div>
         </div>
-        <h1> {ReasonReact.string("Game")} </h1>
-        {switch (state.maybeTrumpCard) {
-         | None => <div />
-         | Some(kick) =>
-           <div>
-             <h2> {ReasonReact.string("Kick")} </h2>
-             <Card card=kick />
-           </div>
-         }}
-        <h2> {ReasonReact.string("Board")} </h2>
-        {List.length(state.board) == 0
-           ? <div> {ReasonReact.string("No cards on the board")} </div>
-           : <div />}
-        <ul>
-          {List.map(
-             c =>
-               <Card key={Card.stringOfCard(c)} card=c clickAction=?None />,
-             state.board,
-           )
-           |> Belt.List.toArray
-           |> ReasonReact.array}
-        </ul>
         <div className="section columns">
           <div className="column">
             <h1> {ReasonReact.string("Player 1")} </h1>
@@ -463,16 +499,6 @@ module App = {
           <div className="column"> {createPlayerTakes(state.p3Take)} </div>
           <div className="column"> {createPlayerTakes(state.p4Take)} </div>
         </div>
-        <h1>
-          {ReasonReact.string(
-             "Team 1 points: " ++ string_of_int(state.team1Points),
-           )}
-        </h1>
-        <h1>
-          {ReasonReact.string(
-             "Team 2 points: " ++ string_of_int(state.team2Points),
-           )}
-        </h1>
       </div>;
     },
   };
