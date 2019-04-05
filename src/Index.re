@@ -149,10 +149,10 @@ module App = {
           : ReasonReact.Update(state);
 
       | Deal =>
-        let (p1Hand, deck) = Deck.deal(6, state.deck);
-        let (p2Hand, deck) = Deck.deal(6, deck);
-        let (p3Hand, deck) = Deck.deal(6, deck);
-        let (p4Hand, deck) = Deck.deal(6, deck);
+        let (p1Hand, deck) = Deck.deal(3, state.deck);
+        let (p2Hand, deck) = Deck.deal(3, deck);
+        let (p3Hand, deck) = Deck.deal(3, deck);
+        let (p4Hand, deck) = Deck.deal(3, deck);
         let state = {...state, p1Hand, p2Hand, p3Hand, p4Hand};
 
         let (cards, deck) = Deck.deal(1, deck);
@@ -351,6 +351,7 @@ module App = {
               </button>
             </div>
           : <div />;
+
       let createDealMoreElement = playerId =>
         state.canDealMore && playerId == state.dealer
           ? <div>
@@ -371,15 +372,14 @@ module App = {
 
       let createDealerElement = playerId =>
         playerId == state.dealer
-          ? <div>
-              <div> {ReasonReact.string("Dealer")} </div>
-              {state.canDeal
-                 ? <button onClick={_event => send(Deal)}>
-                     {ReasonReact.string("Deal")}
-                   </button>
-                 : ReasonReact.null}
-            </div>
-          : <div />;
+          ? {
+            state.canDeal
+              ? <button onClick={_event => send(Deal)}>
+                  {ReasonReact.string("Deal")}
+                </button>
+              : <span> {ReasonReact.string("Dealer")} </span>;
+          }
+          : ReasonReact.null;
 
       let createPlayerTakes = takes =>
         <div className="column">
@@ -456,8 +456,10 @@ module App = {
         </div>
         <div className="section columns">
           <div className="column">
-            <h1> {ReasonReact.string("Player 1")} </h1>
-            {createDealerElement(P1)}
+            <h1>
+              {ReasonReact.string("Player 1 ")}
+              {createDealerElement(P1)}
+            </h1>
             {renderBegButton(P1)}
             {createStandElement(P1)}
             {createGiveOneElement(P1)}
@@ -471,8 +473,10 @@ module App = {
             />
           </div>
           <div className="column">
-            <h1> {ReasonReact.string("Player 2")} </h1>
-            {createDealerElement(P2)}
+            <h1>
+              {ReasonReact.string("Player 2 ")}
+              {createDealerElement(P2)}
+            </h1>
             {renderBegButton(P2)}
             {createStandElement(P2)}
             {createGiveOneElement(P2)}
@@ -486,8 +490,10 @@ module App = {
             />
           </div>
           <div className="column">
-            <h1> {ReasonReact.string("Player 3")} </h1>
-            {createDealerElement(P3)}
+            <h1>
+              {ReasonReact.string("Player 3 ")}
+              {createDealerElement(P3)}
+            </h1>
             {renderBegButton(P3)}
             {createStandElement(P3)}
             {createGiveOneElement(P3)}
@@ -501,8 +507,10 @@ module App = {
             />
           </div>
           <div className="column">
-            <h1> {ReasonReact.string("Player 4")} </h1>
-            {createDealerElement(P4)}
+            <h1>
+              {ReasonReact.string("Player 4 ")}
+              {createDealerElement(P4)}
+            </h1>
             {renderBegButton(P4)}
             {createStandElement(P4)}
             {createGiveOneElement(P4)}
