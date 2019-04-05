@@ -66,6 +66,7 @@ module App = {
     team2Points: int,
     canBeg: bool,
     canStand: bool,
+    canDeal: bool,
     canDealMore: bool,
     canGiveOne: bool,
   };
@@ -74,6 +75,33 @@ module App = {
 
   let make = _children => {
     ...component,
+    initialState: () => {
+      {
+        me: P1,
+        deck: Deck.make() |> Deck.shuffle,
+        board: [],
+        p1Hand: [],
+        p2Hand: [],
+        p3Hand: [],
+        p4Hand: [],
+        p1Take: [],
+        p2Take: [],
+        p3Take: [],
+        p4Take: [],
+        maybePlayerTurn: None,
+        maybeTrumpCard: None,
+        maybeLeadCard: None,
+        dealer: P1,
+        leader: Player.nextPlayer(P1),
+        team1Points: 0,
+        team2Points: 0,
+        canBeg: false,
+        canStand: false,
+        canDeal: true,
+        canDealMore: false,
+        canGiveOne: false,
+      };
+    },
     reducer: (action, state) =>
       switch (action) {
       | PlayCard(player, hand, c) =>
@@ -146,6 +174,7 @@ module App = {
             maybeTrumpCard: Some(kick),
             canBeg: true,
             canStand: true,
+            canDeal: false,
           }
           |> updateKickPoints(kick, dealerTeam),
         );
@@ -197,6 +226,25 @@ module App = {
               leader: P4,
             };
           };
+
+        /** Initialize new round if this is the last trick in the round (some player has no cards) */
+        let state =
+          List.length(state.p1Hand) == 0
+            ? {
+              ...state,
+              deck: Deck.make() |> Deck.shuffle,
+              canDeal: true,
+              dealer: Player.nextPlayer(state.dealer),
+              leader: state.dealer |> Player.nextPlayer |> Player.nextPlayer,
+              maybePlayerTurn: None,
+              maybeTrumpCard: None,
+              p1Take: [],
+              p2Take: [],
+              p3Take: [],
+              p4Take: [],
+            }
+            : state;
+
         ReasonReact.Update({...state, board: [], maybeLeadCard: None});
       | Beg =>
         Js.log("Ah beg");
@@ -285,32 +333,6 @@ module App = {
 
         ReasonReact.NoUpdate;
       },
-    initialState: () => {
-      {
-        me: P1,
-        deck: Deck.make() |> Deck.shuffle,
-        board: [],
-        p1Hand: [],
-        p2Hand: [],
-        p3Hand: [],
-        p4Hand: [],
-        p1Take: [],
-        p2Take: [],
-        p3Take: [],
-        p4Take: [],
-        maybePlayerTurn: None,
-        maybeTrumpCard: None,
-        maybeLeadCard: None,
-        dealer: P1,
-        leader: Player.nextPlayer(P1),
-        team1Points: 0,
-        team2Points: 0,
-        canBeg: false,
-        canStand: false,
-        canDealMore: false,
-        canGiveOne: false,
-      };
-    },
     render: ({state, send}) => {
       let renderBegButton = playerId =>
         if (state.canBeg && Player.nextPlayer(state.dealer) == playerId) {
@@ -351,9 +373,11 @@ module App = {
         playerId == state.dealer
           ? <div>
               <div> {ReasonReact.string("Dealer")} </div>
-              <button onClick={_event => send(Deal)}>
-                {ReasonReact.string("Deal")}
-              </button>
+              {state.canDeal
+                 ? <button onClick={_event => send(Deal)}>
+                     {ReasonReact.string("Deal")}
+                   </button>
+                 : ReasonReact.null}
             </div>
           : <div />;
 
