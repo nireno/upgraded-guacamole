@@ -112,16 +112,20 @@ module Rank = {
   };
 };
 
-let stringOfCard = ((rank, suit)) =>
-  Rank.stringOfRank(rank) ++ " of " ++ Suit.toString(suit);
+type t = {
+  rank: Rank.t,
+  suit: Suit.t,
+};
+
+let stringOfCard: t => string =
+  ({rank, suit}) =>
+    Rank.stringOfRank(rank) ++ " of " ++ Suit.toString(suit);
 
 let stringOfCardSlot = cardSlot =>
   switch (cardSlot) {
   | None => "Empty"
   | Some(card) => stringOfCard(card)
   };
-
-type t = (Rank.t, Suit.t);
 
 type state = {card: t};
 

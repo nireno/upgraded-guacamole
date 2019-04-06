@@ -158,7 +158,7 @@ module App = {
         let (cards, deck) = Deck.deal(1, deck);
         let kick = List.hd(cards);
         let updateKickPoints = (kick, dealerTeam, state) => {
-          let (rank, _) = kick;
+          let {Card.rank} = kick;
           let points = Rules.kickPoints(rank);
           switch (dealerTeam) {
           | Team.T1 => {...state, team1Points: state.team1Points + points}
@@ -189,8 +189,8 @@ module App = {
             p4Card: List.nth(state.board, p4Index),
           }; /* UNSAFE : action requires that the board has four cards*/
         Js.log(Trick.stringOfTrick(trick));
-        let (_, leadSuit) = Js.Option.getExn(state.maybeLeadCard); /* UNSAFE : action requires leadSlot to be filled */
-        let (_, trumpSuit) = Js.Option.getExn(state.maybeTrumpCard); /* UNSAFE : action requires trumpCardSlot to be filled */
+        let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* UNSAFE : action requires leadSlot to be filled */
+        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* UNSAFE : action requires trumpCardSlot to be filled */
         let state =
           switch (Trick.playerTakesTrick(trumpSuit, leadSuit, trick)) {
           | P1 =>
@@ -294,11 +294,11 @@ module App = {
           };
 
         let kick = Js.Option.getExn(state.maybeTrumpCard);
-        let (_, kickSuit) = kick;
+        let {Card.suit: kickSuit} = kick;
 
         let (cards, deck) = Deck.deal(1, deck);
         let kick' = List.hd(cards);
-        let (kickRank', kickSuit') = kick';
+        let {Card.rank: kickRank', Card.suit: kickSuit'} = kick';
         let points = Rules.kickPoints(kickRank');
         let state =
           switch (teamOfPlayer(state.dealer)) {

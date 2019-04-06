@@ -3,15 +3,15 @@ type t = list(Card.t);
 let component = ReasonReact.statelessComponent("Hand");
 
 let hasSuitTest = (targetSuit, cards) =>
-  List.exists(((_, suit)) => suit == targetSuit, cards);
+  List.exists(({Card.suit}) => suit == targetSuit, cards);
 
 let make =
     (
-      ~cards,
-      ~isPlayerTurn,
-      ~leadCardSlot,
-      ~trumpCardSlot,
-      ~sendPlayCard,
+      ~cards: list(Card.t),
+      ~isPlayerTurn: bool,
+      ~leadCardSlot: option(Card.t),
+      ~trumpCardSlot: option(Card.t),
+      ~sendPlayCard: Card.t => unit,
       _children,
     ) => {
   let playerIsLeader =
@@ -19,25 +19,27 @@ let make =
     | None => true
     | Some(_) => false
     };
-  let cardIsTrump = ((_, suit)) =>
+
+  let cardIsTrump = ({Card.suit}) =>
     switch (trumpCardSlot) {
-    | Some((_, trumpSuit)) when suit == trumpSuit => true
+    | Some({suit: trumpSuit}) when suit == trumpSuit => true
     | _ => false
     };
 
-  let cardFollowsSuit = ((_, suit)) =>
+  let cardFollowsSuit = ({Card.suit}) =>
     switch (leadCardSlot) {
-    | Some((_, leadSuit)) when leadSuit == suit => true
+    | Some({suit: leadSuit}) when leadSuit == suit => true
     | _ => false
     };
 
-  let handHasSuitTest = testSuit => {
-    List.exists(((_, suit)) => suit == testSuit, cards);
-  };
+  let handHasSuitTest: Card.Suit.t => bool =
+    testSuit => {
+      List.exists(({Card.suit}) => suit == testSuit, cards);
+    };
 
   let cantFollowSuit =
     switch (leadCardSlot) {
-    | Some((_, leadSuit)) => handHasSuitTest(leadSuit) ? false : true
+    | Some({suit: leadSuit}) => handHasSuitTest(leadSuit) ? false : true
     | None => false
     };
 

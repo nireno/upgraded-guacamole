@@ -4,7 +4,7 @@ let ranks = Card.Rank.listOfRanks();
 type t = list(Card.t);
 
 let make = () =>
-  List.map(suit => List.map(rank => (rank, suit), ranks), suits)
+  List.map(suit => List.map(rank => Card.{rank, suit}, ranks), suits)
   |> List.flatten;
 
 // https://stackoverflow.com/questions/15095541/how-to-shuffle-list-in-on-in-ocaml

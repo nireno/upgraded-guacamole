@@ -24,32 +24,25 @@ let stringOfTrick = r => {
   |> List.fold_left((acc, s) => acc ++ " " ++ s, "");
 };
 
-// let trickHasSuitTest = (suit, trick) => {
-//   let (_rank, p1Suit) = trick.p1Card;
-//   let (_rank, p2Suit) = trick.p2Card;
-//   let (_rank, p3Suit) = trick.p3Card;
-//   let (_rank, p4Suit) = trick.p4Card;
-
-//   p1Suit == suit || p2Suit == suit || p3Suit == suit || p4Suit == suit;
-// };
-
-let winner = (testSuit, trick) => {
-  let accHighestRankedPlayer = (acc, (player', (rank', suit'))) => {
-    switch (acc) {
-    | None => Some((player', (rank', suit')))
-    | Some((player, (rank, suit))) =>
-      if (Card.Rank.(intOfRank(rank') > intOfRank(rank))) {
-        Some((player', (rank', suit')));
-      } else {
-        Some((player, (rank, suit)));
-      }
+let winner: (Card.Suit.t, t) => option((Player.id, Card.t)) =
+  (testSuit, trick) => {
+    let accHighestRankedPlayer =
+        (acc, (player', {Card.rank: rank', Card.suit: suit'})) => {
+      switch (acc) {
+      | None => Some((player', {Card.rank: rank', suit: suit'}))
+      | Some((player, {Card.rank, suit})) =>
+        if (Card.Rank.(intOfRank(rank') > intOfRank(rank))) {
+          Some((player', {Card.rank: rank', suit: suit'}));
+        } else {
+          Some((player, {rank, suit}));
+        }
+      };
     };
-  };
 
-  listOfTrick(trick)
-  |> List.filter(((_player, (_rank, suit))) => suit == testSuit)
-  |> List.fold_left(accHighestRankedPlayer, None);
-};
+    listOfTrick(trick)
+    |> List.filter(((_player, {Card.suit})) => suit == testSuit)
+    |> List.fold_left(accHighestRankedPlayer, None);
+  };
 
 let playerTakesTrick = (trumpSuit, leaderSuit, trick) => {
   switch (winner(trumpSuit, trick)) {
