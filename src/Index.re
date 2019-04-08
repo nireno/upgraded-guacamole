@@ -1,5 +1,18 @@
 type maybePlayerTurn = option(Player.id);
 
+type pointValue =
+  | OnePoint
+  | ThreePoints;
+
+let pointValueToInt =
+  fun
+  | OnePoint => 1
+  | ThreePoints => 3;
+
+type phase =
+  | RoundSummary
+  | Game;
+
 let isPlayerTurn = (turn, playerId) => {
   switch (turn) {
   | None => false
@@ -16,11 +29,6 @@ let teamOfPlayer =
     | P4 => Team.T2
   );
 
-let suitOfKickUnsafe =
-  fun
-  | None => failwith("suitOfKickUnsafe expected Some card but got None")
-  | Some(card) => snd(card);
-
 /** The board is just a list of cards. It doesn't track which player played them.
 But if I know which player is the leader, I can tell which card belongs to which player */
 let playerBoardIndices = leader => {
@@ -34,11 +42,44 @@ let playerBoardIndices = leader => {
   );
 };
 
+let handToPlayerCards: (Player.id, Hand.t) => list((Player.id, Card.t)) =
+  (player, hand) => {
+    List.map(card => (player, card), hand);
+  };
+
+let trickToPlayerCards: Trick.t => list((Player.id, Card.t)) =
+  trick => {
+    [
+      (P1, trick.p1Card),
+      (P2, trick.p2Card),
+      (P3, trick.p3Card),
+      (P4, trick.p4Card),
+    ];
+  };
+
+let tricksToPlayerCards: list(Trick.t) => list((Player.id, Card.t)) =
+  tricks => {
+    tricks |> List.map(trickToPlayerCards) |> List.concat;
+  };
+
+let trickContainsCard: (Card.t, Trick.t) => bool =
+  (testCard, trick) => {
+    trickToPlayerCards(trick)
+    |> List.exists(((_, card)) => card == testCard);
+  };
+
+let stringOfTeam =
+  fun
+  | Team.T1 => "Team 1"
+  | T2 => "Team 2";
+
 module App = {
   type action =
     | PlayCard(Player.id, Player.hand, Card.t)
     | BlockPlay(Player.id)
     | EndTrick
+    | NewRound
+    | EndRound
     | Beg
     | Stand
     | GiveOne
@@ -52,10 +93,10 @@ module App = {
     p2Hand: Player.hand,
     p3Hand: Player.hand,
     p4Hand: Player.hand,
-    p1Take: list(Trick.t),
-    p2Take: list(Trick.t),
-    p3Take: list(Trick.t),
-    p4Take: list(Trick.t),
+    p1Tricks: list(Trick.t),
+    p2Tricks: list(Trick.t),
+    p3Tricks: list(Trick.t),
+    p4Tricks: list(Trick.t),
     maybeTrumpCard: option(Card.t), /* using slot suffix to denote an optional prop. */
     maybeLeadCard: option(Card.t),
     me: Player.id,
@@ -69,6 +110,11 @@ module App = {
     canDeal: bool,
     canDealMore: bool,
     canGiveOne: bool,
+    teamHigh: option(Team.id),
+    teamLow: option(Team.id),
+    teamJack: option((Team.id, pointValue)),
+    teamGame: Team.id,
+    phase,
   };
 
   let component = ReasonReact.reducerComponent("AllFoursApp");
@@ -84,10 +130,10 @@ module App = {
         p2Hand: [],
         p3Hand: [],
         p4Hand: [],
-        p1Take: [],
-        p2Take: [],
-        p3Take: [],
-        p4Take: [],
+        p1Tricks: [],
+        p2Tricks: [],
+        p3Tricks: [],
+        p4Tricks: [],
         maybePlayerTurn: None,
         maybeTrumpCard: None,
         maybeLeadCard: None,
@@ -100,10 +146,70 @@ module App = {
         canDeal: true,
         canDealMore: false,
         canGiveOne: false,
+        teamHigh: None,
+        teamLow: None,
+        teamJack: None,
+        teamGame: T1,
+        phase: Game,
       };
     },
     reducer: (action, state) =>
       switch (action) {
+      | NewRound =>
+        let addPoints = (team, value, state) => {
+          switch (team) {
+          | Team.T1 => {
+              ...state,
+              team1Points: state.team1Points + pointValueToInt(value),
+            }
+          | T2 => {
+              ...state,
+              team2Points: state.team2Points + pointValueToInt(value),
+            }
+          };
+        };
+
+        let maybeAddPoints = (maybeTeam, points, state) =>
+          switch (maybeTeam) {
+          | None => state
+          | Some(team) => addPoints(team, points, state)
+          };
+
+        let maybeAddJackPoints = (maybeTeamJack, state) =>
+          switch (maybeTeamJack) {
+          | None => state
+          | Some((team, value)) => addPoints(team, value, state)
+          };
+
+        let resetBoard = state => {
+          let dealer = Player.nextPlayer(state.dealer);
+          let leader = Player.nextPlayer(dealer);
+          {
+            ...state,
+            deck: Deck.make() |> Deck.shuffle,
+            p1Tricks: [],
+            p2Tricks: [],
+            p3Tricks: [],
+            p4Tricks: [],
+            maybeTrumpCard: None,
+            maybeLeadCard: None,
+            dealer,
+            leader,
+            maybePlayerTurn: None,
+            canDeal: true,
+            phase: Game,
+          };
+        };
+
+        let state =
+          state
+          |> maybeAddPoints(state.teamHigh, OnePoint)
+          |> maybeAddPoints(state.teamLow, OnePoint)
+          |> maybeAddJackPoints(state.teamJack)
+          |> addPoints(state.teamGame, OnePoint)
+          |> resetBoard;
+
+        ReasonReact.Update(state);
       | PlayCard(player, hand, c) =>
         let hand' = List.filter(c' => c != c', hand);
         let state =
@@ -149,10 +255,10 @@ module App = {
           : ReasonReact.Update(state);
 
       | Deal =>
-        let (p1Hand, deck) = Deck.deal(3, state.deck);
-        let (p2Hand, deck) = Deck.deal(3, deck);
-        let (p3Hand, deck) = Deck.deal(3, deck);
-        let (p4Hand, deck) = Deck.deal(3, deck);
+        let (p1Hand, deck) = Deck.deal(2, state.deck);
+        let (p2Hand, deck) = Deck.deal(2, deck);
+        let (p3Hand, deck) = Deck.deal(2, deck);
+        let (p4Hand, deck) = Deck.deal(2, deck);
         let state = {...state, p1Hand, p2Hand, p3Hand, p4Hand};
 
         let (cards, deck) = Deck.deal(1, deck);
@@ -167,6 +273,17 @@ module App = {
         };
 
         let dealerTeam = teamOfPlayer(state.dealer);
+
+        // let allPlayersCards: list((Player.id, Card.t)) =
+        //   [
+        //     (Player.P1, state.p1Hand),
+        //     (P2, state.p2Hand),
+        //     (P3, state.p3Hand),
+        //     (P4, state.p4Hand),
+        //   ]
+        //   |> List.map(((player, hand)) => handToPlayerCards(player, hand))
+        //   |> List.fold_left((acc, playerHand) => acc @ playerHand, []);
+
         ReasonReact.Update(
           {
             ...state,
@@ -187,17 +304,17 @@ module App = {
             p2Card: List.nth(state.board, p2Index),
             p3Card: List.nth(state.board, p3Index),
             p4Card: List.nth(state.board, p4Index),
-          }; /* UNSAFE : action requires that the board has four cards*/
+          }; /* Action requires that the board has four cards. #unsafe*/
         Js.log(Trick.stringOfTrick(trick));
-        let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* UNSAFE : action requires leadSlot to be filled */
-        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* UNSAFE : action requires trumpCardSlot to be filled */
+        let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadSlot to be filled. #unsafe */
+        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCardSlot to be filled. #unsafe */
         let state =
           switch (Trick.playerTakesTrick(trumpSuit, leadSuit, trick)) {
           | P1 =>
             Js.log("Player 1 takes trick");
             {
               ...state,
-              p1Take: state.p1Take @ [trick],
+              p1Tricks: state.p1Tricks @ [trick],
               maybePlayerTurn: Some(P1),
               leader: P1,
             };
@@ -205,7 +322,7 @@ module App = {
             Js.log("Player 2 takes trick");
             {
               ...state,
-              p2Take: state.p2Take @ [trick],
+              p2Tricks: state.p2Tricks @ [trick],
               maybePlayerTurn: Some(P2),
               leader: P2,
             };
@@ -213,7 +330,7 @@ module App = {
             Js.log("Player 3 takes trick");
             {
               ...state,
-              p3Take: state.p3Take @ [trick],
+              p3Tricks: state.p3Tricks @ [trick],
               maybePlayerTurn: Some(P3),
               leader: P3,
             };
@@ -221,31 +338,158 @@ module App = {
             Js.log("Player 4 takes trick");
             {
               ...state,
-              p4Take: state.p4Take @ [trick],
+              p4Tricks: state.p4Tricks @ [trick],
               maybePlayerTurn: Some(P4),
               leader: P4,
             };
           };
 
         /** Initialize new round if this is the last trick in the round (some player has no cards) */
-        let state =
-          List.length(state.p1Hand) == 0
-            ? {
-              ...state,
-              deck: Deck.make() |> Deck.shuffle,
-              canDeal: true,
-              dealer: Player.nextPlayer(state.dealer),
-              leader: state.dealer |> Player.nextPlayer |> Player.nextPlayer,
-              maybePlayerTurn: None,
-              maybeTrumpCard: None,
-              p1Take: [],
-              p2Take: [],
-              p3Take: [],
-              p4Take: [],
-            }
-            : state;
+        // let (state, effect) =
+        //   List.length(state.p1Hand) == 0
+        //     ? (
+        //       {
+        //         ...state,
+        //         deck: Deck.make() |> Deck.shuffle,
+        //         canDeal: true,
+        //         dealer: Player.nextPlayer(state.dealer),
+        //         leader: state.dealer |> Player.nextPlayer |> Player.nextPlayer,
+        //         maybePlayerTurn: None,
+        //         maybeTrumpCard: None,
+        //         p1Tricks: [],
+        //         p2Tricks: [],
+        //         p3Tricks: [],
+        //         p4Tricks: [],
+        //       },
+        //       (_ => ()),
+        //     )
+        //     : (state, (_ => ()));
+        // List.length(state.p1Hand) == 0
+        //   ? ReasonReact.UpdateWithSideEffects(
+        //       {...state, board: [], maybeLeadCard: None},
+        //       ({send}) => send(EndRound),
+        //     )
+        //   : ReasonReact.Update({...state, board: [], maybeLeadCard: None});
+        List.length(state.p1Hand)
+        == 0
+          ? ReasonReact.UpdateWithSideEffects(
+              {...state, board: [], maybeLeadCard: None},
+              ({send}) => send(EndRound),
+            )
+          : ReasonReact.Update({...state, board: [], maybeLeadCard: None});
+      | EndRound =>
+        /* @endround start */
+        Js.log("Endround triggered.");
+        let team1Tricks = state.p1Tricks @ state.p3Tricks;
+        let team2Tricks = state.p2Tricks @ state.p4Tricks;
+        let playersCards: list((Player.id, Card.t)) =
+          team1Tricks
+          @ team2Tricks
+          |> List.map(trickToPlayerCards)
+          |> List.concat;
 
-        ReasonReact.Update({...state, board: [], maybeLeadCard: None});
+        Js.log("Crashes here");
+        /** Action requires that the game has a trump card kicked. #unsafe */
+        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard);
+
+        let playersTrumpAsc: list((Player.id, Card.t)) =
+          playersCards
+          |> List.filter(((_, {Card.suit})) => suit == trumpSuit)
+          |> List.sort(((_, {Card.rank: rank1}), (_, {rank: rank2})) =>
+               compare(rank1, rank2)
+             );
+
+        let playersTrumDesc = List.rev(playersTrumpAsc);
+
+        let lowPlayerCard =
+          try (Some(List.hd(playersTrumpAsc))) {
+          | Failure("hd") => None
+          };
+
+        let highPlayerCard =
+          try (Some(List.hd(playersTrumDesc))) {
+          | Failure("hd") => None
+          };
+
+        let jackPlayerCard =
+          try (
+            Some(
+              playersCards
+              |> List.filter(((_player, {Card.rank, suit})) =>
+                   rank == Card.Rank.Jack && suit == trumpSuit
+                 )
+              |> List.hd,
+            )
+          ) {
+          | Failure("hd") => None
+          };
+
+        let isPlayerJackHangedTest: ((Player.id, Card.t)) => bool = (
+          playerJack => {
+            let (player, jack) = playerJack;
+            let playerTeam = teamOfPlayer(player);
+            let team1TrickedJack =
+              List.exists(trickContainsCard(jack), team1Tricks);
+            switch (playerTeam) {
+            | T1 => team1TrickedJack ? false : true
+            | T2 => team1TrickedJack ? true : false
+            };
+          }
+        );
+
+        let state =
+          switch (jackPlayerCard) {
+          | None => {...state, teamJack: None}
+          | Some(playerJack) =>
+            let (player, _jack) = playerJack;
+            let isJackHanged = isPlayerJackHangedTest(playerJack);
+            switch (teamOfPlayer(player)) {
+            | T1 =>
+              isJackHanged
+                ? {...state, teamJack: Some((T2, ThreePoints))}
+                : {...state, teamJack: Some((T1, OnePoint))}
+            | T2 =>
+              isJackHanged
+                ? {...state, teamJack: Some((T1, ThreePoints))}
+                : {...state, teamJack: Some((T2, OnePoint))}
+            };
+          };
+
+        let state =
+          switch (lowPlayerCard) {
+          | None => {...state, teamLow: None}
+          | Some((player, _card)) => {
+              ...state,
+              teamLow: Some(teamOfPlayer(player)),
+            }
+          };
+
+        let state =
+          switch (highPlayerCard) {
+          | None => {...state, teamHigh: None}
+          | Some((player, _card)) => {
+              ...state,
+              teamHigh: Some(teamOfPlayer(player)),
+            }
+          };
+
+        let calcPoints = tricks =>
+          tricks
+          |> List.map(Trick.cardsInTrick)
+          |> List.concat
+          |> List.fold_left(
+               (acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank),
+               0,
+             );
+        let team1Points = calcPoints(team1Tricks);
+        let team2Points = calcPoints(team2Tricks);
+        let teamGame =
+          team1Points == team2Points
+            ? teamOfPlayer(state.dealer)
+            : team1Points > team2Points ? Team.T1 : Team.T2;
+        let state = {...state, teamGame, phase: RoundSummary};
+        Js.log("End EndRound");
+        ReasonReact.Update(state); /* @endround end */
       | Beg =>
         Js.log("Ah beg");
         ReasonReact.Update({
@@ -381,10 +625,10 @@ module App = {
           }
           : ReasonReact.null;
 
-      let createPlayerTakes = takes =>
+      let createPlayerTricks = tricks =>
         <div className="column">
-          {List.length(takes) == 0
-             ? <div> {ReasonReact.string("No take")} </div>
+          {List.length(tricks) == 0
+             ? <div> {ReasonReact.string("No tricks")} </div>
              : <div>
                  {List.map(
                     trick =>
@@ -392,15 +636,66 @@ module App = {
                         key={Trick.stringOfTrick(trick)} className="section">
                         <Trick trick />
                       </div>,
-                    takes,
+                    tricks,
                   )
                   |> Belt.List.toArray
                   |> ReasonReact.array}
                </div>}
         </div>;
-
       <div>
         <div className="section columns">
+          <div className="column">
+            {switch (state.phase) {
+             | Game => ReasonReact.null
+             | RoundSummary =>
+               <div>
+                 <div>
+                   {ReasonReact.string(
+                      Js.Option.isNone(state.teamHigh)
+                        ? "No one has high"
+                        : stringOfTeam(Js.Option.getExn(state.teamHigh))
+                          ++ " has high.",
+                    )}
+                 </div>
+                 <div>
+                   {ReasonReact.string(
+                      Js.Option.isNone(state.teamLow)
+                        ? "No one has low"
+                        : stringOfTeam(Js.Option.getExn(state.teamLow))
+                          ++ " has low.",
+                    )}
+                 </div>
+                 <div>
+                   {switch (state.teamJack) {
+                    | None => ReasonReact.null
+                    | Some((team, value)) =>
+                      switch (value) {
+                      | ThreePoints =>
+                        <div>
+                          {ReasonReact.string(
+                             stringOfTeam(team) ++ " hanged the jack.",
+                           )}
+                        </div>
+                      | OnePoint =>
+                        <div>
+                          {ReasonReact.string(
+                             stringOfTeam(team) ++ " gets away with jack.",
+                           )}
+                        </div>
+                      }
+                    }}
+                 </div>
+                 <div>
+                   {ReasonReact.string(
+                      stringOfTeam(state.teamGame) ++ " gets game.",
+                    )}
+                 </div>
+                 <button onClick={_event => send(NewRound)}>
+                   {ReasonReact.string("Continue")}
+                 </button>
+               </div>
+             }}
+          </div>
           <div className="column">
             <h1> {ReasonReact.string("Deck")} </h1>
             <ul
@@ -524,12 +819,12 @@ module App = {
             />
           </div>
         </div>
-        <h2> {ReasonReact.string("Take")} </h2>
+        <h2> {ReasonReact.string("Tricks")} </h2>
         <div className="section columns">
-          <div className="column"> {createPlayerTakes(state.p1Take)} </div>
-          <div className="column"> {createPlayerTakes(state.p2Take)} </div>
-          <div className="column"> {createPlayerTakes(state.p3Take)} </div>
-          <div className="column"> {createPlayerTakes(state.p4Take)} </div>
+          <div className="column"> {createPlayerTricks(state.p1Tricks)} </div>
+          <div className="column"> {createPlayerTricks(state.p2Tricks)} </div>
+          <div className="column"> {createPlayerTricks(state.p3Tricks)} </div>
+          <div className="column"> {createPlayerTricks(state.p4Tricks)} </div>
         </div>
       </div>;
     },

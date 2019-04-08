@@ -83,6 +83,15 @@ module Rank = {
     | King => 13
     | Ace => 14;
 
+  let pointsOfRank =
+    fun
+    | Ten => 10
+    | Jack => 1
+    | Queen => 2
+    | King => 3
+    | Ace => 4
+    | _ => 0;
+
   let first = Ace;
   let last = King;
   let next =

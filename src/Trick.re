@@ -7,6 +7,10 @@ type t = {
   p4Card: Card.t,
 };
 
+let cardsInTrick = trick => {
+  [trick.p1Card, trick.p2Card, trick.p3Card, trick.p4Card]
+};
+
 let listOfTrick: t => list((Player.id, Card.t)) =
   r => [
     (Player.P1, r.p1Card),
