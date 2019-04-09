@@ -7,6 +7,11 @@ type t = {
   points: int,
 };
 
+let stringOfTeam =
+  fun
+  | T1 => "Team 1"
+  | T2 => "Team 2";
+
 let component = ReasonReact.statelessComponent("Team");
 
 let make = (props, _children) => {

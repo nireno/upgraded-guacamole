@@ -1,17 +1,5 @@
-type maybePlayerTurn = option(Player.id);
-
-type pointValue =
-  | OnePoint
-  | ThreePoints;
-
-let pointValueToInt =
-  fun
-  | OnePoint => 1
-  | ThreePoints => 3;
-
-type phase =
-  | RoundSummary
-  | Game;
+[@bs.val] external node_env: string = "process.env.NODE_ENV";
+open Game;
 
 let isPlayerTurn = (turn, playerId) => {
   switch (turn) {
@@ -68,11 +56,6 @@ let trickContainsCard: (Card.t, Trick.t) => bool =
     |> List.exists(((_, card)) => card == testCard);
   };
 
-let stringOfTeam =
-  fun
-  | Team.T1 => "Team 1"
-  | T2 => "Team 2";
-
 module App = {
   type action =
     | PlayCard(Player.id, Player.hand, Card.t)
@@ -84,38 +67,9 @@ module App = {
     | Stand
     | GiveOne
     | DealMore
-    | Deal;
-
-  type state = {
-    deck: Deck.t,
-    board: list(Card.t),
-    p1Hand: Player.hand,
-    p2Hand: Player.hand,
-    p3Hand: Player.hand,
-    p4Hand: Player.hand,
-    p1Tricks: list(Trick.t),
-    p2Tricks: list(Trick.t),
-    p3Tricks: list(Trick.t),
-    p4Tricks: list(Trick.t),
-    maybeTrumpCard: option(Card.t), /* using slot suffix to denote an optional prop. */
-    maybeLeadCard: option(Card.t),
-    me: Player.id,
-    dealer: Player.id,
-    leader: Player.id,
-    maybePlayerTurn,
-    team1Points: int,
-    team2Points: int,
-    canBeg: bool,
-    canStand: bool,
-    canDeal: bool,
-    canDealMore: bool,
-    canGiveOne: bool,
-    teamHigh: option(Team.id),
-    teamLow: option(Team.id),
-    teamJack: option((Team.id, pointValue)),
-    teamGame: Team.id,
-    phase,
-  };
+    | Deal
+    | EndGame
+    | CheatPoints(Team.id, int);
 
   let component = ReasonReact.reducerComponent("AllFoursApp");
 
@@ -146,29 +100,16 @@ module App = {
         canDeal: true,
         canDealMore: false,
         canGiveOne: false,
-        teamHigh: None,
-        teamLow: None,
-        teamJack: None,
-        teamGame: T1,
+        maybeTeamHigh: None,
+        maybeTeamLow: None,
+        maybeTeamJack: None,
+        maybeTeamGame: None,
         phase: Game,
       };
     },
     reducer: (action, state) =>
       switch (action) {
       | NewRound =>
-        let addPoints = (team, value, state) => {
-          switch (team) {
-          | Team.T1 => {
-              ...state,
-              team1Points: state.team1Points + pointValueToInt(value),
-            }
-          | T2 => {
-              ...state,
-              team2Points: state.team2Points + pointValueToInt(value),
-            }
-          };
-        };
-
         let maybeAddPoints = (maybeTeam, points, state) =>
           switch (maybeTeam) {
           | None => state
@@ -178,7 +119,8 @@ module App = {
         let maybeAddJackPoints = (maybeTeamJack, state) =>
           switch (maybeTeamJack) {
           | None => state
-          | Some((team, value)) => addPoints(team, value, state)
+          | Some((team, award)) =>
+            addPoints(team, valueOfAward(award), state)
           };
 
         let resetBoard = state => {
@@ -202,14 +144,31 @@ module App = {
         };
 
         let state =
-          state
-          |> maybeAddPoints(state.teamHigh, OnePoint)
-          |> maybeAddPoints(state.teamLow, OnePoint)
-          |> maybeAddJackPoints(state.teamJack)
-          |> addPoints(state.teamGame, OnePoint)
-          |> resetBoard;
+          Util.updateUntil(
+            [
+              maybeAddPoints(state.maybeTeamHigh, valueOfAward(High)),
+              maybeAddPoints(state.maybeTeamLow, valueOfAward(Low)),
+              maybeAddJackPoints(state.maybeTeamJack),
+              maybeAddPoints(state.maybeTeamGame, valueOfAward(Game)),
+              resetBoard,
+            ],
+            isGameOverTest,
+            state,
+          );
 
-        ReasonReact.Update(state);
+        let state =
+          isGameOverTest(state) ? {...state, phase: GameOver} : state;
+
+        switch (state.phase) {
+        | GameOver =>
+          ReasonReact.UpdateWithSideEffects(
+            state,
+            ({send}) => send(EndGame),
+          )
+        | _ => ReasonReact.Update(state)
+        };
+
+      | EndGame => ReasonReact.Update({...state, canDeal: false})
       | PlayCard(player, hand, c) =>
         let hand' = List.filter(c' => c != c', hand);
         let state =
@@ -255,46 +214,37 @@ module App = {
           : ReasonReact.Update(state);
 
       | Deal =>
-        let (p1Hand, deck) = Deck.deal(2, state.deck);
-        let (p2Hand, deck) = Deck.deal(2, deck);
-        let (p3Hand, deck) = Deck.deal(2, deck);
-        let (p4Hand, deck) = Deck.deal(2, deck);
-        let state = {...state, p1Hand, p2Hand, p3Hand, p4Hand};
-
-        let (cards, deck) = Deck.deal(1, deck);
-        let kick = List.hd(cards);
-        let updateKickPoints = (kick, dealerTeam, state) => {
-          let {Card.rank} = kick;
-          let points = Rules.kickPoints(rank);
-          switch (dealerTeam) {
-          | Team.T1 => {...state, team1Points: state.team1Points + points}
-          | Team.T2 => {...state, team2Points: state.team2Points + points}
-          };
+        let dealCards = state => {
+          let (p1Hand, deck) = Deck.deal(2, state.deck);
+          let (p2Hand, deck) = Deck.deal(2, deck);
+          let (p3Hand, deck) = Deck.deal(2, deck);
+          let (p4Hand, deck) = Deck.deal(2, deck);
+          {...state, deck, p1Hand, p2Hand, p3Hand, p4Hand};
         };
 
-        let dealerTeam = teamOfPlayer(state.dealer);
+        let kickTrump = state => {
+          let dealerTeam = teamOfPlayer(state.dealer);
+          let (cards, deck) = Deck.deal(1, state.deck);
+          let trumpCard = List.hd(cards); /* Dealing expects enough cards to kick trump. #unsafe */
+          let points = kickPoints(trumpCard.rank);
 
-        // let allPlayersCards: list((Player.id, Card.t)) =
-        //   [
-        //     (Player.P1, state.p1Hand),
-        //     (P2, state.p2Hand),
-        //     (P3, state.p3Hand),
-        //     (P4, state.p4Hand),
-        //   ]
-        //   |> List.map(((player, hand)) => handToPlayerCards(player, hand))
-        //   |> List.fold_left((acc, playerHand) => acc @ playerHand, []);
+          {...state, deck, maybeTrumpCard: Some(trumpCard)}
+          |> addPoints(dealerTeam, points);
+        };
 
-        ReasonReact.Update(
-          {
-            ...state,
-            deck,
-            maybeTrumpCard: Some(kick),
-            canBeg: true,
-            canStand: true,
-            canDeal: false,
-          }
-          |> updateKickPoints(kick, dealerTeam),
-        );
+        let state = state |> dealCards |> kickTrump;
+
+        isGameOverTest(state)
+          ? ReasonReact.UpdateWithSideEffects(
+              {...state, phase: GameOver},
+              ({send}) => send(EndGame),
+            )
+          : ReasonReact.Update({
+              ...state,
+              canBeg: true,
+              canStand: true,
+              canDeal: false,
+            });
       | EndTrick =>
         let (p1Index, p2Index, p3Index, p4Index) =
           playerBoardIndices(state.leader);
@@ -305,81 +255,42 @@ module App = {
             p3Card: List.nth(state.board, p3Index),
             p4Card: List.nth(state.board, p4Index),
           }; /* Action requires that the board has four cards. #unsafe*/
+
         Js.log(Trick.stringOfTrick(trick));
-        let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadSlot to be filled. #unsafe */
-        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCardSlot to be filled. #unsafe */
-        let state =
-          switch (Trick.playerTakesTrick(trumpSuit, leadSuit, trick)) {
-          | P1 =>
-            Js.log("Player 1 takes trick");
-            {
-              ...state,
-              p1Tricks: state.p1Tricks @ [trick],
-              maybePlayerTurn: Some(P1),
-              leader: P1,
-            };
-          | P2 =>
-            Js.log("Player 2 takes trick");
-            {
-              ...state,
-              p2Tricks: state.p2Tricks @ [trick],
-              maybePlayerTurn: Some(P2),
-              leader: P2,
-            };
-          | P3 =>
-            Js.log("Player 3 takes trick");
-            {
-              ...state,
-              p3Tricks: state.p3Tricks @ [trick],
-              maybePlayerTurn: Some(P3),
-              leader: P3,
-            };
-          | P4 =>
-            Js.log("Player 4 takes trick");
-            {
-              ...state,
-              p4Tricks: state.p4Tricks @ [trick],
-              maybePlayerTurn: Some(P4),
-              leader: P4,
-            };
+        let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadCard. #unsafe */
+        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCard. #unsafe */
+
+        let trickWinner: Player.id =
+          Trick.playerTakesTrick(trumpSuit, leadSuit, trick);
+
+        let collectTrick = (player, trick, state) =>
+          switch (player) {
+          | Player.P1 => {...state, p1Tricks: state.p1Tricks @ [trick]}
+          | P2 => {...state, p2Tricks: state.p2Tricks @ [trick]}
+          | P3 => {...state, p3Tricks: state.p3Tricks @ [trick]}
+          | P4 => {...state, p4Tricks: state.p4Tricks @ [trick]}
           };
 
-        /** Initialize new round if this is the last trick in the round (some player has no cards) */
-        // let (state, effect) =
-        //   List.length(state.p1Hand) == 0
-        //     ? (
-        //       {
-        //         ...state,
-        //         deck: Deck.make() |> Deck.shuffle,
-        //         canDeal: true,
-        //         dealer: Player.nextPlayer(state.dealer),
-        //         leader: state.dealer |> Player.nextPlayer |> Player.nextPlayer,
-        //         maybePlayerTurn: None,
-        //         maybeTrumpCard: None,
-        //         p1Tricks: [],
-        //         p2Tricks: [],
-        //         p3Tricks: [],
-        //         p4Tricks: [],
-        //       },
-        //       (_ => ()),
-        //     )
-        //     : (state, (_ => ()));
-        // List.length(state.p1Hand) == 0
-        //   ? ReasonReact.UpdateWithSideEffects(
-        //       {...state, board: [], maybeLeadCard: None},
-        //       ({send}) => send(EndRound),
-        //     )
-        //   : ReasonReact.Update({...state, board: [], maybeLeadCard: None});
-        List.length(state.p1Hand)
-        == 0
+        let advanceRound = state => {
+          ...state,
+          maybePlayerTurn: Some(trickWinner),
+          maybeLeadCard: None,
+          leader: trickWinner,
+          board: [],
+        };
+
+        let state = state |> collectTrick(trickWinner, trick) |> advanceRound;
+
+        List.length(state.p1Hand) == 0
           ? ReasonReact.UpdateWithSideEffects(
-              {...state, board: [], maybeLeadCard: None},
+              state,
               ({send}) => send(EndRound),
             )
-          : ReasonReact.Update({...state, board: [], maybeLeadCard: None});
+          : ReasonReact.Update(state);
+
       | EndRound =>
         /* @endround start */
-        Js.log("Endround triggered.");
+        Js.log("@EndRound");
         let team1Tricks = state.p1Tricks @ state.p3Tricks;
         let team2Tricks = state.p2Tricks @ state.p4Tricks;
         let playersCards: list((Player.id, Card.t)) =
@@ -439,37 +350,37 @@ module App = {
 
         let state =
           switch (jackPlayerCard) {
-          | None => {...state, teamJack: None}
+          | None => {...state, maybeTeamJack: None}
           | Some(playerJack) =>
             let (player, _jack) = playerJack;
             let isJackHanged = isPlayerJackHangedTest(playerJack);
             switch (teamOfPlayer(player)) {
             | T1 =>
               isJackHanged
-                ? {...state, teamJack: Some((T2, ThreePoints))}
-                : {...state, teamJack: Some((T1, OnePoint))}
+                ? {...state, maybeTeamJack: Some((T2, HangJack))}
+                : {...state, maybeTeamJack: Some((T1, RunJack))}
             | T2 =>
               isJackHanged
-                ? {...state, teamJack: Some((T1, ThreePoints))}
-                : {...state, teamJack: Some((T2, OnePoint))}
+                ? {...state, maybeTeamJack: Some((T1, HangJack))}
+                : {...state, maybeTeamJack: Some((T2, RunJack))}
             };
           };
 
         let state =
           switch (lowPlayerCard) {
-          | None => {...state, teamLow: None}
+          | None => {...state, maybeTeamLow: None}
           | Some((player, _card)) => {
               ...state,
-              teamLow: Some(teamOfPlayer(player)),
+              maybeTeamLow: Some(teamOfPlayer(player)),
             }
           };
 
         let state =
           switch (highPlayerCard) {
-          | None => {...state, teamHigh: None}
+          | None => {...state, maybeTeamHigh: None}
           | Some((player, _card)) => {
               ...state,
-              teamHigh: Some(teamOfPlayer(player)),
+              maybeTeamHigh: Some(teamOfPlayer(player)),
             }
           };
 
@@ -483,12 +394,11 @@ module App = {
              );
         let team1Points = calcPoints(team1Tricks);
         let team2Points = calcPoints(team2Tricks);
-        let teamGame =
+        let maybeTeamGame =
           team1Points == team2Points
-            ? teamOfPlayer(state.dealer)
-            : team1Points > team2Points ? Team.T1 : Team.T2;
-        let state = {...state, teamGame, phase: RoundSummary};
-        Js.log("End EndRound");
+            ? None
+            : team1Points > team2Points ? Some(Team.T1) : Some(Team.T2);
+        let state = {...state, maybeTeamGame, phase: RoundSummary};
         ReasonReact.Update(state); /* @endround end */
       | Beg =>
         Js.log("Ah beg");
@@ -543,7 +453,7 @@ module App = {
         let (cards, deck) = Deck.deal(1, deck);
         let kick' = List.hd(cards);
         let {Card.rank: kickRank', Card.suit: kickSuit'} = kick';
-        let points = Rules.kickPoints(kickRank');
+        let points = kickPoints(kickRank');
         let state =
           switch (teamOfPlayer(state.dealer)) {
           | Team.T1 => {...state, team1Points: state.team1Points + points}
@@ -576,8 +486,11 @@ module App = {
         };
 
         ReasonReact.NoUpdate;
+      | CheatPoints(team, value) =>
+        ReasonReact.Update(addPoints(team, value, state))
       },
-    render: ({state, send}) => {
+    render: self => {
+      let {ReasonReact.state, send} = self;
       let renderBegButton = playerId =>
         if (state.canBeg && Player.nextPlayer(state.dealer) == playerId) {
           <button onClick={_event => send(Beg)}>
@@ -642,53 +555,79 @@ module App = {
                   |> ReasonReact.array}
                </div>}
         </div>;
+
+      let createCheatPoints = team => {
+        node_env != "production"
+          ? <span>
+              <button onClick={_event => send(CheatPoints(team, 1))}>
+                {ReasonReact.string("+1")}
+              </button>
+              <button onClick={_event => send(CheatPoints(team, 6))}>
+                {ReasonReact.string("+6")}
+              </button>
+              <button onClick={_event => send(CheatPoints(team, 13))}>
+                {ReasonReact.string("+13")}
+              </button>
+            </span>
+          : ReasonReact.null;
+      };
+
       <div>
         <div className="section columns">
           <div className="column">
             {switch (state.phase) {
              | Game => ReasonReact.null
+             | GameOver => GameOverPhase.createElement(self)
              | RoundSummary =>
                <div>
                  <div>
                    {ReasonReact.string(
-                      Js.Option.isNone(state.teamHigh)
-                        ? "No one has high"
-                        : stringOfTeam(Js.Option.getExn(state.teamHigh))
-                          ++ " has high.",
+                      switch (state.maybeTeamHigh) {
+                      | None => "No one has high"
+                      | Some(teamHigh) =>
+                        Team.stringOfTeam(teamHigh) ++ " has high."
+                      },
                     )}
                  </div>
                  <div>
                    {ReasonReact.string(
-                      Js.Option.isNone(state.teamLow)
-                        ? "No one has low"
-                        : stringOfTeam(Js.Option.getExn(state.teamLow))
-                          ++ " has low.",
+                      switch (state.maybeTeamLow) {
+                      | None => "No one has low"
+                      | Some(teamLow) =>
+                        Team.stringOfTeam(teamLow) ++ " has low."
+                      },
                     )}
                  </div>
                  <div>
-                   {switch (state.teamJack) {
+                   {switch (state.maybeTeamJack) {
                     | None => ReasonReact.null
                     | Some((team, value)) =>
                       switch (value) {
-                      | ThreePoints =>
+                      | HangJack =>
                         <div>
                           {ReasonReact.string(
-                             stringOfTeam(team) ++ " hanged the jack.",
+                             Team.stringOfTeam(team) ++ " hanged the jack.",
                            )}
                         </div>
-                      | OnePoint =>
+                      | RunJack =>
                         <div>
                           {ReasonReact.string(
-                             stringOfTeam(team) ++ " gets away with jack.",
+                             Team.stringOfTeam(team)
+                             ++ " gets away with jack.",
                            )}
                         </div>
+                      | _ => ReasonReact.null
                       }
                     }}
                  </div>
                  <div>
-                   {ReasonReact.string(
-                      stringOfTeam(state.teamGame) ++ " gets game.",
-                    )}
+                   {switch (state.maybeTeamGame) {
+                    | None => ReasonReact.string("Tied for game.")
+                    | Some(teamGame) =>
+                      ReasonReact.string(
+                        Team.stringOfTeam(teamGame) ++ " gets game.",
+                      )
+                    }}
                  </div>
                  <button onClick={_event => send(NewRound)}>
                    {ReasonReact.string("Continue")}
@@ -713,13 +652,15 @@ module App = {
           <div className="column">
             <h1>
               {ReasonReact.string(
-                 "Team 1 points: " ++ string_of_int(state.team1Points),
+                 "Team 1 points: " ++ string_of_int(state.team1Points) ++ " ",
                )}
+              {createCheatPoints(T1)}
             </h1>
             <h1>
               {ReasonReact.string(
-                 "Team 2 points: " ++ string_of_int(state.team2Points),
+                 "Team 2 points: " ++ string_of_int(state.team2Points) ++ " ",
                )}
+              {createCheatPoints(T2)}
             </h1>
           </div>
           <div className="column">

@@ -1,5 +1,6 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
 const outputDir = path.join(__dirname, 'build/');
 
 const isProd = process.env.NODE_ENV === 'production';
@@ -15,7 +16,8 @@ module.exports = {
     new HtmlWebpackPlugin({
       template: 'src/index.html',
       inject: false
-    })
+    }),
+    new webpack.EnvironmentPlugin(['NODE_ENV']),
   ],
   devServer: {
     compress: true,
