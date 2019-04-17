@@ -155,6 +155,10 @@ module App = {
           maybeTrumpCard: None,
           maybeLeadCard: None,
           maybePlayerTurn: None,
+          maybeTeamHigh: None,
+          maybeTeamLow: None,
+          maybeTeamJack: None,
+          maybeTeamGame: None,
         };
 
         let updatePlayers = state => {
@@ -209,10 +213,10 @@ module App = {
 
       | Deal =>
         let dealCards = state => {
-          let (p1Hand, deck) = Deck.deal(2, state.deck);
-          let (p2Hand, deck) = Deck.deal(2, deck);
-          let (p3Hand, deck) = Deck.deal(2, deck);
-          let (p4Hand, deck) = Deck.deal(2, deck);
+          let (p1Hand, deck) = Deck.deal(6, state.deck);
+          let (p2Hand, deck) = Deck.deal(6, deck);
+          let (p3Hand, deck) = Deck.deal(6, deck);
+          let (p4Hand, deck) = Deck.deal(6, deck);
           {...state, deck, p1Hand, p2Hand, p3Hand, p4Hand};
         };
 
