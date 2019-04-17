@@ -56,6 +56,22 @@ let trickContainsCard: (Card.t, Trick.t) => bool =
     |> List.exists(((_, card)) => card == testCard);
   };
 
+let playerPhase:
+  (Game.phase, Player.id, Player.id, option(Player.id), Player.id) =>
+  Player.phase =
+  (gamePhase, dealer, leader, maybePlayerTurn, player) => {
+    Player.maybeIdEqual(maybePlayerTurn, player)
+      ? Player.PlayerTurnPhase
+      : dealer == player && gamePhase == DealPhase
+          ? PlayerDealPhase
+          : dealer == player && gamePhase == GiveOnePhase
+              ? PlayerGiveOnePhase
+              : dealer == player && gamePhase == RunPackPhase
+                  ? PlayerRunPackPhase
+                  : leader == player && gamePhase == BegPhase
+                      ? PlayerBegPhase : PlayerIdlePhase;
+  };
+
 module App = {
   type action =
     | PlayCard(Player.id, Player.hand, Card.t)
@@ -66,9 +82,9 @@ module App = {
     | Beg
     | Stand
     | GiveOne
-    | DealMore
     | Deal
-    | EndGame
+    | RunPack
+    | DealAgain
     | CheatPoints(Team.id, int);
 
   let component = ReasonReact.reducerComponent("AllFoursApp");
@@ -77,7 +93,6 @@ module App = {
     ...component,
     initialState: () => {
       {
-        me: P1,
         deck: Deck.make() |> Deck.shuffle,
         board: [],
         p1Hand: [],
@@ -92,19 +107,14 @@ module App = {
         maybeTrumpCard: None,
         maybeLeadCard: None,
         dealer: P1,
-        leader: Player.nextPlayer(P1),
+        leader: P2,
         team1Points: 0,
         team2Points: 0,
-        canBeg: false,
-        canStand: false,
-        canDeal: true,
-        canDealMore: false,
-        canGiveOne: false,
         maybeTeamHigh: None,
         maybeTeamLow: None,
         maybeTeamJack: None,
         maybeTeamGame: None,
-        phase: Game,
+        phase: DealPhase,
       };
     },
     reducer: (action, state) =>
@@ -123,52 +133,47 @@ module App = {
             addPoints(team, valueOfAward(award), state)
           };
 
-        let resetBoard = state => {
-          let dealer = Player.nextPlayer(state.dealer);
-          let leader = Player.nextPlayer(dealer);
-          {
-            ...state,
-            deck: Deck.make() |> Deck.shuffle,
-            p1Tricks: [],
-            p2Tricks: [],
-            p3Tricks: [],
-            p4Tricks: [],
-            maybeTrumpCard: None,
-            maybeLeadCard: None,
-            dealer,
-            leader,
-            maybePlayerTurn: None,
-            canDeal: true,
-            phase: Game,
-          };
-        };
-
-        let state =
+        let updateScore = state =>
           Util.updateUntil(
             [
-              maybeAddPoints(state.maybeTeamHigh, valueOfAward(High)),
-              maybeAddPoints(state.maybeTeamLow, valueOfAward(Low)),
+              maybeAddPoints(state.maybeTeamHigh, valueOfAward(HighAward)),
+              maybeAddPoints(state.maybeTeamLow, valueOfAward(LowAward)),
               maybeAddJackPoints(state.maybeTeamJack),
-              maybeAddPoints(state.maybeTeamGame, valueOfAward(Game)),
-              resetBoard,
+              maybeAddPoints(state.maybeTeamGame, valueOfAward(GameAward)),
             ],
             isGameOverTest,
             state,
           );
 
-        let state =
-          isGameOverTest(state) ? {...state, phase: GameOver} : state;
-
-        switch (state.phase) {
-        | GameOver =>
-          ReasonReact.UpdateWithSideEffects(
-            state,
-            ({send}) => send(EndGame),
-          )
-        | _ => ReasonReact.Update(state)
+        let updateBoard = state => {
+          ...state,
+          deck: Deck.make() |> Deck.shuffle,
+          p1Tricks: [],
+          p2Tricks: [],
+          p3Tricks: [],
+          p4Tricks: [],
+          maybeTrumpCard: None,
+          maybeLeadCard: None,
+          maybePlayerTurn: None,
         };
 
-      | EndGame => ReasonReact.Update({...state, canDeal: false})
+        let updatePlayers = state => {
+          let nextDealer = Player.nextPlayer(state.dealer);
+          let nextLeader = Player.nextPlayer(nextDealer);
+          {...state, dealer: nextDealer, leader: nextLeader};
+        };
+
+        let updatePhase = state => {
+          {
+            ...state,
+            phase: isGameOverTest(state) ? GameOverPhase : DealPhase,
+          };
+        };
+
+        ReasonReact.Update(
+          state |> updateScore |> updateBoard |> updatePlayers |> updatePhase,
+        );
+
       | PlayCard(player, hand, c) =>
         let hand' = List.filter(c' => c != c', hand);
         let state =
@@ -185,10 +190,6 @@ module App = {
           | _ => state
           };
 
-        Js.log(
-          Player.toString(player) ++ " played: " ++ Card.stringOfCard(c),
-        );
-
         let state = {...state, board: state.board @ [c]};
         let state =
           switch (state.maybePlayerTurn) {
@@ -198,13 +199,6 @@ module App = {
               maybePlayerTurn: Some(Player.nextPlayer(turn)),
             }
           };
-
-        Js.log(
-          "Player is: "
-          ++ Player.toString(player)
-          ++ "; Leader is: "
-          ++ Player.toString(state.leader),
-        );
 
         Player.nextPlayer(player) == state.leader
           ? ReasonReact.UpdateWithSideEffects(
@@ -234,17 +228,11 @@ module App = {
 
         let state = state |> dealCards |> kickTrump;
 
-        isGameOverTest(state)
-          ? ReasonReact.UpdateWithSideEffects(
-              {...state, phase: GameOver},
-              ({send}) => send(EndGame),
-            )
-          : ReasonReact.Update({
-              ...state,
-              canBeg: true,
-              canStand: true,
-              canDeal: false,
-            });
+        ReasonReact.Update({
+          ...state,
+          phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
+        });
+
       | EndTrick =>
         let (p1Index, p2Index, p3Index, p4Index) =
           playerBoardIndices(state.leader);
@@ -357,12 +345,12 @@ module App = {
             switch (teamOfPlayer(player)) {
             | T1 =>
               isJackHanged
-                ? {...state, maybeTeamJack: Some((T2, HangJack))}
-                : {...state, maybeTeamJack: Some((T1, RunJack))}
+                ? {...state, maybeTeamJack: Some((T2, HangJackAward))}
+                : {...state, maybeTeamJack: Some((T1, RunJackAward))}
             | T2 =>
               isJackHanged
-                ? {...state, maybeTeamJack: Some((T1, HangJack))}
-                : {...state, maybeTeamJack: Some((T2, RunJack))}
+                ? {...state, maybeTeamJack: Some((T1, HangJackAward))}
+                : {...state, maybeTeamJack: Some((T2, RunJackAward))}
             };
           };
 
@@ -398,25 +386,27 @@ module App = {
           team1Points == team2Points
             ? None
             : team1Points > team2Points ? Some(Team.T1) : Some(Team.T2);
-        let state = {...state, maybeTeamGame, phase: RoundSummary};
+        let state = {...state, maybeTeamGame, phase: RoundSummaryPhase};
         ReasonReact.Update(state); /* @endround end */
       | Beg =>
         Js.log("Ah beg");
-        ReasonReact.Update({
-          ...state,
-          canBeg: false,
-          canStand: false,
-          canDealMore: true,
-          canGiveOne: true,
-        });
+        ReasonReact.Update({...state, phase: GiveOnePhase});
       | Stand =>
-        Js.log("Ah stan up");
         ReasonReact.Update({
           ...state,
-          canBeg: false,
-          canStand: false,
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
-        });
+          phase: PlayerTurnPhase,
+        })
+      | GiveOne
+          when
+            [Player.P1, P3]
+            |> List.mem(state.dealer)
+            && state.team2Points == 13
+            || [Player.P2, P4]
+            |> List.mem(state.dealer)
+            && state.team1Points == 13 =>
+        Js.log("Your opponents only need one point!");
+        ReasonReact.NoUpdate;
       | GiveOne =>
         Js.log("Take one");
         let state =
@@ -428,11 +418,10 @@ module App = {
           };
         ReasonReact.Update({
           ...state,
-          canDealMore: false,
-          canGiveOne: false,
+          phase: PlayerTurnPhase,
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
         });
-      | DealMore =>
+      | RunPack =>
         Js.log("I beg too");
         let (p1Hand, deck) = Deck.deal(3, state.deck);
         let (p2Hand, deck) = Deck.deal(3, deck);
@@ -461,14 +450,17 @@ module App = {
           };
         let state =
           kickSuit == kickSuit'
-            ? state
+            ? {
+              ...state,
+              phase:
+                List.length(deck) < 12 ? PackDepletedPhase : RunPackPhase,
+            }
             : {
               ...state,
-              canGiveOne: false,
-              canDealMore: false,
+              phase: PlayerTurnPhase,
               maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
             };
-        ReasonReact.Update({
+        let state = {
           ...state,
           p1Hand: state.p1Hand @ p1Hand,
           p2Hand: state.p2Hand @ p2Hand,
@@ -476,7 +468,19 @@ module App = {
           p4Hand: state.p4Hand @ p4Hand,
           deck: deck @ [prevKick],
           maybeTrumpCard: Some(kick'),
-        });
+        };
+        ReasonReact.Update(state);
+      | DealAgain =>
+        ReasonReact.Update({
+          ...state,
+          p1Hand: [],
+          p2Hand: [],
+          p3Hand: [],
+          p4Hand: [],
+          maybeTrumpCard: None,
+          deck: Deck.make() |> Deck.shuffle,
+          phase: DealPhase,
+        })
       | BlockPlay(player) =>
         switch (player) {
         | P1 => Js.log("Not your turn p1")
@@ -491,52 +495,7 @@ module App = {
       },
     render: self => {
       let {ReasonReact.state, send} = self;
-      let renderBegButton = playerId =>
-        if (state.canBeg && Player.nextPlayer(state.dealer) == playerId) {
-          <button onClick={_event => send(Beg)}>
-            {ReasonReact.string("Beg")}
-          </button>;
-        } else {
-          <div />;
-        };
-
-      let createStandElement = playerId =>
-        state.canStand && playerId == Player.nextPlayer(state.dealer)
-          ? <div>
-              <button onClick={_event => send(Stand)}>
-                {ReasonReact.string("Stand")}
-              </button>
-            </div>
-          : <div />;
-
-      let createDealMoreElement = playerId =>
-        state.canDealMore && playerId == state.dealer
-          ? <div>
-              <button onClick={_event => send(DealMore)}>
-                {ReasonReact.string("Deal more")}
-              </button>
-            </div>
-          : <div />;
-
-      let createGiveOneElement = playerId =>
-        state.canGiveOne && playerId == state.dealer
-          ? <div>
-              <button onClick={_event => send(GiveOne)}>
-                {ReasonReact.string("Give One")}
-              </button>
-            </div>
-          : <div />;
-
-      let createDealerElement = playerId =>
-        playerId == state.dealer
-          ? {
-            state.canDeal
-              ? <button onClick={_event => send(Deal)}>
-                  {ReasonReact.string("Deal")}
-                </button>
-              : <span> {ReasonReact.string("Dealer")} </span>;
-          }
-          : ReasonReact.null;
+      let sendActionEvent = (action, _event) => send(action);
 
       let createPlayerTricks = tricks =>
         <div className="column">
@@ -572,13 +531,26 @@ module App = {
           : ReasonReact.null;
       };
 
+      let playerPhase =
+        playerPhase(
+          state.phase,
+          state.dealer,
+          state.leader,
+          state.maybePlayerTurn,
+        );
       <div>
         <div className="section columns">
           <div className="column">
             {switch (state.phase) {
-             | Game => ReasonReact.null
-             | GameOver => GameOverPhase.createElement(self)
-             | RoundSummary =>
+             | GameOverPhase => GameOverPhase.createElement(self)
+             | PackDepletedPhase =>
+               <div>
+                 <div> {ReasonReact.string("No more cards")} </div>
+                 <button onClick={_event => send(DealAgain)}>
+                   {ReasonReact.string("Reshuffle")}
+                 </button>
+               </div>
+             | RoundSummaryPhase =>
                <div>
                  <div>
                    {ReasonReact.string(
@@ -603,13 +575,13 @@ module App = {
                     | None => ReasonReact.null
                     | Some((team, value)) =>
                       switch (value) {
-                      | HangJack =>
+                      | HangJackAward =>
                         <div>
                           {ReasonReact.string(
                              Team.stringOfTeam(team) ++ " hanged the jack.",
                            )}
                         </div>
-                      | RunJack =>
+                      | RunJackAward =>
                         <div>
                           {ReasonReact.string(
                              Team.stringOfTeam(team)
@@ -633,18 +605,11 @@ module App = {
                    {ReasonReact.string("Continue")}
                  </button>
                </div>
+             | _ => ReasonReact.null
              }}
           </div>
           <div className="column">
             <h1> {ReasonReact.string("Deck")} </h1>
-            <ul
-              // {List.map(
-              //    c => <Card key={Card.stringOfCard(c)} card=c />,
-              //    state.deck,
-              //  )
-              //  |> Belt.List.toArray
-              //  |> ReasonReact.array}
-            />
             <div>
               {ReasonReact.string(string_of_int(List.length(state.deck)))}
             </div>
@@ -692,69 +657,85 @@ module App = {
         </div>
         <div className="section columns">
           <div className="column">
-            <h1>
-              {ReasonReact.string("Player 1 ")}
-              {createDealerElement(P1)}
-            </h1>
-            {renderBegButton(P1)}
-            {createStandElement(P1)}
-            {createGiveOneElement(P1)}
-            {createDealMoreElement(P1)}
+            <Player
+              id=P1
+              sendDeal={sendActionEvent(Deal)}
+              sendStandUp={sendActionEvent(Stand)}
+              sendBeg={sendActionEvent(Beg)}
+              sendGiveOne={sendActionEvent(GiveOne)}
+              sendRunPack={sendActionEvent(RunPack)}
+              playerPhase={playerPhase(P1)}
+            />
             <Hand
-              leadCardSlot={state.maybeLeadCard}
-              trumpCardSlot={state.maybeTrumpCard}
-              isPlayerTurn={isPlayerTurn(state.maybePlayerTurn, P1)}
+              maybeLeadCard={state.maybeLeadCard}
+              maybeTrumpCard={state.maybeTrumpCard}
+              handPhase={
+                Player.maybeIdEqual(state.maybePlayerTurn, P1)
+                  ? Hand.HandPlayPhase : Hand.HandWaitPhase
+              }
               sendPlayCard={c => send(PlayCard(P1, state.p1Hand, c))}
               cards={state.p1Hand}
             />
           </div>
           <div className="column">
-            <h1>
-              {ReasonReact.string("Player 2 ")}
-              {createDealerElement(P2)}
-            </h1>
-            {renderBegButton(P2)}
-            {createStandElement(P2)}
-            {createGiveOneElement(P2)}
-            {createDealMoreElement(P2)}
+            <Player
+              id=P2
+              sendDeal={sendActionEvent(Deal)}
+              sendStandUp={sendActionEvent(Stand)}
+              sendBeg={sendActionEvent(Beg)}
+              sendGiveOne={sendActionEvent(GiveOne)}
+              sendRunPack={sendActionEvent(RunPack)}
+              playerPhase={playerPhase(P2)}
+            />
             <Hand
-              leadCardSlot={state.maybeLeadCard}
-              trumpCardSlot={state.maybeTrumpCard}
-              isPlayerTurn={isPlayerTurn(state.maybePlayerTurn, P2)}
+              maybeLeadCard={state.maybeLeadCard}
+              maybeTrumpCard={state.maybeTrumpCard}
+              handPhase={
+                Player.maybeIdEqual(state.maybePlayerTurn, P2)
+                  ? Hand.HandPlayPhase : Hand.HandWaitPhase
+              }
               sendPlayCard={c => send(PlayCard(P2, state.p2Hand, c))}
               cards={state.p2Hand}
             />
           </div>
           <div className="column">
-            <h1>
-              {ReasonReact.string("Player 3 ")}
-              {createDealerElement(P3)}
-            </h1>
-            {renderBegButton(P3)}
-            {createStandElement(P3)}
-            {createGiveOneElement(P3)}
-            {createDealMoreElement(P3)}
+            <Player
+              id=P3
+              sendDeal={sendActionEvent(Deal)}
+              sendStandUp={sendActionEvent(Stand)}
+              sendBeg={sendActionEvent(Beg)}
+              sendGiveOne={sendActionEvent(GiveOne)}
+              sendRunPack={sendActionEvent(RunPack)}
+              playerPhase={playerPhase(P3)}
+            />
             <Hand
-              leadCardSlot={state.maybeLeadCard}
-              trumpCardSlot={state.maybeTrumpCard}
-              isPlayerTurn={isPlayerTurn(state.maybePlayerTurn, P3)}
+              maybeLeadCard={state.maybeLeadCard}
+              maybeTrumpCard={state.maybeTrumpCard}
+              handPhase={
+                Player.maybeIdEqual(state.maybePlayerTurn, P3)
+                  ? Hand.HandPlayPhase : Hand.HandWaitPhase
+              }
               sendPlayCard={c => send(PlayCard(P3, state.p3Hand, c))}
               cards={state.p3Hand}
             />
           </div>
           <div className="column">
-            <h1>
-              {ReasonReact.string("Player 4 ")}
-              {createDealerElement(P4)}
-            </h1>
-            {renderBegButton(P4)}
-            {createStandElement(P4)}
-            {createGiveOneElement(P4)}
-            {createDealMoreElement(P4)}
+            <Player
+              id=P4
+              sendDeal={sendActionEvent(Deal)}
+              sendStandUp={sendActionEvent(Stand)}
+              sendBeg={sendActionEvent(Beg)}
+              sendGiveOne={sendActionEvent(GiveOne)}
+              sendRunPack={sendActionEvent(RunPack)}
+              playerPhase={playerPhase(P4)}
+            />
             <Hand
-              leadCardSlot={state.maybeLeadCard}
-              trumpCardSlot={state.maybeTrumpCard}
-              isPlayerTurn={isPlayerTurn(state.maybePlayerTurn, P4)}
+              maybeLeadCard={state.maybeLeadCard}
+              maybeTrumpCard={state.maybeTrumpCard}
+              handPhase={
+                Player.maybeIdEqual(state.maybePlayerTurn, P4)
+                  ? Hand.HandPlayPhase : Hand.HandWaitPhase
+              }
               sendPlayCard={c => send(PlayCard(P4, state.p4Hand, c))}
               cards={state.p4Hand}
             />

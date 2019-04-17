@@ -21,7 +21,7 @@ let listOfTrick: t => list((Player.id, Card.t)) =
 
 let stringOfTrick = r => {
   let stringOfPlayerCard = ((playerId, card)) =>
-    Player.toString(playerId) ++ ": " ++ Card.stringOfCard(card);
+    Player.stringOfId(playerId) ++ ": " ++ Card.stringOfCard(card);
 
   listOfTrick(r)
   |> List.map(stringOfPlayerCard)

@@ -17,7 +17,7 @@ let listOfTrick: partialTrick => list((Player.id, option(Card.t))) =
 
 let stringOfTrick = r => {
   let stringOfPlayerCardSlot = ((playerId, cardSlot)) =>
-    Player.toString(playerId) ++ ": " ++ Card.stringOfCardSlot(cardSlot);
+    Player.stringOfId(playerId) ++ ": " ++ Card.stringOfMaybeCard(cardSlot);
 
   listOfTrick(r)
   |> List.map(stringOfPlayerCardSlot)

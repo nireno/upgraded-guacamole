@@ -1,4 +1,3 @@
-let div = <div />;
 let createElement = ({ReasonReact.state}) => {
   let teamWinner = Game.(state.team1Points >= 14 ? Team.T1 : T2);
 

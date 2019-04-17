@@ -130,8 +130,8 @@ let stringOfCard: t => string =
   ({rank, suit}) =>
     Rank.stringOfRank(rank) ++ " of " ++ Suit.toString(suit);
 
-let stringOfCardSlot = cardSlot =>
-  switch (cardSlot) {
+let stringOfMaybeCard = maybeCard =>
+  switch (maybeCard) {
   | None => "Empty"
   | Some(card) => stringOfCard(card)
   };

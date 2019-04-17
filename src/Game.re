@@ -1,17 +1,17 @@
 type award =
-  | High
-  | Low
-  | RunJack
-  | HangJack
-  | Game;
+  | HighAward
+  | LowAward
+  | RunJackAward
+  | HangJackAward
+  | GameAward;
 
 let valueOfAward =
   fun
-  | High
-  | Low
-  | Game
-  | RunJack => 1
-  | HangJack => 3;
+  | HighAward
+  | LowAward
+  | GameAward
+  | RunJackAward => 1
+  | HangJackAward => 3;
 
 let kickPoints =
   Card.Rank.(
@@ -23,9 +23,14 @@ let kickPoints =
   );
 
 type phase =
-  | RoundSummary
-  | Game
-  | GameOver;
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase
+  | RoundSummaryPhase
+  | PackDepletedPhase
+  | GameOverPhase;
 
 type state = {
   deck: Deck.t,
@@ -40,17 +45,11 @@ type state = {
   p4Tricks: list(Trick.t),
   maybeTrumpCard: option(Card.t), /* using slot suffix to denote an optional prop. */
   maybeLeadCard: option(Card.t),
-  me: Player.id,
   dealer: Player.id,
   leader: Player.id,
   maybePlayerTurn: option(Player.id),
   team1Points: int,
   team2Points: int,
-  canBeg: bool,
-  canStand: bool,
-  canDeal: bool,
-  canDealMore: bool,
-  canGiveOne: bool,
   maybeTeamHigh: option(Team.id),
   maybeTeamLow: option(Team.id),
   maybeTeamJack: option((Team.id, award)),
