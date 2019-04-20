@@ -757,4 +757,18 @@ module App = {
   };
 };
 
+module SockClient = BsSocket.Client.Make(SocketMessages);
+
+let socket = SockClient.create();
+
+SockClient.on(socket, x =>
+  switch (x) {
+  | Start => Js.log("Got Start")
+  | Ok => Js.log("Got Ok")
+  | Fail => Js.log("Got Fail")
+  }
+);
+
+SockClient.emit(socket, NewRound);
+
 ReactDOMRe.renderToElementWithClassName(<App />, "app");
