@@ -13,9 +13,7 @@ let handToPlayerCards: (Player.id, Hand.t) => list((Player.id, Card.t)) =
     List.map(card => (player, card), hand);
   };
 
-let playerPhase:
-  (Game.phase, Player.id, Player.id, option(Player.id), Player.id) =>
-  Player.phase =
+let playerPhase: (Game.phase, Player.id, Player.id, option(Player.id), Player.id) => Player.phase =
   (gamePhase, dealer, leader, maybePlayerTurn, player) => {
     Player.maybeIdEqual(maybePlayerTurn, player)
       ? Player.PlayerTurnPhase
@@ -25,8 +23,7 @@ let playerPhase:
               ? PlayerGiveOnePhase
               : dealer == player && gamePhase == RunPackPhase
                   ? PlayerRunPackPhase
-                  : leader == player && gamePhase == BegPhase
-                      ? PlayerBegPhase : PlayerIdlePhase;
+                  : leader == player && gamePhase == BegPhase ? PlayerBegPhase : PlayerIdlePhase;
   };
 
 module SockClient = BsSocket.Client.Make(SocketMessages);
@@ -63,8 +60,7 @@ module App = {
              : <div>
                  {List.map(
                     trick =>
-                      <div
-                        key={Trick.stringOfTrick(trick)} className="section">
+                      <div key={Trick.stringOfTrick(trick)} className="section">
                         <Trick trick />
                       </div>,
                     tricks,
@@ -74,19 +70,18 @@ module App = {
                </div>}
         </div>;
       <div>
-      <div>{ReasonReact.string(Player.stringOfId(state.me))}</div>
-      {
-      switch (state.phase) {
-      | FindPlayersPhase(n) =>
-        let playersAsText = n == 1 ? "player" : "players";
-        let nAsText = string_of_int(n);
-        <div>
-          {ReasonReact.string({j|Finding $nAsText more $playersAsText ...|j})}
-        </div>;
-      | DealPhase => ReasonReact.null
-      | _ => ReasonReact.null
-      }
-      }</div>
+        <div> {ReasonReact.string(Player.stringOfId(state.me))} </div>
+        {
+          switch (state.phase) {
+          | FindPlayersPhase(n) =>
+            let playersAsText = n == 1 ? "player" : "players";
+            let nAsText = string_of_int(n);
+            <div> {ReasonReact.string({j|Finding $nAsText more $playersAsText ...|j})} </div>;
+          | DealPhase => ReasonReact.null
+          | _ => ReasonReact.null
+          };
+        }
+      </div>;
     },
   };
 };
