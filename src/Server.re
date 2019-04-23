@@ -71,28 +71,6 @@ let getClientState: (Player.id, Game.state) => ClientGame.state =
     };
   };
 
-let onSocketDisconnect = socket =>
-  SockServ.Socket.onDisconnect(
-    socket,
-    () => {
-      Js.log2("Socket disconnected: ", SockServ.Socket.getId(socket));
-      /** I wanted to drop all rooms where the disconnected socket is its only tenant.
-          But apparently by this time socketio has already removed the socket from the room.
-          So I just need to keep all non-empty rooms.
-        */
-      // let dropEmptyGame: Game.state => unit = ({Game.room, roomKey}) =>
-      //   if(!BsSocketExtra.AdapterRoom.isEmpty(room) ){
-      //   StringMap.remove(gameRooms, roomKey);
-      //   }
-      StringMap.toArray(gameRooms)
-      |> Js.Array.filter(((_key, gr)) =>
-           BsSocketExtra.AdapterRoom.isEmpty(gr.Game.room)
-         )
-      |> Js.Array.forEach(((key, _gr)) => StringMap.remove(gameRooms, key));
-
-      debugGameRooms();
-    },
-  );
 
 let updateClientStates = gameRoom => {
   Game.getAllPlayerSockets(gameRoom)
@@ -110,6 +88,43 @@ let updateClientStates = gameRoom => {
      });
 };
 
+
+let onSocketDisconnect = socket =>
+  SockServ.Socket.onDisconnect(
+    socket,
+    () => {
+      /** Note: by this time socketio has already removed the socket from the room */
+      let socketId = SockServ.Socket.getId(socket)
+      Js.log2("Socket disconnected: ", socketId);
+
+      /** 
+        Not too concerned about performance right now but note the repeated
+        maybeGetSocketPlayer
+        */
+      StringMap.toArray(gameRooms)
+      |> Belt.Array.keep(_, ((_key, game)) =>
+           Game.maybeGetSocketPlayer(socket, game) |> Js.Option.isSome
+         )
+      |> Belt.Array.forEach(_, ((key, game)) =>
+           switch (Game.maybeGetSocketPlayer(socket, game)) {
+           | None => ()
+           | Some(player) =>
+             let game = Game.removePlayerSocket(player, game);
+             if (Game.isEmpty(game)) {
+               StringMap.remove(gameRooms, key);
+             } else {
+               let game = {...game, phase: FindPlayersPhase(4 - Game.playerCount(game))};
+               StringMap.set(gameRooms, key, game);
+               updateClientStates(game);
+             };
+           }
+         );
+
+      debugGameRooms();
+    },
+  );
+
+
 SockServ.onConnect(
   io,
   socket => {
@@ -122,11 +137,13 @@ SockServ.onConnect(
       | None => None
       | Some(_) => Some(gameRoom)
       };
+
     let unfilledRooms =
       gameRooms
       |> StringMap.valuesToArray
       |> Belt.Array.keepMap(_, gameRoom => maybeUnfilledRoom(gameRoom))
       |> Array.to_list;
+
     let gameRoom =
       switch (unfilledRooms) {
       | [] =>

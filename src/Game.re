@@ -98,6 +98,16 @@ let updatePlayerSocket: (Player.id, BsSocket.Server.socketT, state) => state =
     };
   };
 
+let removePlayerSocket: (Player.id, state) => state =
+  (player, state) => {
+    switch (player) {
+    | P1 => {...state, p1Socket: None}
+    | P2 => {...state, p2Socket: None}
+    | P3 => {...state, p3Socket: None}
+    | P4 => {...state, p4Socket: None}
+    };
+  };
+
 let getPlayerSocket = (player, state) => {
   switch (player) {
   | Player.P1 => state.p1Socket
@@ -191,6 +201,7 @@ let trickContainsCard: (Card.t, Trick.t) => bool =
     |> List.exists(((_, card)) => card == testCard);
   };
 
+
 let playerOfIntUnsafe =
   fun
   | 1 => Player.P1
@@ -199,3 +210,24 @@ let playerOfIntUnsafe =
   | 4 => P4
   | n =>
     failwith("Expected a number in [1, 4] but got: " ++ string_of_int(n));
+
+
+let hasSocket = ( socket, state ) => {
+  getAllPlayerSockets(state)
+  |> List.map(((_player, socket)) => socket)
+  |> List.mem(socket)
+}
+
+let maybeGetSocketPlayer = (socket, state) => {
+  getAllPlayerSockets(state)
+  |> List.fold_left(
+       (result, (player, soc)) => soc == socket ? Some(player) : result,
+       None,
+     );
+};
+
+let isEmpty = (state) => {
+  [Player.P1, P2, P3, P4]
+  |> List.map(player => getPlayerSocket(player, state))
+  |> Belt.List.every(_, Js.Option.isNone)
+}
