@@ -17,7 +17,7 @@
   "license": "MIT",
   "dependencies": {
     "bs-express": "^0.12.0",
-    "bs-socket": "git+https://github.com/reasonml-community/bs-socket.io.git",
+    "bs-socket": "github:reasonml-community/bs-socket.io",
     "nanoid": "^2.0.1",
     "react": "^16.2.0",
     "react-dom": "^16.2.0",

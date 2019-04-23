@@ -1,8 +1,17 @@
+open AppPrelude;
 type clientToServer =
-  | Deal
-  | NewRound;
+  | Ping
+  | Deal;
 
 type serverToClient =
-  | Ok
-  | Start
-  | Fail;
+  | SetState(strJson)
+  | Start;
+
+let debugServerMsg =
+  fun
+  | SetState(json) => {
+      let state = ClientGame.stateOfJson(json);
+      debuggin("SetState", ());
+      ClientGame.(debugState(state));
+    }
+  | Start => debuggin("Start");

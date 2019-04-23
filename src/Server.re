@@ -33,94 +33,154 @@ let http = Http.create(app);
 let io = SockServ.createWithHttp(http);
 let ns = Namespace.of_(io, "/");
 
-module Rooms = {
-  type t = BsSocketExtra.AdapterRoom.t;
-  let compare = compare;
-};
-
-module RoomsMap = Map.Make(Rooms);
-
-// let gameRoomKeys = ref(RoomsMap.empty: RoomsMap.t(string));
-
 let getKeysToRooms = () =>
   Namespace.getAdapter(ns) |> Obj.magic |> BsSocketExtra.Adapter.rooms;
 
-type gameRoomPhase =
-  | Waiting
-  | Started;
+let expectedGameCount = 50;
+module StringMap = Belt.HashMap.String;
+let gameRooms: StringMap.t(Game.state) =
+  StringMap.make(~hintSize=expectedGameCount);
 
-type gameRoom = {
-  key: string,
-  room: BsSocketExtra.AdapterRoom.t,
-  phase: gameRoomPhase,
+let debugGameRooms = () => {
+  let roomCount = StringMap.size(gameRooms);
+  let strAre = Grammer.byNumber(roomCount, "is");
+  let strRooms = Grammer.byNumber(roomCount, "room");
+  let strRoomCount = string_of_int(roomCount);
+  Js.log({j|There $strAre $strRoomCount $strRooms.|j});
 };
 
-// let stringOfGameRoom = gameRoom => {
-//   let socketIds =
-//     Js.Dict.keys(BsSocketExtra.AdapterRoom.sockets(gameRoom.room));
-//   {j|{ key: $gameRoom.key, sockets: $socketIds |j};
-// };
-
-// let stringOfGameRooms =
-
-let gameRooms = ref([]: list(gameRoom));
-
-let playerCount = gameRoom => BsSocketExtra.AdapterRoom.length(gameRoom.room);
-let isRoomFull = gameRoom => playerCount(gameRoom) == 4;
-
-let unfilledRoom = gameRooms => {
-  let unfilledRooms =
-    List.filter(gameRoom => playerCount(gameRoom) < 4, gameRooms);
-  switch (unfilledRooms) {
-  | [] => None
-  | [r, ..._rs] => Some(r)
+let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
+  gameRooms => {
+    let gameRooms = StringMap.valuesToArray(gameRooms) |> Array.to_list;
+    let unfilledRooms =
+      List.filter(gameRoom => Game.playerCount(gameRoom) < 4, gameRooms);
+    switch (unfilledRooms) {
+    | [] => None
+    | [r, ..._rs] => Some(r)
+    };
   };
+
+let getClientState: (Player.id, Game.state) => ClientGame.state =
+  (player, state) => {
+    ClientGame.{
+      phase: state.phase,
+      me: player,
+      dealer: state.dealer,
+      leader: state.leader,
+      maybePlayerTurn: state.maybePlayerTurn,
+    };
+  };
+
+let onSocketDisconnect = socket =>
+  SockServ.Socket.onDisconnect(
+    socket,
+    () => {
+      Js.log2("Socket disconnected: ", SockServ.Socket.getId(socket));
+      /** I wanted to drop all rooms where the disconnected socket is its only tenant.
+          But apparently by this time socketio has already removed the socket from the room.
+          So I just need to keep all non-empty rooms.
+        */
+      // let dropEmptyGame: Game.state => unit = ({Game.room, roomKey}) =>
+      //   if(!BsSocketExtra.AdapterRoom.isEmpty(room) ){
+      //   StringMap.remove(gameRooms, roomKey);
+      //   }
+      StringMap.toArray(gameRooms)
+      |> Js.Array.filter(((_key, gr)) =>
+           BsSocketExtra.AdapterRoom.isEmpty(gr.Game.room)
+         )
+      |> Js.Array.forEach(((key, _gr)) => StringMap.remove(gameRooms, key));
+
+      debugGameRooms();
+    },
+  );
+
+let updateClientStates = gameRoom => {
+  Game.getAllPlayerSockets(gameRoom)
+  |> List.iter(((player, socket)) => {
+       let clientState = getClientState(player, gameRoom);
+       let msg: SocketMessages.serverToClient =
+         SetState(
+           clientState
+           |> ClientGame.stateToJs
+           |> Obj.magic                                       // #unsafe
+           |> Js.Json.stringify,
+         );
+       SocketMessages.debugServerMsg(msg, ());
+       SockServ.Socket.emit(socket, msg); 
+     });
 };
 
 SockServ.onConnect(
   io,
   socket => {
-    print_endline("Got a connection!");
-    // let rooms = Js.Dict.values(keyToRooms);
-    // Js.log2("Rooms this socket is in: ", rooms);
-    // print_endline(Namespace.clients());
+    let socketId = SockServ.Socket.getId(socket);
+    print_endline("Socket connected: " ++ socketId);
 
+    /** Consider changing names with "room" to game where room is actually a Game.state */
+    let maybeUnfilledRoom = gameRoom =>
+      switch (gameRoom |> Game.findEmptySeat) {
+      | None => None
+      | Some(_) => Some(gameRoom)
+      };
+    let unfilledRooms =
+      gameRooms
+      |> StringMap.valuesToArray
+      |> Belt.Array.keepMap(_, gameRoom => maybeUnfilledRoom(gameRoom))
+      |> Array.to_list;
     let gameRoom =
-      switch (unfilledRoom(gameRooms^)) {
-      | None =>
-        let roomKey = nanoid();
-        let _socket = SockServ.Socket.join(socket, roomKey);
+      switch (unfilledRooms) {
+      | [] =>
         let keysToRooms = getKeysToRooms();
-        let room = Js.Dict.unsafeGet(keysToRooms, roomKey);
-        let gameRoom = {key: roomKey, room, phase: Waiting};
-        gameRooms := [gameRoom, ...gameRooms^];
-        gameRoom;
-      | Some(room) =>
-        SockServ.Socket.join(socket, room.key) |> ignore;
-        room;
+        let room = Js.Dict.unsafeGet(keysToRooms, socketId);
+        {
+          ...Game.initialState(),
+          roomKey: socketId,
+          room,
+        };
+      | [gameRoom, ..._rest] => gameRoom
       };
 
-    if (gameRoom.phase == Waiting && isRoomFull(gameRoom)) {
-      Js.log2("Sending start to ", gameRoom.key);
-      ns->Namespace.to_(gameRoom.key)->Namespace.emit(Start);
+    // let maybeRoom =
+    //   ns
+    //   |> Namespace.getAdapter
+    //   |> BsSocketExtra.Adapter.getRoom(gameRoom.roomKey);
+    // switch (maybeRoom) {
+    // | Some(ar) =>
+    // let playerCount = BsSocketExtra.AdapterRoom.length(ar);
+    // | None => failwith("Expected Some AdapterRoom but got None.") // Improve error handling #unsafe #todo
+    // };
+
+    let _socket = SockServ.Socket.join(socket, gameRoom.roomKey);
+    let playerId = Game.findEmptySeat(gameRoom) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
+
+    let gameRoom = Game.updatePlayerSocket(playerId, socket, gameRoom);
+    let playerCount = Game.playerCount(gameRoom);
+    let playersNeeded = 4 - playerCount;
+    let gameRoom = {...gameRoom, phase: FindPlayersPhase(playersNeeded)};
+
+    Js.log("Players needed: " ++ string_of_int(playersNeeded));
+
+    StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
+
+    updateClientStates(gameRoom);
+
+    if (gameRoom.phase == FindPlayersPhase(0)) {
+      SocketMessages.debugServerMsg(Start, ());
+      ns->Namespace.to_(gameRoom.roomKey)->Namespace.emit(Start);
     };
 
-    Js.log2("gameRooms length", List.length(gameRooms^));
-    Js.log2("Game rooms: ", gameRooms);
-    // let x = SockServ.Socket.getId(socket);
-    // Js.log2("Rooms this socket is in: ", rooms);
-    /* Polymorphic pipe which actually knows about ExampleCommon.t from InnerServer */
+    debugGameRooms();
     SockServ.Socket.on(
       socket,
       fun
+      | Ping => {
+          Js.log("Got Ping");
+        }
       | SocketMessages.Deal => {
           Js.log("got deal");
-        }
-      | NewRound => {
-          Js.log("Got NewRound message");
-          SockServ.Socket.emit(socket, Ok);
         },
     );
+    onSocketDisconnect(socket);
   },
 );
 
