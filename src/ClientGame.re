@@ -1,7 +1,7 @@
 open AppPrelude;
 include SharedGame;
 
-[@bs.deriving jsConverter]
+[@bs.deriving {jsConverter: newType}]
 type state = {
   phase,
   me: Player.id,
@@ -10,21 +10,13 @@ type state = {
   maybePlayerTurn: option(Player.id),
 };
 
-type stateJs = {
-  .
-  "phase": phase,
-  "me": Player.id,
-  "dealer": Player.id,
-  "leader": Player.id,
-  "maybePlayerTurn": option(Player.id),
-};
 
 /**
   For parsing a stringified version of state back to one I can work with in
   Reason. Used when passing data via socket.io.
  */
 [@bs.scope "JSON"] [@bs.val]
-external stateOfJson: string => stateJs = "parse";
+external stateOfJson: string => abs_state = "parse";
 let stateOfJson = json => json |> stateOfJson |> stateFromJs;
 
 let debugState: (state, ~depth: int=?, unit) => unit =
