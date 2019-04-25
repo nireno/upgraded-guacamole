@@ -1,7 +1,9 @@
 include SharedGame;
 
+
 type action =
-  | PlayCard(Player.id, Player.hand, Card.t)
+  | Noop
+  | PlayCard(Player.id, Card.t)
   | BlockPlay(Player.id)
   | EndTrick
   | NewRound
@@ -117,6 +119,15 @@ let getPlayerSocket = (player, state) => {
   };
 };
 
+let getPlayerHand = (player, state) => {
+  switch (player) {
+  | Player.P1 => state.p1Hand
+  | P2 => state.p2Hand
+  | P3 => state.p3Hand
+  | P4 => state.p4Hand
+  };
+}
+
 let getAllPlayerSockets = state => {
   let rec f:
     (Player.id, list((Player.id, BsSocket.Server.socketT))) =>
@@ -231,3 +242,16 @@ let isEmpty = (state) => {
   |> List.map(player => getPlayerSocket(player, state))
   |> Belt.List.every(_, Js.Option.isNone)
 }
+
+let playerPhase: (phase, Player.id, Player.id, option(Player.id), Player.id) => Player.phase =
+  (gamePhase, dealer, leader, maybePlayerTurn, player) => {
+    Player.maybeIdEqual(maybePlayerTurn, player)
+      ? Player.PlayerTurnPhase
+      : dealer == player && gamePhase == DealPhase
+          ? PlayerDealPhase
+          : dealer == player && gamePhase == GiveOnePhase
+              ? PlayerGiveOnePhase
+              : dealer == player && gamePhase == RunPackPhase
+                  ? PlayerRunPackPhase
+                  : leader == player && gamePhase == BegPhase ? PlayerBegPhase : PlayerIdlePhase;
+  };

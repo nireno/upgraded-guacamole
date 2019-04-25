@@ -1,8 +1,9 @@
 open AppPrelude;
 open Game;
 
-let reducer = (action, state) =>
+let rec reducer = (action, state) =>
       switch (action) {
+      | Noop => state
       | NewRound =>
         let maybeAddPoints = (maybeTeam, points, state) =>
           switch (maybeTeam) {
@@ -58,43 +59,41 @@ let reducer = (action, state) =>
           };
         };
 
-        ReasonReact.Update(
-          state |> updateScore |> updateBoard |> updatePlayers |> updatePhase,
-        );
+          state |> updateScore |> updateBoard |> updatePlayers |> updatePhase
 
-      | PlayCard(player, hand, c) =>
+      | PlayCard(player, c) =>
+        let hand = Game.getPlayerHand(player, state);
         let hand' = List.filter(c' => c != c', hand);
-        let state =
-          switch (player) {
-          | P1 => {...state, p1Hand: hand'}
-          | P2 => {...state, p2Hand: hand'}
-          | P3 => {...state, p3Hand: hand'}
-          | P4 => {...state, p4Hand: hand'}
-          };
+        if (hand == hand') {
+          // Card c was not in player hand
+          // #todo Add warning this may be attempt to cheat?
+          state;
+        } else {
+          let state =
+            switch (player) {
+            | P1 => {...state, p1Hand: hand'}
+            | P2 => {...state, p2Hand: hand'}
+            | P3 => {...state, p3Hand: hand'}
+            | P4 => {...state, p4Hand: hand'}
+            };
 
-        let state =
-          switch (state.maybeLeadCard) {
-          | None => {...state, maybeLeadCard: Some(c)}
-          | _ => state
-          };
+          let state =
+            switch (state.maybeLeadCard) {
+            | None => {...state, maybeLeadCard: Some(c)}
+            | _ => state
+            };
 
-        let state = {...state, board: state.board @ [c]};
-        let state =
-          switch (state.maybePlayerTurn) {
-          | None => state
-          | Some(turn) => {
-              ...state,
-              maybePlayerTurn: Some(Player.nextPlayer(turn)),
-            }
-          };
+          let state = {...state, board: state.board @ [c]};
+          let state =
+            switch (state.maybePlayerTurn) {
+            | None => state
+            | Some(turn) => {...state, maybePlayerTurn: Some(Player.nextPlayer(turn))}
+            };
 
-        Player.nextPlayer(player) == state.leader
-          ? ReasonReact.UpdateWithSideEffects(
-              state,
-              ({send}) => send(EndTrick),
-            )
-          : ReasonReact.Update(state);
-
+          Player.nextPlayer(player) == state.leader 
+            ? reducer(EndTrick, state) 
+            : state;
+        };
       | Deal =>
         let dealCards = state => {
           let (p1Hand, deck) = Deck.deal(6, state.deck);
@@ -116,10 +115,10 @@ let reducer = (action, state) =>
 
         let state = state |> dealCards |> kickTrump;
 
-        ReasonReact.Update({
+        {
           ...state,
           phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
-        });
+        };
 
       | EndTrick =>
         let (p1Index, p2Index, p3Index, p4Index) =
@@ -158,11 +157,7 @@ let reducer = (action, state) =>
         let state = state |> collectTrick(trickWinner, trick) |> advanceRound;
 
         List.length(state.p1Hand) == 0
-          ? ReasonReact.UpdateWithSideEffects(
-              state,
-              ({send}) => send(EndRound),
-            )
-          : ReasonReact.Update(state);
+          ? reducer(EndRound, state) : state;
 
       | EndRound =>
         /* @endround start */
@@ -175,7 +170,6 @@ let reducer = (action, state) =>
           |> List.map(trickToPlayerCards)
           |> List.concat;
 
-        Js.log("Crashes here");
         /** Action requires that the game has a trump card kicked. #unsafe */
         let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard);
 
@@ -274,17 +268,17 @@ let reducer = (action, state) =>
           team1Points == team2Points
             ? None
             : team1Points > team2Points ? Some(Team.T1) : Some(Team.T2);
-        let state = {...state, maybeTeamGame, phase: RoundSummaryPhase};
-        ReasonReact.Update(state); /* @endround end */
+        {...state, maybeTeamGame, phase: RoundSummaryPhase};
+        /* @endround end */
       | Beg =>
         Js.log("Ah beg");
-        ReasonReact.Update({...state, phase: GiveOnePhase});
+        {...state, phase: GiveOnePhase};
       | Stand =>
-        ReasonReact.Update({
+        {
           ...state,
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
           phase: PlayerTurnPhase,
-        })
+        }
       | GiveOne
           when
             [Player.P1, P3]
@@ -294,7 +288,7 @@ let reducer = (action, state) =>
             |> List.mem(state.dealer)
             && state.team1Points == 13 =>
         Js.log("Your opponents only need one point!");
-        ReasonReact.NoUpdate;
+        state;
       | GiveOne =>
         Js.log("Take one");
         let state =
@@ -304,11 +298,11 @@ let reducer = (action, state) =>
           | P2
           | P4 => {...state, team1Points: state.team1Points + 1}
           };
-        ReasonReact.Update({
+        {
           ...state,
           phase: PlayerTurnPhase,
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
-        });
+        };
       | RunPack =>
         Js.log("I beg too");
         let (p1Hand, deck) = Deck.deal(3, state.deck);
@@ -357,9 +351,9 @@ let reducer = (action, state) =>
           deck: deck @ [prevKick],
           maybeTrumpCard: Some(kick'),
         };
-        ReasonReact.Update(state);
+        state;
       | DealAgain =>
-        ReasonReact.Update({
+        {
           ...state,
           p1Hand: [],
           p2Hand: [],
@@ -368,7 +362,7 @@ let reducer = (action, state) =>
           maybeTrumpCard: None,
           deck: Deck.make() |> Deck.shuffle,
           phase: DealPhase,
-        })
+        }
       | BlockPlay(player) =>
         switch (player) {
         | P1 => Js.log("Not your turn p1")
@@ -377,7 +371,7 @@ let reducer = (action, state) =>
         | P4 => Js.log("Not your turn p4")
         };
 
-        ReasonReact.NoUpdate;
+        state;
       | CheatPoints(team, value) =>
-        ReasonReact.Update(addPoints(team, value, state))
+        addPoints(team, value, state)
       }

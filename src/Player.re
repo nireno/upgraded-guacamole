@@ -71,6 +71,16 @@ type phase =
   | PlayerGiveOnePhase
   | PlayerRunPackPhase;
 
+let stringOfPhase = 
+fun
+  | PlayerIdlePhase => "PlayerIdlePhase"
+  | PlayerTurnPhase => "PlayerTurnPhase"
+  | PlayerDealPhase => "PlayerDealPhase"
+  | PlayerBegPhase => "PlayerBegPhase"
+  | PlayerGiveOnePhase => "PlayerGiveOnePhase"
+  | PlayerRunPackPhase => "PlayerRunPackPhase";
+
+
 let maybeIdEqual = (maybeId, id) =>
   Js.Option.isSomeValue((. x, y) => x == y, id, maybeId);
 
@@ -90,7 +100,6 @@ let make =
   ...component,
   render: _self =>
     <div className="column player">
-      <div> {ReasonReact.string(stringOfId(id))} </div>
       <div className="player__actions">
         {switch (playerPhase) {
          | PlayerDealPhase =>

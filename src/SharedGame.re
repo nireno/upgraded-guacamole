@@ -1,4 +1,5 @@
 open AppPrelude;
+
 type award =
   | HighAward
   | LowAward
@@ -24,6 +25,7 @@ let kickPoints =
   );
 
 type phase =
+  | FindSubsPhase(int, phase)
   | FindPlayersPhase(int)
   | DealPhase
   | BegPhase
@@ -34,18 +36,21 @@ type phase =
   | PackDepletedPhase
   | GameOverPhase;
 
+let rec stringOfPhase = fun
+  | FindSubsPhase(n, phase) => "FindSubsPhase(" ++ string_of_int(n) ++ ", " ++ stringOfPhase(phase) ++ ")"
+  | FindPlayersPhase(n) => "FindPlayersPhase(" ++ string_of_int(n) ++ ")"
+  | DealPhase => "DealPhase"
+  | BegPhase => "BegPhase"
+  | GiveOnePhase => "GiveOnePhase"
+  | RunPackPhase => "RunPackPhase"
+  | PlayerTurnPhase => "PlayerTurnPhase"
+  | RoundSummaryPhase => "RoundSummaryPhase"
+  | PackDepletedPhase => "PackDepletedPhase"
+  | GameOverPhase => "GameOverPhase";
+
+
 let debugPhase = (phase, ~depth=0, ()) => {
   debuggin("phase: ", ~depth, ());
   let depth = depth + 1;
-  switch (phase) {
-  | FindPlayersPhase(n) => debuggin({j|FindPlayersPhase($n)|j}, ~depth, ())
-  | DealPhase => debuggin("DealPhase", ~depth, ())
-  | BegPhase => debuggin("BegPhase", ~depth, ())
-  | GiveOnePhase => debuggin("GiveOnePhase", ~depth, ())
-  | RunPackPhase => debuggin("RunPackPhase", ~depth, ())
-  | PlayerTurnPhase => debuggin("PlayerTurnPhase", ~depth, ())
-  | RoundSummaryPhase => debuggin("RoundSummaryPhase", ~depth, ())
-  | PackDepletedPhase => debuggin("PackDepletedPhase", ~depth, ())
-  | GameOverPhase => debuggin("GameOverPhase", ~depth, ())
-  };
+  debuggin(stringOfPhase(phase), ~depth, ())
 };

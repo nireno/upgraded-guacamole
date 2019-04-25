@@ -1,4 +1,4 @@
-type strJson = string;
+type str_json = string;
 let debug = x => Js.log(x);
 let debugError = debug;
 let debuggin = (str, ~depth=0, ()) =>

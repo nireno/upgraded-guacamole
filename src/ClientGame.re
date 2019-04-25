@@ -8,6 +8,16 @@ type state = {
   dealer: Player.id,
   leader: Player.id,
   maybePlayerTurn: option(Player.id),
+  hand: list(Card.t),
+  maybeLeadCard: option(Card.t),
+  maybeTrumpCard: option(Card.t),
+  board: list(Card.t),
+  team1Points: int,
+  team2Points: int,
+  maybeTeamHigh: option(Team.id),
+  maybeTeamLow: option(Team.id),
+  maybeTeamJack: option((Team.id, award)),
+  maybeTeamGame: option(Team.id),
 };
 
 
@@ -36,24 +46,23 @@ let initialState = () => {
   dealer: P1,
   leader: P1,
   maybePlayerTurn: None,
+  hand: [],
+  maybeLeadCard: None,
+  maybeTrumpCard: None,
+  board: [],
+  team1Points: 0,
+  team2Points: 0,
+  maybeTeamHigh: None,
+  maybeTeamLow: None,
+  maybeTeamJack: None,
+  maybeTeamGame: None,
 };
 
 type action =
-  | StartGame
-  | SetState(state)
-  | JoinPlayer(int);
+  | MatchServerState(state)
 
-let reducer = (action, state) => {
+let reducer = (action, _state) => {
   switch (action) {
-  | StartGame => ReasonReact.NoUpdate
-  | SetState(state) => ReasonReact.Update(state)
-  | JoinPlayer(n) =>
-    let {phase} = state;
-    switch (phase) {
-    | FindPlayersPhase(_n) =>
-      let updatePhase = state => {...state, phase: FindPlayersPhase(4 - n)};
-      ReasonReact.Update(state |> updatePhase);
-    | _ => ReasonReact.NoUpdate
-    };
+  | MatchServerState(state) => ReasonReact.Update(state)
   };
 };

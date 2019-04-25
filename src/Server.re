@@ -15,9 +15,15 @@ let onListen = e =>
 
 let app = Express.express();
 
-let webpackMiddleware =
-  Webpack.(webpackConfig |> webpack |> webpackDevMiddleware);
-Express.App.use(app, webpackMiddleware);
+let publicPath = webpackConfig |> Webpack.outputGet |> Webpack.publicPathGet;
+let webpackCompiler = Webpack.webpack(webpackConfig);
+Express.App.use(
+  app, 
+  Webpack.webpackDevMiddleware(
+    webpackCompiler, 
+    {"publicPath": publicPath}
+  )
+);
 
 Express.App.useOnPath(
   app,
@@ -62,12 +68,33 @@ let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
 
 let getClientState: (Player.id, Game.state) => ClientGame.state =
   (player, state) => {
+    let faceDownGamePhases = [Game.DealPhase, BegPhase, GiveOnePhase];
+    let faceUpHand = Game.getPlayerHand(player, state);
+    let faceDownHand = [];
+
+    let hand =
+      if (Belt.List.has(faceDownGamePhases, state.phase, (==))) {
+        player == state.dealer || player == state.leader ? faceUpHand : faceDownHand;
+      } else {
+        faceUpHand;
+      };
+
     ClientGame.{
       phase: state.phase,
       me: player,
       dealer: state.dealer,
       leader: state.leader,
       maybePlayerTurn: state.maybePlayerTurn,
+      hand,
+      maybeTrumpCard: state.maybeTrumpCard,
+      maybeLeadCard: state.maybeLeadCard,
+      board: state.board,
+      team1Points: state.team1Points,
+      team2Points: state.team2Points,
+      maybeTeamHigh: state.maybeTeamHigh,
+      maybeTeamLow: state.maybeTeamLow,
+      maybeTeamJack: state.maybeTeamJack,
+      maybeTeamGame: state.maybeTeamGame,
     };
   };
 
@@ -78,12 +105,8 @@ let updateClientStates = gameRoom => {
        let clientState = getClientState(player, gameRoom);
        let msg: SocketMessages.serverToClient =
          SetState(
-           clientState
-           |> ClientGame.stateToJs
-           |> Obj.magic                                       // #unsafe
-           |> Js.Json.stringify,
+           clientState |> SocketMessages.jsonOfClientGameState // #unsafe
          );
-       SocketMessages.debugServerMsg(msg, ());
        SockServ.Socket.emit(socket, msg); 
      });
 };
@@ -102,9 +125,6 @@ let onSocketDisconnect = socket =>
         maybeGetSocketPlayer
         */
       StringMap.toArray(gameRooms)
-      |> Belt.Array.keep(_, ((_key, game)) =>
-           Game.maybeGetSocketPlayer(socket, game) |> Js.Option.isSome
-         )
       |> Belt.Array.forEach(_, ((key, game)) =>
            switch (Game.maybeGetSocketPlayer(socket, game)) {
            | None => ()
@@ -113,7 +133,11 @@ let onSocketDisconnect = socket =>
              if (Game.isEmpty(game)) {
                StringMap.remove(gameRooms, key);
              } else {
-               let game = {...game, phase: FindPlayersPhase(4 - Game.playerCount(game))};
+               let game = 
+               switch(game.phase){
+                 | FindPlayersPhase(_n) => {...game, phase: FindPlayersPhase(4 - Game.playerCount(game))}
+                 | _ => {...game, phase: FindSubsPhase(4 - Game.playerCount(game), game.phase)}
+               };
                StringMap.set(gameRooms, key, game);
                updateClientStates(game);
              };
@@ -123,6 +147,37 @@ let onSocketDisconnect = socket =>
       debugGameRooms();
     },
   );
+
+
+let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
+  fun
+  | IO_PlayCard(ioPlayerId, cardStr_json) => {
+      let card = SocketMessages.cardOfJsonUnsafe(cardStr_json);
+      switch (SocketMessages.maybePlayerOfIO(ioPlayerId)) {
+      | None => Noop
+      | Some(player) => PlayCard(player, card)
+      };
+    }
+  | IO_BlockPlay(ioPlayerId) => {
+      switch (SocketMessages.maybePlayerOfIO(ioPlayerId)) {
+      | None => Noop
+      | Some(player) => BlockPlay(player)
+      };
+    }
+  | IO_EndTrick => EndTrick
+  | IO_NewRound => NewRound
+  | IO_EndRound => EndRound
+  | IO_Beg => Beg
+  | IO_Stand => Stand
+  | IO_GiveOne => GiveOne
+  | IO_Deal => Deal
+  | IO_RunPack => RunPack
+  | IO_DealAgain => DealAgain
+  | IO_CheatPoints(ioTeamId, points) =>
+    switch (SocketMessages.maybeTeamOfIO(ioTeamId)) {
+    | None => Noop
+    | Some(team) => CheatPoints(team, points)
+    };
 
 
 SockServ.onConnect(
@@ -173,30 +228,32 @@ SockServ.onConnect(
     let gameRoom = Game.updatePlayerSocket(playerId, socket, gameRoom);
     let playerCount = Game.playerCount(gameRoom);
     let playersNeeded = 4 - playerCount;
-    let gameRoom = {...gameRoom, phase: FindPlayersPhase(playersNeeded)};
 
-    Js.log("Players needed: " ++ string_of_int(playersNeeded));
+    let gameRoom =
+        switch(gameRoom.phase){
+          | FindSubsPhase(_n, subPhase) => 
+            playersNeeded == 0 ? {...gameRoom, phase: subPhase} : {...gameRoom, phase: FindSubsPhase(playersNeeded, subPhase)}
+          | FindPlayersPhase(_n) => 
+            playersNeeded == 0 ? {...gameRoom, phase: DealPhase} : {...gameRoom, phase: FindPlayersPhase(playersNeeded)}
+          | _ => gameRoom
+        }
 
     StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
 
     updateClientStates(gameRoom);
 
-    if (gameRoom.phase == FindPlayersPhase(0)) {
-      SocketMessages.debugServerMsg(Start, ());
-      ns->Namespace.to_(gameRoom.roomKey)->Namespace.emit(Start);
-    };
-
     debugGameRooms();
-    SockServ.Socket.on(
-      socket,
-      fun
-      | Ping => {
-          Js.log("Got Ping");
-        }
-      | SocketMessages.Deal => {
-          Js.log("got deal");
-        },
+
+    SockServ.Socket.on(socket, ioAction =>
+      switch (StringMap.get(gameRooms, gameRoom.roomKey)) {
+      | None => ()
+      | Some(gameRoom) =>
+        let gameRoom = GameReducer.reducer(ioAction |> actionOfIO_Action, gameRoom);
+        StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
+        updateClientStates(gameRoom);
+      }
     );
+
     onSocketDisconnect(socket);
   },
 );
