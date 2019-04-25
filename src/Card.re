@@ -14,6 +14,13 @@ module Suit = {
     | Diamonds => "Diamonds"
     | Spades => "Spades"
     | Hearts => "Hearts";
+  
+  let maybeSuitOfString = fun
+  | "Clubs" => Some(Clubs)
+  | "Diamonds" => Some(Diamonds)
+  | "Spades" => Some(Spades)
+  | "Hearts" => Some(Hearts)
+  | _ => None
 
   let first = Clubs;
   let last = Hearts;
@@ -66,6 +73,7 @@ module Rank = {
     | Jack => "Jack"
     | Queen => "Queen"
     | King => "King";
+  
 
   let intOfRank =
     fun
@@ -82,6 +90,23 @@ module Rank = {
     | Queen => 12
     | King => 13
     | Ace => 14;
+
+  let maybeRankOfInt =
+    fun
+    | 2 => Some(Two)
+    | 3 => Some(Three)
+    | 4 => Some(Four)
+    | 5 => Some(Five)
+    | 6 => Some(Six)
+    | 7 => Some(Seven)
+    | 8 => Some(Eight)
+    | 9 => Some(Nine)
+    | 10 => Some(Ten)
+    | 11 => Some(Jack)
+    | 12 => Some(Queen)
+    | 13 => Some(King)
+    | 14 => Some(Ace)
+    | _ => None
 
   let pointsOfRank =
     fun
@@ -121,6 +146,7 @@ module Rank = {
   };
 };
 
+[@bs.deriving {jsConverter: newType}]
 type t = {
   rank: Rank.t,
   suit: Suit.t,

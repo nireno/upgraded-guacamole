@@ -1,5 +1,4 @@
 type hand = list(Card.t);
-// type lift = list((Card.t, Card.t, Card.t, Card.t));
 
 type id =
   | P1
@@ -7,8 +6,37 @@ type id =
   | P3
   | P4;
 
-let firstPlayer = P1;
-let lastPlayer = P4;
+// type state = {
+//   hand,
+//   tricks: list(Trick.t),
+//   maybeTrumpCard: option(Card.t),
+//   maybeLeadCard: option(Card.t),
+//   dealer: id,
+//   leader: id,
+//   maybePlayerTurn: option(id),
+//   team1Points: int,
+//   team2Points: int,
+//   maybeTeamHigh: option(Team.id),
+//   maybeTeamLow: option(Team.id),
+//   maybeTeamJack: option((Team.id, Game.award)),
+//   maybeTeamGame: option(Team.id),
+// };
+
+// let initializeState = () => {
+//   hand: [],
+//   tricks: [],
+//   maybeTrumpCard: None,
+//   maybeLeadCard: None,
+//   dealer: P1,
+//   leader: P2,
+//   maybePlayerTurn: None,
+//   team1Points: 0,
+//   team2Points: 0,
+//   maybeTeamHigh: None,
+//   maybeTeamLow: None,
+//   maybeTeamJack: None,
+//   maybeTeamGame: None,
+// };
 
 let nextPlayer =
   fun
@@ -31,6 +59,10 @@ let stringOfId =
   | P3 => "Player 3"
   | P4 => "Player 4";
 
+let stringOfMaybeId = fun
+  | None => "None"
+  | Some(player) => stringOfId(player);
+
 type phase =
   | PlayerIdlePhase
   | PlayerTurnPhase
@@ -38,6 +70,16 @@ type phase =
   | PlayerBegPhase
   | PlayerGiveOnePhase
   | PlayerRunPackPhase;
+
+let stringOfPhase = 
+fun
+  | PlayerIdlePhase => "PlayerIdlePhase"
+  | PlayerTurnPhase => "PlayerTurnPhase"
+  | PlayerDealPhase => "PlayerDealPhase"
+  | PlayerBegPhase => "PlayerBegPhase"
+  | PlayerGiveOnePhase => "PlayerGiveOnePhase"
+  | PlayerRunPackPhase => "PlayerRunPackPhase";
+
 
 let maybeIdEqual = (maybeId, id) =>
   Js.Option.isSomeValue((. x, y) => x == y, id, maybeId);
@@ -58,7 +100,6 @@ let make =
   ...component,
   render: _self =>
     <div className="column player">
-      <div> {ReasonReact.string(stringOfId(id))} </div>
       <div className="player__actions">
         {switch (playerPhase) {
          | PlayerDealPhase =>
