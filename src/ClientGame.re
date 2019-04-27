@@ -3,6 +3,7 @@ include SharedGame;
 
 [@bs.deriving {jsConverter: newType}]
 type state = {
+  gameId: string,
   phase: Player.phase,
   gamePhase: SharedGame.phase,
   me: Player.id,
@@ -34,6 +35,7 @@ let stateOfJson = json => json |> stateOfJson |> stateFromJs;
 
 
 let initialState = () => {
+  gameId: "initializing",
   phase: PlayerIdlePhase,
   gamePhase: FindPlayersPhase(3),
   me: P1,

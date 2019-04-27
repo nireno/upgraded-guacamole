@@ -60,6 +60,7 @@ module App = {
 
       <div>
         <div>
+          <h1> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </h1>
           <h1> {ReasonReact.string("Team 1 points: " ++ string_of_int(state.team1Points) ++ " ")} </h1>
           <h1> {ReasonReact.string("Team 2 points: " ++ string_of_int(state.team2Points) ++ " ")} </h1>
         </div>

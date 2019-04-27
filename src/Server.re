@@ -1,3 +1,4 @@
+open AppPrelude;
 [%%debugger.chrome];
 [@bs.val] external node_env: string = "process.env.NODE_ENV";
 [@bs.module]
@@ -47,12 +48,12 @@ module StringMap = Belt.HashMap.String;
 let gameRooms: StringMap.t(Game.state) =
   StringMap.make(~hintSize=expectedGameCount);
 
-let debugGameRooms = () => {
+let debugGameRooms = (~n=0, ()) => {
   let roomCount = StringMap.size(gameRooms);
   let strAre = Grammer.byNumber(roomCount, "is");
   let strRooms = Grammer.byNumber(roomCount, "room");
   let strRoomCount = string_of_int(roomCount);
-  Js.log({j|There $strAre $strRoomCount $strRooms.|j});
+  Js.log({j|There $strAre $strRoomCount $strRooms.|j} |> leftPad(_, ~n=n, ()));
 };
 
 let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
@@ -67,93 +68,111 @@ let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
   };
 
 
-  let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase ) => {
-    let faceDownGamePhases = [Game.DealPhase, BegPhase, GiveOnePhase];
-    let faceUpHand = Game.getPlayerHand(player, gameState);
-    let faceDownHand = [];
-    let hand =
-      if (Belt.List.has(faceDownGamePhases, gameState.phase, (==))) {
-        player == gameState.dealer || player == gameState.leader ? faceUpHand : faceDownHand;
-      } else {
-        faceUpHand;
-      };
-
-    ClientGame.{
-      phase: playerPhase,
-      gamePhase: gameState.phase,
-      me: player,
-      dealer: gameState.dealer,
-      leader: gameState.leader,
-      activePlayer: activePlayer,
-      activePlayerPhase: activePlayerPhase,
-      maybePlayerTurn: gameState.maybePlayerTurn,
-      hand,
-      maybeTrumpCard: gameState.maybeTrumpCard,
-      maybeLeadCard: gameState.maybeLeadCard,
-      board: gameState.board,
-      team1Points: gameState.team1Points,
-      team2Points: gameState.team2Points,
-      maybeTeamHigh: gameState.maybeTeamHigh,
-      maybeTeamLow: gameState.maybeTeamLow,
-      maybeTeamJack: gameState.maybeTeamJack,
-      maybeTeamGame: gameState.maybeTeamGame,
+let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
+  let faceDownGamePhases = [Game.DealPhase, BegPhase, GiveOnePhase];
+  let faceUpHand = Game.getPlayerHand(player, gameState);
+  let faceDownHand = [];
+  let hand =
+    if (Belt.List.has(faceDownGamePhases, gameState.phase, (==))) {
+      player == gameState.dealer || player == gameState.leader ? faceUpHand : faceDownHand;
+    } else {
+      faceUpHand;
     };
-    
-  }
 
-  let buildSocketStatePairs: Game.state => list((option(BsSocket.Server.socketT),ClientGame.state )) = gameState => {
-    let decidePlayerPhase = 
-      Game.decidePlayerPhase(
-        gameState.phase,
-        gameState.dealer,
-        gameState.leader,
-        gameState.maybePlayerTurn)
+  ClientGame.{
+    gameId: gameState.roomKey,
+    phase: playerPhase,
+    gamePhase: gameState.phase,
+    me: player,
+    dealer: gameState.dealer,
+    leader: gameState.leader,
+    activePlayer,
+    activePlayerPhase,
+    maybePlayerTurn: gameState.maybePlayerTurn,
+    hand,
+    maybeTrumpCard: gameState.maybeTrumpCard,
+    maybeLeadCard: gameState.maybeLeadCard,
+    board: gameState.board,
+    team1Points: gameState.team1Points,
+    team2Points: gameState.team2Points,
+    maybeTeamHigh: gameState.maybeTeamHigh,
+    maybeTeamLow: gameState.maybeTeamLow,
+    maybeTeamJack: gameState.maybeTeamJack,
+    maybeTeamGame: gameState.maybeTeamGame,
+  };
+};
 
-    let playerPhasePairs: list((Player.id, Player.phase)) = 
-      [Player.P1, P2, P3, P4] 
-        -> Belt.List.map(p => p->decidePlayerPhase)
+let buildSocketStatePairs: Game.state => list((option(BsSocket.Server.socketT),ClientGame.state )) = gameState => {
+  let decidePlayerPhase = 
+    Game.decidePlayerPhase(
+      gameState.phase,
+      gameState.dealer,
+      gameState.leader,
+      gameState.maybePlayerTurn)
 
-    let (activePlayer, activePlayerPhase) =
-      switch(playerPhasePairs->Belt.List.keep(((_player, playerPhase))=> playerPhase != Player.PlayerIdlePhase)){
-        | [pp] => pp
-        | _ => (P1, PlayerIdlePhase)
+  let playerPhasePairs: list((Player.id, Player.phase)) = 
+    [Player.P1, P2, P3, P4] 
+      -> Belt.List.map(p => p->decidePlayerPhase)
+
+  let (activePlayer, activePlayerPhase) =
+    switch(playerPhasePairs->Belt.List.keep(((_player, playerPhase))=> playerPhase != Player.PlayerIdlePhase)){
+      | [pp] => pp
+      | _ => (P1, PlayerIdlePhase)
+    }
+
+  let buildClientState = buildClientState(activePlayer, activePlayerPhase, gameState);
+  playerPhasePairs->Belt.List.map(
+    ( (player, playerPhase) ) => 
+    (gameState|>Game.getPlayerSocket(player), buildClientState(player, playerPhase)))
+}
+
+let updateClientStates = gameRoom =>
+  gameRoom
+  ->buildSocketStatePairs
+  ->Belt.List.forEach(((socket, clientState)) =>
+      switch (socket) {
+      | None => ()
+      | Some(socket) =>
+        // clientState->ClientGame.debugState(~ctx="Server.updateClientStates", ())
+        let msg: SocketMessages.serverToClient =
+          SetState(
+            clientState |> SocketMessages.jsonOfClientGameState // #unsafe
+          );
+        SockServ.Socket.emit(socket, msg);
       }
+    );
 
-    let buildClientState = buildClientState(activePlayer, activePlayerPhase, gameState);
-    playerPhasePairs->Belt.List.map(
-      ( (player, playerPhase) ) => 
-      (gameState|>Game.getPlayerSocket(player), buildClientState(player, playerPhase)))
+let debugSocket: (BsSocket.Server.socketT, ~ctx: string=?, ~n: int=?, unit) => unit = 
+  (socket, ~ctx="", ~n=0, ()) => {
+  let socketToString: BsSocket.Server.socketT => string = 
+    [%raw (socket) => {j|
+    return "socketT.{" + "\n" +
+        "\t" + "id: " + socket.id + "\n" +
+        "\t" + "connected: " + socket.connected + "\n" +
+        "\t" + "disconnected: " + socket.disconnected + "\n" + 
+      "}"|j}];
+
+  if(ctx != "") {
+    Js.log(ctx->leftPad(~n, ()))
   }
-
-  let updateClientStates = gameRoom =>
-    gameRoom
-      ->buildSocketStatePairs
-      ->Belt.List.forEach(( (socket, clientState) ) => {
-        switch(socket){
-          | None => ()
-          | Some(socket) => 
-            clientState->ClientGame.debugState(~ctx="Server.updateClientStates", ())
-            let msg: SocketMessages.serverToClient =
-              SetState(
-                clientState |> SocketMessages.jsonOfClientGameState // #unsafe
-              );
-            SockServ.Socket.emit(socket, msg); 
-        }
-      })
-
+  Js.log(socket |> socketToString |> leftPad(_, ~n, ()));
+};
 
 let onSocketDisconnect = socket =>
   SockServ.Socket.onDisconnect(
     socket,
     () => {
-      /** Note: by this time socketio has already removed the socket from the room */
-      let socketId = SockServ.Socket.getId(socket)
-      Js.log2("Socket disconnected: ", socketId);
+      /** Note: by this time socketio has already removed the socket from the room.
+        Also, during testing I noticed that refreshing the app in chrome rapidly multiple times
+        sometimes results in socketio not immediately detecting a disconnect. However it 
+        seems to triage after about a minute(?) so there is a delay between when you expect to 
+        see a disconnect and when socketio finally fires this disconnect handler.
+        
+        The result is that there may be open game rooms holding sockets that are effectively dead.*/
 
-      /** 
-        Not too concerned about performance right now but note the repeated
-        maybeGetSocketPlayer
-        */
+      Js.log("Server:onSocketDisconnect");
+      debugSocket(socket, ~n=1, ());
+
       StringMap.toArray(gameRooms)
       |> Belt.Array.forEach(_, ((key, game)) =>
            switch (Game.maybeGetSocketPlayer(socket, game)) {
@@ -174,7 +193,7 @@ let onSocketDisconnect = socket =>
            }
          );
 
-      debugGameRooms();
+      debugGameRooms(~n=1, ());
     },
   );
 
@@ -213,8 +232,11 @@ let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
 SockServ.onConnect(
   io,
   socket => {
-    let socketId = SockServ.Socket.getId(socket);
-    print_endline("Socket connected: " ++ socketId);
+    onSocketDisconnect(socket);
+
+    let socketId = SockServ.Socket.(socket->getId);
+    Js.log("Server: onConnect");
+    debugSocket(socket, ~n=1, ());
 
     /** Consider changing names with "room" to game where room is actually a Game.state */
     let maybeUnfilledRoom = gameRoom =>
@@ -272,7 +294,7 @@ SockServ.onConnect(
 
     updateClientStates(gameRoom);
 
-    debugGameRooms();
+    debugGameRooms(~n=1, ());
 
     SockServ.Socket.on(socket, ioAction =>
       switch (StringMap.get(gameRooms, gameRoom.roomKey)) {
@@ -284,7 +306,6 @@ SockServ.onConnect(
       }
     );
 
-    onSocketDisconnect(socket);
   },
 );
 
