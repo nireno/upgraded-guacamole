@@ -66,50 +66,80 @@ let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
     };
   };
 
-let getClientState: (Player.id, Game.state) => ClientGame.state =
-  (player, state) => {
-    let faceDownGamePhases = [Game.DealPhase, BegPhase, GiveOnePhase];
-    let faceUpHand = Game.getPlayerHand(player, state);
-    let faceDownHand = [];
 
+  let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase ) => {
+    let faceDownGamePhases = [Game.DealPhase, BegPhase, GiveOnePhase];
+    let faceUpHand = Game.getPlayerHand(player, gameState);
+    let faceDownHand = [];
     let hand =
-      if (Belt.List.has(faceDownGamePhases, state.phase, (==))) {
-        player == state.dealer || player == state.leader ? faceUpHand : faceDownHand;
+      if (Belt.List.has(faceDownGamePhases, gameState.phase, (==))) {
+        player == gameState.dealer || player == gameState.leader ? faceUpHand : faceDownHand;
       } else {
         faceUpHand;
       };
 
     ClientGame.{
-      phase: state.phase,
+      phase: playerPhase,
+      gamePhase: gameState.phase,
       me: player,
-      dealer: state.dealer,
-      leader: state.leader,
-      maybePlayerTurn: state.maybePlayerTurn,
+      dealer: gameState.dealer,
+      leader: gameState.leader,
+      activePlayer: activePlayer,
+      activePlayerPhase: activePlayerPhase,
+      maybePlayerTurn: gameState.maybePlayerTurn,
       hand,
-      maybeTrumpCard: state.maybeTrumpCard,
-      maybeLeadCard: state.maybeLeadCard,
-      board: state.board,
-      team1Points: state.team1Points,
-      team2Points: state.team2Points,
-      maybeTeamHigh: state.maybeTeamHigh,
-      maybeTeamLow: state.maybeTeamLow,
-      maybeTeamJack: state.maybeTeamJack,
-      maybeTeamGame: state.maybeTeamGame,
+      maybeTrumpCard: gameState.maybeTrumpCard,
+      maybeLeadCard: gameState.maybeLeadCard,
+      board: gameState.board,
+      team1Points: gameState.team1Points,
+      team2Points: gameState.team2Points,
+      maybeTeamHigh: gameState.maybeTeamHigh,
+      maybeTeamLow: gameState.maybeTeamLow,
+      maybeTeamJack: gameState.maybeTeamJack,
+      maybeTeamGame: gameState.maybeTeamGame,
     };
-  };
+    
+  }
 
+  let buildSocketStatePairs: Game.state => list((option(BsSocket.Server.socketT),ClientGame.state )) = gameState => {
+    let decidePlayerPhase = 
+      Game.decidePlayerPhase(
+        gameState.phase,
+        gameState.dealer,
+        gameState.leader,
+        gameState.maybePlayerTurn)
 
-let updateClientStates = gameRoom => {
-  Game.getAllPlayerSockets(gameRoom)
-  |> List.iter(((player, socket)) => {
-       let clientState = getClientState(player, gameRoom);
-       let msg: SocketMessages.serverToClient =
-         SetState(
-           clientState |> SocketMessages.jsonOfClientGameState // #unsafe
-         );
-       SockServ.Socket.emit(socket, msg); 
-     });
-};
+    let playerPhasePairs: list((Player.id, Player.phase)) = 
+      [Player.P1, P2, P3, P4] 
+        -> Belt.List.map(p => p->decidePlayerPhase)
+
+    let (activePlayer, activePlayerPhase) =
+      switch(playerPhasePairs->Belt.List.keep(((_player, playerPhase))=> playerPhase != Player.PlayerIdlePhase)){
+        | [pp] => pp
+        | _ => (P1, PlayerIdlePhase)
+      }
+
+    let buildClientState = buildClientState(activePlayer, activePlayerPhase, gameState);
+    playerPhasePairs->Belt.List.map(
+      ( (player, playerPhase) ) => 
+      (gameState|>Game.getPlayerSocket(player), buildClientState(player, playerPhase)))
+  }
+
+  let updateClientStates = gameRoom =>
+    gameRoom
+      ->buildSocketStatePairs
+      ->Belt.List.forEach(( (socket, clientState) ) => {
+        switch(socket){
+          | None => ()
+          | Some(socket) => 
+            clientState->ClientGame.debugState(~ctx="Server.updateClientStates", ())
+            let msg: SocketMessages.serverToClient =
+              SetState(
+                clientState |> SocketMessages.jsonOfClientGameState // #unsafe
+              );
+            SockServ.Socket.emit(socket, msg); 
+        }
+      })
 
 
 let onSocketDisconnect = socket =>

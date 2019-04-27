@@ -28,7 +28,7 @@ module App = {
         switch (x) {
         | SetState(jsonString) =>
           let state = SocketMessages.clientGameStateOfJsonUnsafe(jsonString)
-          debugState(state, ());
+          debugState(state, ~ctx="ClientSocket.T.on SetState", ());
           send(MatchServerState(state));
         }
       );
@@ -39,9 +39,6 @@ module App = {
       // let sendActionEvent = (action, _event) => send(action);
       let sendIO= (ioAction, _event) => ClientSocket.T.emit(socket, ioAction)
 
-      let playerPhase =
-        Game.playerPhase(state.phase, state.dealer, state.leader, state.maybePlayerTurn, state.me);
-      Js.log2("player phase: ", Player.stringOfPhase(playerPhase));
       let _createPlayerTricks = tricks => {
         <div className="column">
           {List.length(tricks) == 0
@@ -77,6 +74,7 @@ module App = {
            }}
         </div>
         <div> {ReasonReact.string(Player.stringOfId(state.me))} </div>
+        <WaitingMessage player=state.me activePlayer=state.activePlayer activePlayerPhase=state.activePlayerPhase  />
         <Player
           id={state.me}
           sendDeal={sendIO(SocketMessages.IO_Deal)}
@@ -84,10 +82,10 @@ module App = {
           sendBeg={sendIO(IO_Beg)}
           sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
           sendRunPack={sendIO(IO_RunPack)}
-          playerPhase
+          playerPhase=state.phase
         />
         {
-          switch (state.phase) {
+          switch (state.gamePhase) {
           | FindPlayersPhase(n) =>
             let playersAsText = Grammer.byNumber(n, "player");
             let nAsText = string_of_int(n);
@@ -96,7 +94,8 @@ module App = {
             let playersAsText = Grammer.byNumber(n, "player");
             let nAsText = string_of_int(n);
             <div> {ReasonReact.string({j|$nAsText $playersAsText disconnected. Finding substitutes...|j})} </div>;
-          | _ => ReasonReact.null
+          | gamePhase => 
+            <div> {ReasonReact.string(SharedGame.stringOfPhase(gamePhase))} </div>;
           };
         }
         <Hand
@@ -133,7 +132,7 @@ module App = {
           </ul>
 
           <div className="column">
-            {switch (state.phase) {
+            {switch (state.gamePhase) {
              | GameOverPhase => GameOverPhase.createElement(self)
              | PackDepletedPhase =>
                <div>

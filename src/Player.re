@@ -65,16 +65,19 @@ let stringOfMaybeId = fun
 
 type phase =
   | PlayerIdlePhase
-  | PlayerTurnPhase
+  | PlayerTurnPhase(id)
   | PlayerDealPhase
   | PlayerBegPhase
   | PlayerGiveOnePhase
   | PlayerRunPackPhase;
 
-let stringOfPhase = 
-fun
+let stringOfPhase =
+  fun
   | PlayerIdlePhase => "PlayerIdlePhase"
-  | PlayerTurnPhase => "PlayerTurnPhase"
+  | PlayerTurnPhase(id) => {
+      let str_playerId = stringOfId(id);
+      {j|PlayerTurnPhase($str_playerId)|j};
+    }
   | PlayerDealPhase => "PlayerDealPhase"
   | PlayerBegPhase => "PlayerBegPhase"
   | PlayerGiveOnePhase => "PlayerGiveOnePhase"
@@ -124,7 +127,7 @@ let make =
            <button onClick=sendRunPack>
              {ReasonReact.string("Run Again")}
            </button>
-         | PlayerTurnPhase
+         | PlayerTurnPhase(_)
          | PlayerIdlePhase => ReasonReact.null
          }}
       </div>
