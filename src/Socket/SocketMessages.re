@@ -4,7 +4,7 @@ type ioTeamId = int
 
 type clientToServer =
   | IO_PlayCard(ioPlayerId, str_json)
-  | IO_BlockPlay(ioPlayerId)
+  | IO_BlockPlay(ioPlayerId) //#todo Remove. blockplay doesn't make sense in client-server model.
   | IO_EndTrick
   | IO_NewRound
   | IO_EndRound
@@ -63,29 +63,37 @@ let cardOfJsonUnsafe = json => json |> cardOfJson |> Card.tFromJs;
   This can probably be made more "generic" by passing the field name
   to be massaged in the jsonify function.
  */
-type jsonPhase;
-let jsonifyPhase: (jsonPhase, ClientGame.abs_state ) => ClientGame.abs_state = 
-  [%raw (phase, abs_state) => 
-    "{ abs_state.phase = phase; 
+
+let toValidJson = BsSocket.Json.toValidJson;
+let jsonifyField: (ClientGame.abs_state, string) => ClientGame.abs_state = 
+  [%raw (abs_state, field) => 
+    "{ abs_state[field] = toValidJson(abs_state[field]); 
       return abs_state; }"];
 
 let fromValidJson = BsSocket.Json.fromValidJson;
-let reasonifyPhase: ClientGame.abs_state => ClientGame.abs_state = 
-  [%raw (abs_state) => 
-    "{ abs_state.phase = fromValidJson(abs_state.phase); 
+let reasonifyField: (ClientGame.abs_state, string) => ClientGame.abs_state = 
+  [%raw (abs_state, field) => 
+    "{ abs_state[field] = fromValidJson(abs_state[field]); 
       return abs_state; }"];
 
 
 let jsonOfClientGameState: ClientGame.state => str_json = (cgs) => {
-  let jsonPhase = BsSocket.Json.toValidJson(cgs.phase);
-  cgs |> ClientGame.stateToJs |> jsonifyPhase(jsonPhase) |> Obj.magic |> Js.Json.stringify
+  cgs |> ClientGame.stateToJs 
+      |> jsonifyField(_, "phase") 
+      |> jsonifyField(_, "gamePhase") 
+      |> jsonifyField(_, "activePlayerPhase") 
+      |> Obj.magic |> Js.Json.stringify
 };
 
 [@bs.scope "JSON"] [@bs.val]
 external clientGameStateOfJsonUnsafe: string => ClientGame.abs_state = "parse";
 
 let clientGameStateOfJsonUnsafe: str_json => ClientGame.state = str_json => { 
-   str_json |> clientGameStateOfJsonUnsafe |> reasonifyPhase |> ClientGame.stateFromJs;
+   str_json |> clientGameStateOfJsonUnsafe  
+      |> reasonifyField(_, "phase") 
+      |> reasonifyField(_, "gamePhase") 
+      |> reasonifyField(_, "activePlayerPhase") 
+      |> ClientGame.stateFromJs;
 };
 
 

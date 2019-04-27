@@ -1,5 +1,7 @@
+open AppPrelude; 
 include SharedGame;
 
+let winningScore = 7;
 
 type action =
   | Noop
@@ -46,6 +48,17 @@ type state = {
   maybeTeamGame: option(Team.id),
   phase,
 };
+
+let stringOfState = (state) => {
+  "Game.state."
+    ++ "{" ++ str_crlf
+    ++ str_tab ++ "roomKey: " ++ state.roomKey ++ str_crlf
+    ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
+    ++ str_tab ++ "dealer: " ++ Player.stringOfId(state.dealer) ++ str_crlf
+    ++ str_tab ++ "leader: " ++ Player.stringOfId(state.leader) ++ str_crlf
+    ++ str_tab ++ "maybePlayerTurn: " ++ Player.stringOfMaybeId(state.maybePlayerTurn) ++ str_crlf
+    ++ "}" ++ str_crlf
+}
 
 let initialState = () => {
   {
@@ -173,7 +186,7 @@ let findEmptySeat = state => {
 
 
 let isGameOverTest = state => {
-  state.team1Points >= 14 || state.team2Points >= 14;
+  state.team1Points >= winningScore || state.team2Points >= winningScore;
 };
 
 let addPoints = (team, value, state) => {
@@ -243,15 +256,25 @@ let isEmpty = (state) => {
   |> Belt.List.every(_, Js.Option.isNone)
 }
 
-let playerPhase: (phase, Player.id, Player.id, option(Player.id), Player.id) => Player.phase =
+let decidePlayerPhase:
+  (phase, Player.id, Player.id, option(Player.id), Player.id) => (Player.id, Player.phase) =
   (gamePhase, dealer, leader, maybePlayerTurn, player) => {
     Player.maybeIdEqual(maybePlayerTurn, player)
-      ? Player.PlayerTurnPhase
+      ? (player, Player.PlayerTurnPhase(player))
       : dealer == player && gamePhase == DealPhase
-          ? PlayerDealPhase
+          ? (player, PlayerDealPhase)
           : dealer == player && gamePhase == GiveOnePhase
-              ? PlayerGiveOnePhase
+              ? (player, PlayerGiveOnePhase)
               : dealer == player && gamePhase == RunPackPhase
-                  ? PlayerRunPackPhase
-                  : leader == player && gamePhase == BegPhase ? PlayerBegPhase : PlayerIdlePhase;
+                  ? (player, PlayerRunPackPhase)
+                  : leader == player && gamePhase == BegPhase
+                      ? (player, PlayerBegPhase) : (player, PlayerIdlePhase);
   };
+
+
+let debugState = (state, ~ctx="", ~n=0, ()) => {
+  if(ctx != "") {
+    Js.log(ctx->leftPad(~n, ()))
+  }
+  Js.log(state->stringOfState->leftPad(~n=n+1, ()))
+}

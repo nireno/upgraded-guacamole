@@ -3,10 +3,13 @@ include SharedGame;
 
 [@bs.deriving {jsConverter: newType}]
 type state = {
-  phase,
+  phase: Player.phase,
+  gamePhase: SharedGame.phase,
   me: Player.id,
   dealer: Player.id,
   leader: Player.id,
+  activePlayer: Player.id,
+  activePlayerPhase: Player.phase,
   maybePlayerTurn: option(Player.id),
   hand: list(Card.t),
   maybeLeadCard: option(Card.t),
@@ -29,22 +32,15 @@ type state = {
 external stateOfJson: string => abs_state = "parse";
 let stateOfJson = json => json |> stateOfJson |> stateFromJs;
 
-let debugState: (state, ~depth: int=?, unit) => unit =
-  (state, ~depth=0, ()) => {
-    debuggin("Client Game State:", ~depth, ());
-    let depth = depth + 1;
-    debuggin("me: " ++ Player.stringOfId(state.me), ~depth, ());
-    SharedGame.debugPhase(state.phase, ~depth, ());
-    debuggin("maybeDealer: " ++ Player.stringOfId(state.dealer), ~depth, ());
-    debuggin("maybeLeader: " ++ Player.stringOfId(state.leader), ~depth, ());
-    debuggin("maybePlayerTurn: " ++ Player.stringOfMaybeId(state.maybePlayerTurn), ~depth, ());
-  };
 
 let initialState = () => {
-  phase: FindPlayersPhase(3),
+  phase: PlayerIdlePhase,
+  gamePhase: FindPlayersPhase(3),
   me: P1,
   dealer: P1,
   leader: P1,
+  activePlayer: P1,
+  activePlayerPhase: PlayerIdlePhase,
   maybePlayerTurn: None,
   hand: [],
   maybeLeadCard: None,
@@ -66,3 +62,18 @@ let reducer = (action, _state) => {
   | MatchServerState(state) => ReasonReact.Update(state)
   };
 };
+
+let stringOfState = (state) => {
+  "ClientGame.state."
+    ++ "{" ++ str_crlf
+    ++ str_tab ++ "phase: " ++ Player.stringOfPhase(state.phase) ++ str_crlf
+    ++ str_tab ++ "gamePhase: " ++ Game.stringOfPhase(state.gamePhase) ++ str_crlf
+    ++ "}" ++ str_crlf
+}
+
+let debugState = (state, ~ctx="", ~n=0, ()) => {
+  if(ctx != "") {
+    Js.log(ctx->leftPad(~n, ()))
+  }
+  Js.log(state->stringOfState->leftPad(~n=n+1, ()))
+}
