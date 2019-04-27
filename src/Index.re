@@ -113,7 +113,7 @@ module App = {
               );
           }
           cards={state.hand} />
-          <h2> {ReasonReact.string("Board")} </h2>
+          <div className="title"> {ReasonReact.string("Board")} </div>
           {List.length(state.board) == 0
               ? <div> {ReasonReact.string("No cards on the board")} </div>
               : <div />}

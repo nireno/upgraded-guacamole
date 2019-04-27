@@ -1,6 +1,7 @@
 open AppPrelude; 
 include SharedGame;
 
+let winningScore = 7;
 
 type action =
   | Noop
@@ -185,7 +186,7 @@ let findEmptySeat = state => {
 
 
 let isGameOverTest = state => {
-  state.team1Points >= 14 || state.team2Points >= 14;
+  state.team1Points >= winningScore || state.team2Points >= winningScore;
 };
 
 let addPoints = (team, value, state) => {
