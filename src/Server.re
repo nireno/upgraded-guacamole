@@ -39,8 +39,8 @@ let gameRooms: StringMap.t(Game.state) =
 
 let debugGameRooms = (~n=0, ()) => {
   let roomCount = StringMap.size(gameRooms);
-  let strAre = Grammer.byNumber(roomCount, "is");
-  let strRooms = Grammer.byNumber(roomCount, "room");
+  let strAre = Grammar.byNumber(roomCount, "is");
+  let strRooms = Grammar.byNumber(roomCount, "room");
   let strRoomCount = string_of_int(roomCount);
   Js.log({j|There $strAre $strRoomCount $strRooms.|j} |> leftPad(_, ~n=n, ()));
 };

@@ -77,11 +77,11 @@ module App = {
         {
           let msg = switch (state.gamePhase) {
           | FindPlayersPhase(n) =>
-            let playersAsText = Grammer.byNumber(n, "player");
+            let playersAsText = Grammar.byNumber(n, "player");
             let nAsText = string_of_int(n);
             {j|Finding $nAsText more $playersAsText ...|j}
           | FindSubsPhase(n, _phase) => 
-            let playersAsText = Grammer.byNumber(n, "player");
+            let playersAsText = Grammar.byNumber(n, "player");
             let nAsText = string_of_int(n);
             {j|$nAsText $playersAsText disconnected. Finding substitutes...|j}
           | _ => 
