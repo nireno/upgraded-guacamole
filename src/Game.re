@@ -1,7 +1,6 @@
 open AppPrelude; 
 include SharedGame;
 
-let winningScore = 7;
 
 type action =
   | Noop

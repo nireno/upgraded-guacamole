@@ -22,7 +22,9 @@ let make = (~player, ~activePlayer, ~activePlayerPhase, _children) => {
           ""
           // <div>{ ReasonReact.string("Waiting for game to start") }</div>
        };
-       <div className="title is-4">{ReasonReact.string(msg)}</div>
+       msg == ""
+         ? ReasonReact.null
+         : <div className="text-center text-white bg-orange p-2 my-4"> {ReasonReact.string(msg)} </div>;
       }
     }
   }

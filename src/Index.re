@@ -58,13 +58,12 @@ module App = {
         </div>;
       };
 
-      <div>
-        <div>
-          <h1> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </h1>
-          <h1> {ReasonReact.string("Team 1 points: " ++ string_of_int(state.team1Points) ++ " ")} </h1>
-          <h1> {ReasonReact.string("Team 2 points: " ++ string_of_int(state.team2Points) ++ " ")} </h1>
+      <div className="">
+        <div className="scoreboard flex-column">
+          <h3 className="text-center"> {ReasonReact.string("Scoreboard")} </h3>
+          <h5 className="text-center"> {ReasonReact.string("Team 1: " ++ string_of_int(state.team1Points) ++ " ")} </h5>
+          <h5 className="text-center"> {ReasonReact.string("Team 2: " ++ string_of_int(state.team2Points) ++ " ")} </h5>
         </div>
-        <div> {ReasonReact.string(Player.stringOfId(state.me))} </div>
         <WaitingMessage player=state.me activePlayer=state.activePlayer activePlayerPhase=state.activePlayerPhase  />
         <Player
           id={state.me}
@@ -76,137 +75,147 @@ module App = {
           playerPhase=state.phase
         />
         {
-          switch (state.gamePhase) {
+          let msg = switch (state.gamePhase) {
           | FindPlayersPhase(n) =>
             let playersAsText = Grammer.byNumber(n, "player");
             let nAsText = string_of_int(n);
-            <div> {ReasonReact.string({j|Finding $nAsText more $playersAsText ...|j})} </div>;
+            {j|Finding $nAsText more $playersAsText ...|j}
           | FindSubsPhase(n, _phase) => 
             let playersAsText = Grammer.byNumber(n, "player");
             let nAsText = string_of_int(n);
-            <div> {ReasonReact.string({j|$nAsText $playersAsText disconnected. Finding substitutes...|j})} </div>;
-          | gamePhase => 
-            <div> {ReasonReact.string(SharedGame.stringOfPhase(gamePhase))} </div>;
+            {j|$nAsText $playersAsText disconnected. Finding substitutes...|j}
+          | _ => 
+            ""
           };
+          msg == "" ? ReasonReact.null : <div className="text-center text-white bg-orange my-5 p-2"> {ReasonReact.string({msg})} </div>;
+
         }
-        <Hand
-          maybeLeadCard={state.maybeLeadCard}
-          maybeTrumpCard={state.maybeTrumpCard}
-          handPhase={
-            Player.maybeIdEqual(state.maybePlayerTurn, state.me)
-              ? Hand.HandPlayPhase : Hand.HandWaitPhase
-          }
-          sendPlayCard = {
-            card =>
-              ClientSocket.T.emit(
-                socket,
-                SocketMessages.(IO_PlayCard(ioOfPlayer(state.me), jsonOfCardUnsafe(card))),
-              );
-          }
-          cards={state.hand} />
-        <div className="game-board section"> 
-          <div className="title is-4"> {ReasonReact.string("Board")} </div>
+        <div className="flex justify-around content-center">
+          <Hand
+            maybeLeadCard={state.maybeLeadCard}
+            maybeTrumpCard={state.maybeTrumpCard}
+            handPhase={
+              Player.maybeIdEqual(state.maybePlayerTurn, state.me)
+                ? Hand.HandPlayPhase : Hand.HandWaitPhase
+            }
+            sendPlayCard = {
+              card =>
+                ClientSocket.T.emit(
+                  socket,
+                  SocketMessages.(IO_PlayCard(ioOfPlayer(state.me), jsonOfCardUnsafe(card))),
+                );
+            }
+            cards={state.hand} />
+          <div className="game-board section"> 
 
-          <div className="trump-card">
-            {switch (state.maybeTrumpCard) {
-            | None => ReasonReact.null
-            | Some(kick) => 
-              <div> 
-                <div className="size-3"> {ReasonReact.string("Trump")} </div> 
-                <Card card=kick /> 
-              </div>;
-            }}
-          </div>
+            <div className="trump-card">
+              {switch (state.maybeTrumpCard) {
+              | None => ReasonReact.null
+              | Some(kick) => 
+                <> 
+                  <h4 className="size-3"> {ReasonReact.string("Trump")} </h4> 
+                  <ul>
+                    <Card card=kick /> 
+                  </ul>
+                </>;
+              }}
+            </div>
 
-          <div className="current-trick">
-            {List.length(state.board) == 0
-                ? <div> {ReasonReact.string("No cards on the board")} </div>
-                : <div />}
-            <ul>
-              {List.map(
-                  c =>
-                    <Card
-                      key={Card.stringOfCard(c)}
-                      card=c
-                      clickAction=?None
-                    />,
-                  state.board,
-                )
-                |> Belt.List.toArray
-                |> ReasonReact.array}
-            </ul>
+            <h4 className=""> {ReasonReact.string("Board")} </h4>
+            <div className="current-trick">
+              {List.length(state.board) == 0
+                  ? <div> {ReasonReact.string("No cards on the board")} </div>
+                  : <div />}
+              <ul>
+                {List.map(
+                    c =>
+                      <Card
+                        key={Card.stringOfCard(c)}
+                        card=c
+                        clickAction=?None
+                      />,
+                    state.board,
+                  )
+                  |> Belt.List.toArray
+                  |> ReasonReact.array}
+              </ul>
+            </div>
           </div>
         </div>
 
-        <div className="round-summary column">
-          {switch (state.gamePhase) {
-            | GameOverPhase => GameOverPhase.createElement(self)
-            | PackDepletedPhase =>
-              <div>
-                <div> {ReasonReact.string("No more cards")} </div>
-                <button className="btn btn-blue" onClick={sendIO(IO_DealAgain)}>
-                  {ReasonReact.string("Reshuffle")}
-                </button>
-              </div>
-            | RoundSummaryPhase =>
-              <div>
+        <div className="flex justify-around">
+          <div className="round-summary column">
+            {switch (state.gamePhase) {
+              | GameOverPhase => GameOverPhase.createElement(self)
+              | PackDepletedPhase =>
                 <div>
-                  {ReasonReact.string(
-                    switch (state.maybeTeamHigh) {
-                    | None => "No one has high"
-                    | Some(teamHigh) =>
-                      Team.stringOfTeam(teamHigh) ++ " has high."
-                    },
-                  )}
+                  <div> {ReasonReact.string("No more cards")} </div>
+                  <button className="btn btn-blue" onClick={sendIO(IO_DealAgain)}>
+                    {ReasonReact.string("Reshuffle")}
+                  </button>
                 </div>
+              | RoundSummaryPhase =>
                 <div>
-                  {ReasonReact.string(
-                    switch (state.maybeTeamLow) {
-                    | None => "No one has low"
-                    | Some(teamLow) =>
-                      Team.stringOfTeam(teamLow) ++ " has low."
-                    },
-                  )}
+                  <div>
+                    {ReasonReact.string(
+                      switch (state.maybeTeamHigh) {
+                      | None => "No one has high"
+                      | Some(teamHigh) =>
+                        Team.stringOfTeam(teamHigh) ++ " has high."
+                      },
+                    )}
+                  </div>
+                  <div>
+                    {ReasonReact.string(
+                      switch (state.maybeTeamLow) {
+                      | None => "No one has low"
+                      | Some(teamLow) =>
+                        Team.stringOfTeam(teamLow) ++ " has low."
+                      },
+                    )}
+                  </div>
+                  <div>
+                    {switch (state.maybeTeamJack) {
+                    | None => ReasonReact.null
+                    | Some((team, value)) =>
+                      switch (value) {
+                      | HangJackAward =>
+                        <div>
+                          {ReasonReact.string(
+                              Team.stringOfTeam(team) ++ " hanged the jack.",
+                            )}
+                        </div>
+                      | RunJackAward =>
+                        <div>
+                          {ReasonReact.string(
+                              Team.stringOfTeam(team)
+                              ++ " gets away with jack.",
+                            )}
+                        </div>
+                      | _ => ReasonReact.null
+                      }
+                    }}
+                  </div>
+                  <div>
+                    {switch (state.maybeTeamGame) {
+                    | None => ReasonReact.string("Tied for game.")
+                    | Some(teamGame) =>
+                      ReasonReact.string(
+                        Team.stringOfTeam(teamGame) ++ " gets game.",
+                      )
+                    }}
+                  </div>
+                  <button className="btn btn-blue" onClick={sendIO(IO_NewRound)}>
+                    {ReasonReact.string("Continue")}
+                  </button>
                 </div>
-                <div>
-                  {switch (state.maybeTeamJack) {
-                  | None => ReasonReact.null
-                  | Some((team, value)) =>
-                    switch (value) {
-                    | HangJackAward =>
-                      <div>
-                        {ReasonReact.string(
-                            Team.stringOfTeam(team) ++ " hanged the jack.",
-                          )}
-                      </div>
-                    | RunJackAward =>
-                      <div>
-                        {ReasonReact.string(
-                            Team.stringOfTeam(team)
-                            ++ " gets away with jack.",
-                          )}
-                      </div>
-                    | _ => ReasonReact.null
-                    }
-                  }}
-                </div>
-                <div>
-                  {switch (state.maybeTeamGame) {
-                  | None => ReasonReact.string("Tied for game.")
-                  | Some(teamGame) =>
-                    ReasonReact.string(
-                      Team.stringOfTeam(teamGame) ++ " gets game.",
-                    )
-                  }}
-                </div>
-                <button className="btn btn-blue" onClick={sendIO(IO_NewRound)}>
-                  {ReasonReact.string("Continue")}
-                </button>
-              </div>
-            | _ => ReasonReact.null
-            }}
+              | _ => ReasonReact.null
+              }}
+          </div>
         </div>
 
+        <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
+        <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
       </div>;
     },
   };

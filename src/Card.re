@@ -176,11 +176,7 @@ let make = (~card, ~clickAction=?, _children) => {
       | Some(ca) => (ca, true)
       };
     <li
-      style={
-        isClickable
-          ? ReactDOMRe.Style.make(~border="1px solid #ff9966", ())
-          : ReactDOMRe.Style.make()
-      }
+      className={"p-1 my-1 text-xs " ++ (isClickable ? "bg-blue text-white cursor-pointer": "")}
       onClick={_event => clickAction(card)}>
       {ReasonReact.string(stringOfCard(card))}
     </li>;

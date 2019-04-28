@@ -102,34 +102,32 @@ let make =
     ) => {
   ...component,
   render: _self =>
-    <div className="column player">
-      <div className="player__actions flex">
-        {switch (playerPhase) {
-         | PlayerDealPhase =>
-           <button className="btn btn-blue" onClick=sendDeal> {ReasonReact.string("Deal")} </button>
-         | PlayerBegPhase =>
-           <>
-             <button className="btn btn-blue m-2" onClick=sendBeg> {ReasonReact.string("Beg")} </button>
-             <button className="btn btn-blue m-2" onClick=sendStandUp>
-               {ReasonReact.string("Stand")}
-             </button>
-           </>
-         | PlayerGiveOnePhase =>
-           <>
-             <button className="btn btn-blue m-2" onClick=sendGiveOne>
-               {ReasonReact.string("Give One")}
-             </button>
-             <button className="btn btn-blue m-2" onClick=sendRunPack>
-               {ReasonReact.string("Run Pack")}
-             </button>
-           </>
-         | PlayerRunPackPhase =>
-           <button className="btn btn-blue" onClick=sendRunPack>
-             {ReasonReact.string("Run Again")}
-           </button>
-         | PlayerTurnPhase(_)
-         | PlayerIdlePhase => ReasonReact.null
-         }}
-      </div>
-    </div>,
+    <div className="player__actions flex justify-around my-4">
+      {switch (playerPhase) {
+        | PlayerDealPhase =>
+          <button className="btn btn-blue" onClick=sendDeal> {ReasonReact.string("Deal")} </button>
+        | PlayerBegPhase =>
+          <>
+            <button className="btn btn-blue m-2" onClick=sendBeg> {ReasonReact.string("Beg")} </button>
+            <button className="btn btn-blue m-2" onClick=sendStandUp>
+              {ReasonReact.string("Stand")}
+            </button>
+          </>
+        | PlayerGiveOnePhase =>
+          <>
+            <button className="btn btn-blue m-2" onClick=sendGiveOne>
+              {ReasonReact.string("Give One")}
+            </button>
+            <button className="btn btn-blue m-2" onClick=sendRunPack>
+              {ReasonReact.string("Run Pack")}
+            </button>
+          </>
+        | PlayerRunPackPhase =>
+          <button className="btn btn-blue" onClick=sendRunPack>
+            {ReasonReact.string("Run Again")}
+          </button>
+        | PlayerTurnPhase(_)
+        | PlayerIdlePhase => ReasonReact.null
+        }}
+    </div>
 };
