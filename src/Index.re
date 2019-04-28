@@ -144,7 +144,7 @@ module App = {
             | PackDepletedPhase =>
               <div>
                 <div> {ReasonReact.string("No more cards")} </div>
-                <button onClick={sendIO(IO_DealAgain)}>
+                <button className="btn btn-blue" onClick={sendIO(IO_DealAgain)}>
                   {ReasonReact.string("Reshuffle")}
                 </button>
               </div>
@@ -199,7 +199,7 @@ module App = {
                     )
                   }}
                 </div>
-                <button onClick={sendIO(IO_NewRound)}>
+                <button className="btn btn-blue" onClick={sendIO(IO_NewRound)}>
                   {ReasonReact.string("Continue")}
                 </button>
               </div>
