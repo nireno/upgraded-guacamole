@@ -29,7 +29,7 @@ Express.App.use(
 Express.App.useOnPath(
   app,
   ~path="/",
-  Express.Static.(make("/build", defaultOptions()) |> asMiddleware),
+  Express.Static.(make("./build", defaultOptions()) |> asMiddleware),
 );
 
 module SockServ = BsSocket.Server.Make(SocketMessages);

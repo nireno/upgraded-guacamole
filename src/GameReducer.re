@@ -52,10 +52,11 @@ let rec reducer = (action, state) =>
           {...state, dealer: nextDealer, leader: nextLeader};
         };
 
-        let updatePhase = (state, phase) => {...state, phase}
+        let updatePhase = state => 
+          {...state, phase: isGameOverTest(state) ? GameOverPhase : DealPhase};
 
         state |> updateScore |> updateBoard |> updatePlayers 
-              |> updatePhase(_, isGameOverTest(state) ? GameOverPhase : DealPhase)
+              |> updatePhase
 
       | PlayCard(player, c) =>
         let hand = Game.getPlayerHand(player, state);

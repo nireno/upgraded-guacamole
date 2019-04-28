@@ -81,22 +81,29 @@ let make =
   {
     ...component,
     render: _self => {
-      <ul>
-        {List.map(
-           kCard => {
-             let isCardPlayable = checkIsCardPlayable(kCard.card);
-             Js.log(kCard.key);
-             <Card
-               key={kCard.key}
-               clickAction=?{isCardPlayable ? Some(sendPlayCard) : None}
-               card={kCard.card}
-             />;
-           },
-           keyedCards,
-         )
-         |> Belt.List.toArray
-         |> ReasonReact.array}
-      </ul>;
+      <div>
+        <h4>{ReasonReact.string("Your hand")}</h4>
+        {switch(keyedCards){
+          | [] => <div>{ReasonReact.string("No cards to see")}</div>
+          | _ => 
+              <ul>
+                {List.map(
+                  kCard => {
+                    let isCardPlayable = checkIsCardPlayable(kCard.card);
+                    Js.log(kCard.key);
+                    <Card
+                      key={kCard.key}
+                      clickAction=?{isCardPlayable ? Some(sendPlayCard) : None}
+                      card={kCard.card}
+                    />;
+                  },
+                  keyedCards,
+                )
+                |> Belt.List.toArray
+                |> ReasonReact.array}
+              </ul>
+        }}
+      </div>
     },
   };
 };

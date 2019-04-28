@@ -1,5 +1,7 @@
 open AppPrelude;
 
+let winningScore = 7;
+
 type award =
   | HighAward
   | LowAward
