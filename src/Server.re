@@ -1,8 +1,7 @@
-open AppPrelude;
 [%%debugger.chrome];
+open AppPrelude;
+
 [@bs.val] external node_env: string = "process.env.NODE_ENV";
-[@bs.module]
-external webpackConfig: Webpack.configuration = "../webpack.config.js";
 
 [@bs.module] external nanoid: unit => string = "";
 
@@ -15,16 +14,6 @@ let onListen = e =>
   };
 
 let app = Express.express();
-
-let publicPath = webpackConfig |> Webpack.outputGet |> Webpack.publicPathGet;
-let webpackCompiler = Webpack.webpack(webpackConfig);
-Express.App.use(
-  app, 
-  Webpack.webpackDevMiddleware(
-    webpackCompiler, 
-    {"publicPath": publicPath}
-  )
-);
 
 Express.App.useOnPath(
   app,
