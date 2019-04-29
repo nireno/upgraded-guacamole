@@ -24,7 +24,7 @@ let make = (~player, ~activePlayer, ~activePlayerPhase, _children) => {
        };
        msg == ""
          ? ReasonReact.null
-         : <div className="text-center text-white bg-orange p-2 my-4"> {ReasonReact.string(msg)} </div>;
+         : <div className={"text-center text-white p-2 my-4 " ++ (player == activePlayer ? "bg-green" : "bg-orange")}> {ReasonReact.string(msg)} </div>;
       }
     }
   }
