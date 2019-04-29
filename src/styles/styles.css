@@ -22,3 +22,14 @@
 .btn-grey:hover {
   @apply bg-grey;
 }
+
+.card {
+  width: 180px; 
+  height: 270px;  
+  background-image: url('/static/img/deck.min.png');
+  background-repeat: no-repeat; 
+}
+
+.card + .card {
+  margin-top: -200px;
+}

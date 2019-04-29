@@ -114,9 +114,7 @@ module App = {
               | Some(kick) => 
                 <> 
                   <h4 className="size-3"> {ReasonReact.string("Trump")} </h4> 
-                  <ul>
-                    <Card card=kick /> 
-                  </ul>
+                  <Card card=kick /> 
                 </>;
               }}
             </div>
@@ -126,7 +124,7 @@ module App = {
               {List.length(state.board) == 0
                   ? <div> {ReasonReact.string("No cards on the board")} </div>
                   : <div />}
-              <ul>
+              <div>
                 {List.map(
                     c =>
                       <Card
@@ -138,7 +136,7 @@ module App = {
                   )
                   |> Belt.List.toArray
                   |> ReasonReact.array}
-              </ul>
+              </div>
             </div>
           </div>
         </div>

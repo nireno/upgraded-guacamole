@@ -22,6 +22,12 @@ module Suit = {
   | "Hearts" => Some(Hearts)
   | _ => None
 
+  let indexOfSuit = fun
+  | Spades => 0
+  | Hearts => 1
+  | Diamonds => 2
+  | Clubs => 3
+
   let first = Clubs;
   let last = Hearts;
   let next =
@@ -90,6 +96,22 @@ module Rank = {
     | Queen => 12
     | King => 13
     | Ace => 14;
+
+  let indexOfRank =
+    fun
+    | Ace => 0
+    | Two => 1
+    | Three => 2
+    | Four => 3
+    | Five => 4
+    | Six => 5
+    | Seven => 6
+    | Eight => 7
+    | Nine => 8
+    | Ten => 9
+    | Jack => 10
+    | Queen => 11
+    | King => 12;
 
   let maybeRankOfInt =
     fun
@@ -167,6 +189,14 @@ type state = {card: t};
 // type action =
 //   | Click;
 
+let stringOfSpriteOffset = ( {rank, suit} ) => {
+  let xSpacing = 195; // image pixels between each rank in a suit
+  let ySpacing = 285; // image pixels between each suit
+  let xOffset = Rank.indexOfRank(rank) * xSpacing; 
+  let yOffset = Suit.indexOfSuit(suit) * ySpacing; 
+  "-" ++ string_of_int(xOffset) ++ "px " ++ "-" ++ string_of_int(yOffset) ++ "px"
+}
+
 let make = (~card, ~clickAction=?, _children) => {
   ...component,
   render: _self => {
@@ -175,11 +205,12 @@ let make = (~card, ~clickAction=?, _children) => {
       | None => (ignore, false)
       | Some(ca) => (ca, true)
       };
-    <li
-      className={"p-1 my-1 text-xs " ++ (isClickable ? "bg-blue text-white cursor-pointer": "")}
+    let style = ReactDOMRe.Style.make(~backgroundPosition=stringOfSpriteOffset(card), ());
+    <div
+      style
+      className={"card " ++ (isClickable ? "bg-blue text-white cursor-pointer": "")}
       onClick={_event => clickAction(card)}>
-      {ReasonReact.string(stringOfCard(card))}
-    </li>;
+    </div>;
   },
   // reducer: (action, state) =>
   //   switch (action) {

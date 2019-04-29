@@ -86,7 +86,7 @@ let make =
         {switch(keyedCards){
           | [] => <div>{ReasonReact.string("No cards to see")}</div>
           | _ => 
-              <ul>
+              <div>
                 {List.map(
                   kCard => {
                     let isCardPlayable = checkIsCardPlayable(kCard.card);
@@ -101,7 +101,7 @@ let make =
                 )
                 |> Belt.List.toArray
                 |> ReasonReact.array}
-              </ul>
+              </div>
         }}
       </div>
     },

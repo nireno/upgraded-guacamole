@@ -21,6 +21,12 @@ Express.App.useOnPath(
   Express.Static.(make("./build", defaultOptions()) |> asMiddleware),
 );
 
+Express.App.useOnPath(
+  app,
+  ~path="/static",
+  Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
+);
+
 module SockServ = BsSocket.Server.Make(SocketMessages);
 module Namespace = BsSocket.Namespace.Make(SocketMessages);
 
