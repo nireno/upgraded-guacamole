@@ -192,8 +192,8 @@ type state = {card: t};
 let stringOfSpriteOffset = ( {rank, suit} ) => {
   let xSpacing = 195; // image pixels between each rank in a suit
   let ySpacing = 285; // image pixels between each suit
-  let xOffset = Rank.indexOfRank(rank) * xSpacing; 
-  let yOffset = Suit.indexOfSuit(suit) * ySpacing; 
+  let xOffset = Rank.indexOfRank(rank) * xSpacing + 1; // +1 offset in tandem with a 1 px solid border on the client 
+  let yOffset = Suit.indexOfSuit(suit) * ySpacing + 1; //   currently hides the black 1px border around cards in the deck image
   "-" ++ string_of_int(xOffset) ++ "px " ++ "-" ++ string_of_int(yOffset) ++ "px"
 }
 

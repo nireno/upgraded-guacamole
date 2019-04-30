@@ -26,10 +26,10 @@ type state = {
   p2Socket: option(BsSocket.Server.socketT),
   p3Socket: option(BsSocket.Server.socketT),
   p4Socket: option(BsSocket.Server.socketT),
-  p1Hand: Player.hand,
-  p2Hand: Player.hand,
-  p3Hand: Player.hand,
-  p4Hand: Player.hand,
+  p1Hand: Hand.FaceUpHand.t,
+  p2Hand: Hand.FaceUpHand.t,
+  p3Hand: Hand.FaceUpHand.t,
+  p4Hand: Hand.FaceUpHand.t,
   p1Tricks: list(Trick.t),
   p2Tricks: list(Trick.t),
   p3Tricks: list(Trick.t),
@@ -92,7 +92,7 @@ let initialState = () => {
   };
 };
 
-let updateHand: (Player.id, Hand.t, state) => state =
+let updateHand: (Player.id, Hand.FaceUpHand.t, state) => state =
   (player, hand, state) => {
     switch (player) {
     | P1 => {...state, p1Hand: hand}

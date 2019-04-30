@@ -66,14 +66,7 @@ let rec reducer = (action, state) =>
           // #todo Add warning this may be attempt to cheat?
           state;
         } else {
-          let state =
-            switch (player) {
-            | P1 => {...state, p1Hand: hand'}
-            | P2 => {...state, p2Hand: hand'}
-            | P3 => {...state, p3Hand: hand'}
-            | P4 => {...state, p4Hand: hand'}
-            };
-
+          let state = Game.updateHand(player, hand', state);
           let state =
             switch (state.maybeLeadCard) {
             | None => {...state, maybeLeadCard: Some(c)}

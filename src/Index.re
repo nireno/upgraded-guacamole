@@ -8,12 +8,6 @@ let isPlayerTurn = (turn, playerId) => {
   };
 };
 
-let handToPlayerCards: (Player.id, Hand.t) => list((Player.id, Card.t)) =
-  (player, hand) => {
-    List.map(card => (player, card), hand);
-  };
-
-
 let socket = ClientSocket.T.create();
 
 module App = {
@@ -91,21 +85,30 @@ module App = {
 
         }
         <div className="flex justify-around content-center">
-          <Hand
-            maybeLeadCard={state.maybeLeadCard}
-            maybeTrumpCard={state.maybeTrumpCard}
-            handPhase={
-              Player.maybeIdEqual(state.maybePlayerTurn, state.me)
-                ? Hand.HandPlayPhase : Hand.HandWaitPhase
+          <div>
+            <h4> {ReasonReact.string("Your hand")} </h4>
+            {
+              switch (state.hand) {
+              | ClientGame.FaceDownHand(n) => <Hand.FaceDownHand nCards=n />
+              | ClientGame.FaceUpHand(cards) =>
+                <Hand.FaceUpHand
+                  maybeLeadCard={state.maybeLeadCard}
+                  maybeTrumpCard={state.maybeTrumpCard}
+                  handPhase={
+                    Player.maybeIdEqual(state.maybePlayerTurn, state.me)
+                      ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
+                  }
+                  sendPlayCard={card =>
+                    ClientSocket.T.emit(
+                      socket,
+                      SocketMessages.(IO_PlayCard(ioOfPlayer(state.me), jsonOfCardUnsafe(card))),
+                    )
+                  }
+                  cards
+                />
+              };
             }
-            sendPlayCard = {
-              card =>
-                ClientSocket.T.emit(
-                  socket,
-                  SocketMessages.(IO_PlayCard(ioOfPlayer(state.me), jsonOfCardUnsafe(card))),
-                );
-            }
-            cards={state.hand} />
+          </div>
           <div className="game-board section"> 
 
             <div className="trump-card">

@@ -56,3 +56,8 @@ let debugPhase = (phase, ~depth=0, ()) => {
   let depth = depth + 1;
   debuggin(stringOfPhase(phase), ~depth, ())
 };
+
+let isFaceDownPhase = fun
+| FindSubsPhase(_, BegPhase) | BegPhase 
+| FindSubsPhase(_, GiveOnePhase) | GiveOnePhase => true
+| _ => false

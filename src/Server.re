@@ -64,14 +64,14 @@ let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
 
 
 let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
-  let faceDownGamePhases = [Game.DealPhase, BegPhase, GiveOnePhase];
-  let faceUpHand = Game.getPlayerHand(player, gameState);
-  let faceDownHand = [];
+  let playerHand = Game.getPlayerHand(player, gameState);
   let hand =
-    if (Belt.List.has(faceDownGamePhases, gameState.phase, (==))) {
-      player == gameState.dealer || player == gameState.leader ? faceUpHand : faceDownHand;
+    if (SharedGame.isFaceDownPhase(gameState.phase)) {
+      player == gameState.dealer || player == gameState.leader 
+        ? ClientGame.FaceUpHand(playerHand) 
+        : ClientGame.FaceDownHand(List.length(playerHand));
     } else {
-      faceUpHand;
+      ClientGame.FaceUpHand(playerHand);
     };
 
   ClientGame.{
