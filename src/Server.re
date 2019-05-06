@@ -295,7 +295,24 @@ SockServ.onConnect(
       switch (StringMap.get(gameRooms, gameRoom.roomKey)) {
       | None => ()
       | Some(gameRoom) =>
-        let gameRoom = GameReducer.reducer(ioAction |> actionOfIO_Action, gameRoom);
+        let action = ioAction |> actionOfIO_Action;
+        let isEndTrick = switch(action){
+          | PlayCard(player, _) => Player.nextPlayer(player) == gameRoom.leader 
+          | _ => false
+        };
+
+        let gameRoom = GameReducer.reducer(action, gameRoom);
+
+        let advanceRound = () => {
+          let gameRoom = GameReducer.reducer(AdvanceRound, gameRoom);
+          StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
+          updateClientStates(gameRoom);
+        }
+
+        if(isEndTrick){
+          Js.Global.setTimeout(advanceRound, 2000) |> ignore
+        }
+
         StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
         updateClientStates(gameRoom);
       }

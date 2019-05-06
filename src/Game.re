@@ -7,6 +7,7 @@ type action =
   | PlayCard(Player.id, Card.t)
   | BlockPlay(Player.id)
   | EndTrick
+  | AdvanceRound
   | NewRound
   | EndRound
   | Beg
