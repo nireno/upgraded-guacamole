@@ -1,6 +1,8 @@
 open AppPrelude;
 include SharedGame;
 
+type hand = FaceUpHand(Hand.FaceUpHand.t) | FaceDownHand(Hand.FaceDownHand.t);
+
 [@bs.deriving {jsConverter: newType}]
 type state = {
   gameId: string,
@@ -12,7 +14,7 @@ type state = {
   activePlayer: Player.id,
   activePlayerPhase: Player.phase,
   maybePlayerTurn: option(Player.id),
-  hand: list(Card.t),
+  hand: hand,
   maybeLeadCard: option(Card.t),
   maybeTrumpCard: option(Card.t),
   board: list(Card.t),
@@ -44,7 +46,7 @@ let initialState = () => {
   activePlayer: P1,
   activePlayerPhase: PlayerIdlePhase,
   maybePlayerTurn: None,
-  hand: [],
+  hand: FaceDownHand(0),
   maybeLeadCard: None,
   maybeTrumpCard: None,
   board: [],

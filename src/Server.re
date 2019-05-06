@@ -21,6 +21,12 @@ Express.App.useOnPath(
   Express.Static.(make("./build", defaultOptions()) |> asMiddleware),
 );
 
+Express.App.useOnPath(
+  app,
+  ~path="/static",
+  Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
+);
+
 module SockServ = BsSocket.Server.Make(SocketMessages);
 module Namespace = BsSocket.Namespace.Make(SocketMessages);
 
@@ -58,14 +64,14 @@ let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
 
 
 let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
-  let faceDownGamePhases = [Game.DealPhase, BegPhase, GiveOnePhase];
-  let faceUpHand = Game.getPlayerHand(player, gameState);
-  let faceDownHand = [];
+  let playerHand = Game.getPlayerHand(player, gameState);
   let hand =
-    if (Belt.List.has(faceDownGamePhases, gameState.phase, (==))) {
-      player == gameState.dealer || player == gameState.leader ? faceUpHand : faceDownHand;
+    if (SharedGame.isFaceDownPhase(gameState.phase)) {
+      player == gameState.dealer || player == gameState.leader 
+        ? ClientGame.FaceUpHand(playerHand) 
+        : ClientGame.FaceDownHand(List.length(playerHand));
     } else {
-      faceUpHand;
+      ClientGame.FaceUpHand(playerHand);
     };
 
   ClientGame.{
@@ -289,7 +295,24 @@ SockServ.onConnect(
       switch (StringMap.get(gameRooms, gameRoom.roomKey)) {
       | None => ()
       | Some(gameRoom) =>
-        let gameRoom = GameReducer.reducer(ioAction |> actionOfIO_Action, gameRoom);
+        let action = ioAction |> actionOfIO_Action;
+        let isEndTrick = switch(action){
+          | PlayCard(player, _) => Player.nextPlayer(player) == gameRoom.leader 
+          | _ => false
+        };
+
+        let gameRoom = GameReducer.reducer(action, gameRoom);
+
+        let advanceRound = () => {
+          let gameRoom = GameReducer.reducer(AdvanceRound, gameRoom);
+          StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
+          updateClientStates(gameRoom);
+        }
+
+        if(isEndTrick){
+          Js.Global.setTimeout(advanceRound, 2000) |> ignore
+        }
+
         StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
         updateClientStates(gameRoom);
       }

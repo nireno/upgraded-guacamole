@@ -82,6 +82,7 @@ let jsonOfClientGameState: ClientGame.state => str_json = (cgs) => {
       |> jsonifyField(_, "phase") 
       |> jsonifyField(_, "gamePhase") 
       |> jsonifyField(_, "activePlayerPhase") 
+      |> jsonifyField(_, "hand") 
       |> Obj.magic |> Js.Json.stringify
 };
 
@@ -93,6 +94,7 @@ let clientGameStateOfJsonUnsafe: str_json => ClientGame.state = str_json => {
       |> reasonifyField(_, "phase") 
       |> reasonifyField(_, "gamePhase") 
       |> reasonifyField(_, "activePlayerPhase") 
+      |> reasonifyField(_, "hand") 
       |> ClientGame.stateFromJs;
 };
 
