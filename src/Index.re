@@ -8,30 +8,68 @@ let isPlayerTurn = (turn, playerId) => {
   };
 };
 
-let socket = ClientSocket.T.create();
-
 module App = {
-  let component = ReasonReact.reducerComponent("AllFoursApp");
+  [@react.component]
+  let make = () => {
+    let (gameId, setGameId) = React.useState(() => "initializing");
+    let (phase, setPhase) = React.useState(() => Player.PlayerIdlePhase);
+    let (gamePhase, setGamePhase) = React.useState(() => FindPlayersPhase(3));
+    let (me, setMe) = React.useState(() => Player.P1);
+    let (dealer, setDealer) = React.useState(() => Player.P1);
+    let (leader, setLeader) = React.useState(() => Player.P1);
+    let (activePlayer, setActivePlayer) = React.useState(() => Player.P1);
+    let (activePlayerPhase, setActivePlayerPhase) = React.useState(() => Player.PlayerIdlePhase);
+    let (maybePlayerTurn, setMaybePlayerTurn) = React.useState(() => None);
+    let (hand, setHand) = React.useState(() => FaceDownHand(0));
+    let (maybeLeadCard, setMaybeLeadCard) = React.useState(() =>None);
+    let (maybeTrumpCard, setMaybeTrumpCard) = React.useState(() =>None);
+    let (board, setBoard) = React.useState(() => []);
+    let (team1Points, setTeam1Points) = React.useState(() => 0);
+    let (team2Points, setTeam2Points) = React.useState(() => 0);
+    let (maybeTeamHigh, setMaybeTeamHigh) = React.useState(() => None);
+    let (maybeTeamLow, setMaybeTeamLow) = React.useState(() => None);
+    let (maybeTeamJack, setMaybeTeamJack) = React.useState(() => None);
+    let (maybeTeamGame, setMaybeTeamGame) = React.useState(() => None);
+    let (maybeSocket, setMaybeSocket) = React.useState(() => None);
 
-  let make = _children => {
-    ...component,
-    initialState: ClientGame.initialState,
-    reducer: ClientGame.reducer,
-    didMount: ({send}) => {
+    React.useEffect1(() => {
+      let socket = ClientSocket.T.create();
+      setMaybeSocket(_ => Some(socket));
       ClientSocket.T.on(socket, x =>
         switch (x) {
         | SetState(jsonString) =>
           let state = SocketMessages.clientGameStateOfJsonUnsafe(jsonString)
           debugState(state, ~ctx="ClientSocket.T.on SetState", ());
-          send(MatchServerState(state));
+          setGameId(_ => state.gameId);
+          setPhase(_ => state.phase);
+          setGamePhase(_ => state.gamePhase);
+          setMe(_ => state.me);
+          setDealer(_ => state.dealer);
+          setLeader(_ => state.leader);
+          setActivePlayer(_ => state.activePlayer);
+          setActivePlayerPhase(_ => state.activePlayerPhase);
+          setMaybePlayerTurn(_ => state.maybePlayerTurn);
+          setHand(_ => state.hand);
+          setMaybeLeadCard(_ => state.maybeLeadCard);
+          setMaybeTrumpCard(_ => state.maybeTrumpCard);
+          setBoard(_ => state.board);
+          setTeam1Points(_ => state.team1Points);
+          setTeam2Points(_ => state.team2Points);
+          setMaybeTeamHigh(_ => state.maybeTeamHigh);
+          setMaybeTeamLow(_ => state.maybeTeamLow);
+          setMaybeTeamJack(_ => state.maybeTeamJack);
+          setMaybeTeamGame(_ => state.maybeTeamGame);
         }
       );
-    },
+      None
+    }, [||])
 
-    render: self => {
-      let {ReasonReact.state, send: _send} = self;
-      // let sendActionEvent = (action, _event) => send(action);
-      let sendIO= (ioAction, _event) => ClientSocket.T.emit(socket, ioAction)
+      let sendIO = (ioAction, _event) => {
+        switch (maybeSocket) {
+        | None => ()
+        | Some(socket) => ClientSocket.T.emit(socket, ioAction)
+        };
+      };
 
       let _createPlayerTricks = tricks => {
         <div className="column">
@@ -55,21 +93,21 @@ module App = {
       <div className="">
         <div className="scoreboard flex-column">
           <h3 className="text-center"> {ReasonReact.string("Scoreboard")} </h3>
-          <h5 className="text-center"> {ReasonReact.string("Team 1: " ++ string_of_int(state.team1Points) ++ " ")} </h5>
-          <h5 className="text-center"> {ReasonReact.string("Team 2: " ++ string_of_int(state.team2Points) ++ " ")} </h5>
+          <h5 className="text-center"> {ReasonReact.string("Team 1: " ++ string_of_int(team1Points) ++ " ")} </h5>
+          <h5 className="text-center"> {ReasonReact.string("Team 2: " ++ string_of_int(team2Points) ++ " ")} </h5>
         </div>
-        <WaitingMessage player=state.me activePlayer=state.activePlayer activePlayerPhase=state.activePlayerPhase  />
+        <WaitingMessage player=me activePlayer=activePlayer activePlayerPhase=activePlayerPhase  />
         <Player
-          id={state.me}
+          id={me}
           sendDeal={sendIO(SocketMessages.IO_Deal)}
           sendStandUp={sendIO(SocketMessages.IO_Stand)}
           sendBeg={sendIO(IO_Beg)}
           sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
           sendRunPack={sendIO(IO_RunPack)}
-          playerPhase=state.phase
+          playerPhase=phase
         />
         {
-          let msg = switch (state.gamePhase) {
+          let msg = switch (gamePhase) {
           | FindPlayersPhase(n) =>
             let playersAsText = Grammar.byNumber(n, "player");
             let nAsText = string_of_int(n);
@@ -88,21 +126,25 @@ module App = {
           <div>
             <h4> {ReasonReact.string("Your hand")} </h4>
             {
-              switch (state.hand) {
+              switch (hand) {
               | ClientGame.FaceDownHand(n) => <Hand.FaceDownHand nCards=n />
               | ClientGame.FaceUpHand(cards) =>
                 <Hand.FaceUpHand
-                  maybeLeadCard={state.maybeLeadCard}
-                  maybeTrumpCard={state.maybeTrumpCard}
+                  maybeLeadCard={maybeLeadCard}
+                  maybeTrumpCard={maybeTrumpCard}
                   handPhase={
-                    Player.maybeIdEqual(state.maybePlayerTurn, state.me)
+                    Player.maybeIdEqual(maybePlayerTurn, me)
                       ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
                   }
                   sendPlayCard={card =>
-                    ClientSocket.T.emit(
-                      socket,
-                      SocketMessages.(IO_PlayCard(ioOfPlayer(state.me), jsonOfCardUnsafe(card))),
-                    )
+                    switch(maybeSocket){
+                      | None => ()
+                      | Some(socket) => 
+                          ClientSocket.T.emit(
+                          socket,
+                          SocketMessages.(IO_PlayCard(ioOfPlayer(me), jsonOfCardUnsafe(card))))
+                    }
+                    
                   }
                   cards
                 />
@@ -112,7 +154,7 @@ module App = {
           <div className="game-board section"> 
 
             <div className="trump-card">
-              {switch (state.maybeTrumpCard) {
+              {switch (maybeTrumpCard) {
               | None => ReasonReact.null
               | Some(kick) => 
                 <> 
@@ -124,7 +166,7 @@ module App = {
 
             <h4 className=""> {ReasonReact.string("Board")} </h4>
             <div className="current-trick">
-              {List.length(state.board) == 0
+              {List.length(board) == 0
                   ? <div> {ReasonReact.string("No cards on the board")} </div>
                   : <div />}
               <div>
@@ -135,7 +177,7 @@ module App = {
                         card=c
                         clickAction=?None
                       />,
-                    state.board,
+                    board,
                   )
                   |> Belt.List.toArray
                   |> ReasonReact.array}
@@ -146,8 +188,8 @@ module App = {
 
         <div className="flex justify-around">
           <div className="round-summary column">
-            {switch (state.gamePhase) {
-              | GameOverPhase => GameOverPhase.createElement(self)
+            {switch (gamePhase) {
+              | GameOverPhase => GameOverPhase.createElement(team1Points, team2Points)
               | PackDepletedPhase =>
                 <div>
                   <div> {ReasonReact.string("No more cards")} </div>
@@ -159,7 +201,7 @@ module App = {
                 <div>
                   <div>
                     {ReasonReact.string(
-                      switch (state.maybeTeamHigh) {
+                      switch (maybeTeamHigh) {
                       | None => "No one has high"
                       | Some(teamHigh) =>
                         Team.stringOfTeam(teamHigh) ++ " has high."
@@ -168,7 +210,7 @@ module App = {
                   </div>
                   <div>
                     {ReasonReact.string(
-                      switch (state.maybeTeamLow) {
+                      switch (maybeTeamLow) {
                       | None => "No one has low"
                       | Some(teamLow) =>
                         Team.stringOfTeam(teamLow) ++ " has low."
@@ -176,7 +218,7 @@ module App = {
                     )}
                   </div>
                   <div>
-                    {switch (state.maybeTeamJack) {
+                    {switch (maybeTeamJack) {
                     | None => ReasonReact.null
                     | Some((team, value)) =>
                       switch (value) {
@@ -198,7 +240,7 @@ module App = {
                     }}
                   </div>
                   <div>
-                    {switch (state.maybeTeamGame) {
+                    {switch (maybeTeamGame) {
                     | None => ReasonReact.string("Tied for game.")
                     | Some(teamGame) =>
                       ReasonReact.string(
@@ -215,10 +257,9 @@ module App = {
           </div>
         </div>
 
-        <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
-        <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
+        <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(me))} </div>
+        <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ gameId ++ " ")} </div>
       </div>;
-    },
   };
 };
 

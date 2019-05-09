@@ -1,6 +1,3 @@
-// let component = ReasonReact.reducerComponent("Card");
-let component = ReasonReact.statelessComponent("Card");
-
 module Suit = {
   type t =
     | Clubs
@@ -184,22 +181,16 @@ let stringOfMaybeCard = maybeCard =>
   | Some(card) => stringOfCard(card)
   };
 
-type state = {card: t};
-
-// type action =
-//   | Click;
-
 let stringOfSpriteOffset = ( {rank, suit} ) => {
   let xSpacing = 195; // image pixels between each rank in a suit
   let ySpacing = 285; // image pixels between each suit
   let xOffset = Rank.indexOfRank(rank) * xSpacing + 1; // +1 offset in tandem with a 1 px solid border on the client 
   let yOffset = Suit.indexOfSuit(suit) * ySpacing + 1; //   currently hides the black 1px border around cards in the deck image
   "-" ++ string_of_int(xOffset) ++ "px " ++ "-" ++ string_of_int(yOffset) ++ "px"
-}
+};
 
-let make = (~card, ~clickAction=?, _children) => {
-  ...component,
-  render: _self => {
+[@react.component]
+let make = (~card, ~clickAction=?) => {
     let (clickAction, isClickable) =
       switch (clickAction) {
       | None => (ignore, false)
@@ -211,12 +202,4 @@ let make = (~card, ~clickAction=?, _children) => {
       className={"card " ++ (isClickable ? "bg-blue text-white cursor-pointer": "")}
       onClick={_event => clickAction(card)}>
     </div>;
-  },
-  // reducer: (action, state) =>
-  //   switch (action) {
-  //   | Click => ReasonReact.Update({...state, board: state.board @ [c]})
-  //   },
-  // initialState: () => {
-  //   {card: (Four, Hearts)};
-  // },
 };

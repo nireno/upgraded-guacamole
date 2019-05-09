@@ -1,11 +1,8 @@
 module FaceDownHand = {
   type t = int;
 
-  let component = ReasonReact.statelessComponent("Hand");
-
-  let make = (~nCards, _children) => {
-    ...component,
-    render: _self =>
+  [@react.component]
+  let make = (~nCards) => {
       if (nCards == 0) {
         <div> {ReasonReact.string("No cards in hand")} </div>;
       } else {
@@ -15,16 +12,14 @@ module FaceDownHand = {
           Js.Array.push(<div className="card card__face-down" />, faceDownCards) |> ignore;
           n := n^ - 1;
         };
-        <div> ...faceDownCards </div>;
-      },
+        <div> { ReasonReact.array(faceDownCards) } </div>;
+      }
   };
 };
 
 
 module FaceUpHand = {
   type t = list(Card.t);
-
-  let component = ReasonReact.statelessComponent("Hand");
 
   let hasSuitTest = (targetSuit, cards) =>
     List.exists(({Card.suit}) => suit == targetSuit, cards);
@@ -47,6 +42,7 @@ module FaceUpHand = {
     Card.stringOfCard(card) ++ string_of_int(maxKey);
   };
 
+  [@react.component]
   let make =
       (
         ~cards: t,
@@ -54,7 +50,6 @@ module FaceUpHand = {
         ~maybeLeadCard: option(Card.t),
         ~maybeTrumpCard: option(Card.t),
         ~sendPlayCard: Card.t => unit,
-        _children,
       ) => {
     let keyedCards =
       List.fold_left((acc, card) => [{card, key: generateKey(acc, card)}, ...acc], [], cards);
@@ -92,9 +87,6 @@ module FaceUpHand = {
       handPhase == HandPlayPhase
       && (playerIsLeader || cardIsTrump(card) || cardFollowsSuit(card) || cantFollowSuit);
 
-    {
-      ...component,
-      render: _self => {
         <div>
           {switch (keyedCards) {
            | [] => <div> {ReasonReact.string("No cards in hand")} </div>
@@ -117,7 +109,5 @@ module FaceUpHand = {
              </div>
            }}
         </div>;
-      },
-    };
   };
 };

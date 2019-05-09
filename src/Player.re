@@ -6,38 +6,6 @@ type id =
   | P3
   | P4;
 
-// type state = {
-//   hand,
-//   tricks: list(Trick.t),
-//   maybeTrumpCard: option(Card.t),
-//   maybeLeadCard: option(Card.t),
-//   dealer: id,
-//   leader: id,
-//   maybePlayerTurn: option(id),
-//   team1Points: int,
-//   team2Points: int,
-//   maybeTeamHigh: option(Team.id),
-//   maybeTeamLow: option(Team.id),
-//   maybeTeamJack: option((Team.id, Game.award)),
-//   maybeTeamGame: option(Team.id),
-// };
-
-// let initializeState = () => {
-//   hand: [],
-//   tricks: [],
-//   maybeTrumpCard: None,
-//   maybeLeadCard: None,
-//   dealer: P1,
-//   leader: P2,
-//   maybePlayerTurn: None,
-//   team1Points: 0,
-//   team2Points: 0,
-//   maybeTeamHigh: None,
-//   maybeTeamLow: None,
-//   maybeTeamJack: None,
-//   maybeTeamGame: None,
-// };
-
 let nextPlayer =
   fun
   | P1 => P2
@@ -87,8 +55,7 @@ let stringOfPhase =
 let maybeIdEqual = (maybeId, id) =>
   Js.Option.isSomeValue((. x, y) => x == y, id, maybeId);
 
-let component = ReasonReact.statelessComponent("Hand");
-
+[@react.component]
 let make =
     (
       ~id,
@@ -98,10 +65,7 @@ let make =
       ~sendGiveOne,
       ~sendRunPack,
       ~playerPhase=PlayerIdlePhase,
-      _children,
     ) => {
-  ...component,
-  render: _self =>
     <div className="player__actions flex justify-around my-4">
       {switch (playerPhase) {
         | PlayerDealPhase =>
