@@ -36,7 +36,7 @@ external stateOfJson: string => abs_state = "parse";
 let stateOfJson = json => json |> stateOfJson |> stateFromJs;
 
 
-let initialState = () => {
+let initialState = {
   gameId: "initializing",
   phase: PlayerIdlePhase,
   gamePhase: FindPlayersPhase(3),
@@ -61,9 +61,9 @@ let initialState = () => {
 type action =
   | MatchServerState(state)
 
-let reducer = (action, _state) => {
+let reducer = (_state, action) => {
   switch (action) {
-  | MatchServerState(state) => ReasonReact.Update(state)
+  | MatchServerState(state) => state
   };
 };
 
