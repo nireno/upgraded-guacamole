@@ -5,6 +5,13 @@ module Suit = {
     | Spades
     | Hearts;
 
+  let codeOfSuit = 
+    fun
+    | Clubs => "C"
+    | Diamonds => "D"
+    | Spades => "S"
+    | Hearts => "H";
+
   let toString =
     fun
     | Clubs => "Clubs"
@@ -60,6 +67,22 @@ module Rank = {
     | Queen
     | King
     | Ace;
+  
+  let codeOfRank = 
+    fun
+    | Ace => "A"
+    | Two => "2"
+    | Three => "3"
+    | Four => "4"
+    | Five => "5"
+    | Six => "6"
+    | Seven => "7"
+    | Eight => "8"
+    | Nine => "9"
+    | Ten => "10"
+    | Jack => "J"
+    | Queen => "Q"
+    | King => "K";
 
   let stringOfRank =
     fun
@@ -189,17 +212,23 @@ let stringOfSpriteOffset = ( {rank, suit} ) => {
   "-" ++ string_of_int(xOffset) ++ "px " ++ "-" ++ string_of_int(yOffset) ++ "px"
 };
 
+let getImageSrc = ({rank, suit}) => {
+  let suitCode = Suit.codeOfSuit(suit);
+  let rankCode = Rank.codeOfRank(rank);
+  "/static/cardsjs/cards/" ++ rankCode ++ suitCode ++ ".svg"
+};
+
 [@react.component]
-let make = (~card, ~clickAction=?) => {
+let make = (~card, ~clickAction=?, ~style=?) => {
     let (clickAction, isClickable) =
       switch (clickAction) {
       | None => (ignore, false)
       | Some(ca) => (ca, true)
       };
-    let style = ReactDOMRe.Style.make(~backgroundPosition=stringOfSpriteOffset(card), ());
-    <div
-      style
-      className={"card " ++ (isClickable ? "bg-blue text-white cursor-pointer": "")}
-      onClick={_event => clickAction(card)}>
-    </div>;
+    <ReactSpring.AnimatedImg
+      ?style
+      className={"card" ++ (isClickable ? " cursor-pointer": "")}
+      onClick={_event => clickAction(card)}
+      src=getImageSrc(card)>
+    </ReactSpring.AnimatedImg>;
 };

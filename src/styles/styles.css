@@ -25,27 +25,13 @@
 
 .card {
   @apply shadow-md;
-  width: 180px; 
+  display: block;
+  position: relative;
+  /* width: 180px; 
   height: 270px;  
-  background-image: url('/static/img/deck.min.png');
-  background-repeat: no-repeat; 
-  border: 1px solid #b9b9b9;
-  border-top-left-radius: 10% 7%;
-  border-top-right-radius: 10% 7%;
-  border-bottom-left-radius: 10% 7%;
-  border-bottom-right-radius: 10% 7%;
-}
-
-.card__face-down {
-  background-image: url('/static/img/card-back.min.png');
-  background-size: 180px 270px;
-  border: none;
-}
-
-.card__face-down + .card__face-down {
-  border-top: 1px solid white;
+  border: 1px solid #b9b9b9; */
 }
 
 .card + .card {
-  margin-top: -200px;
+  margin-top: -85%;
 }
