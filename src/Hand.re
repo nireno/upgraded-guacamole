@@ -1,18 +1,74 @@
 module FaceDownHand = {
   type t = int;
 
+  module TransitionConf = {
+    type item = int;
+
+    [@bs.deriving abstract]
+    type props = {
+      [@bs.optional] left: string,
+      [@bs.optional] top: string,
+    }
+    
+    let getKey = (n) => "card-back-" ++ string_of_int(n)
+  };
+
+  module Transition = ReactSpring.MakeTransition(TransitionConf);
+
   [@react.component]
   let make = (~nCards) => {
       if (nCards == 0) {
         <div> {ReasonReact.string("No cards in hand")} </div>;
       } else {
-        let faceDownCards = [||];
+        let ns:array(int) = [||];
         let n = ref(nCards);
+
+        /* 
+        `useTransition` requires an array of items for it to build the transitions.
+        Face-down cards have no data except an int that says how many face down cards
+        to show. So this loop makes an array of n items [n, n-1, ... , 1] that is
+        consumed by `useTransition`. n is used to make the react key for each item.
+        */
         while (n^ > 0) {
-          Js.Array.push(<img className="card" src="/static/cardsjs/cards/Red_Back.svg"/>, faceDownCards) |> ignore;
+          Js.Array.push(n^, ns) |> ignore;
           n := n^ - 1;
         };
-        <div> { ReasonReact.array(faceDownCards) } </div>;
+
+        let transitions = Transition.useTransition(ns, Transition.options(
+          ~from = TransitionConf.props(~left="300px", ~top="-500px", ()),
+          ~enter = TransitionConf.props(~left="0", ~top="0", ()),
+          ~leave = TransitionConf.props(~left="25vw", ()),
+          ~trail = 100,)
+        );
+
+        <div>
+          {Array.map(
+             (transition: Transition.transition) => {
+               let props = transition->Transition.propsGet;
+
+               let springStyle =
+                 switch (props->TransitionConf.leftGet) {
+                 | None => ReactDOMRe.Style.make()
+                 | Some(left) => ReactDOMRe.Style.make(~left, ())
+                 };
+
+               let springStyle =
+                 switch (props->TransitionConf.topGet) {
+                 | None => springStyle
+                 | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
+                 };
+
+               <ReactSpring.AnimatedImg
+                 key={transition->Transition.keyGet}
+                 style=springStyle
+                 className="card"
+                 src="/static/cardsjs/cards/Red_Back.svg"
+               />;
+             },
+             transitions,
+           )
+           |> ReasonReact.array}
+        </div>;
       }
   };
 };
