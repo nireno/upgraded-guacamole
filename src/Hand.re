@@ -86,6 +86,7 @@ module HandTransitionConf = {
   type props = {
     [@bs.optional] left: string,
     [@bs.optional] top: string,
+    [@bs.optional] opacity: string,
   }
   
   let getKey = ({card}) => Card.stringOfCard(card);
@@ -128,9 +129,9 @@ module FaceUpHand = {
     let transitions = HandTransition.useTransition(
         keyedCards |> Belt.List.toArray, 
         HandTransition.options(
-          ~from = HandTransitionConf.props(~left="300px", ~top="-500px", ()),
+          ~from = HandTransitionConf.props(~left="300px", ~top="-500px", ~opacity="1", ()),
           ~enter = HandTransitionConf.props(~left="0", ~top="0", ()),
-          ~leave = HandTransitionConf.props(~left="25vw", ()),
+          ~leave = HandTransitionConf.props(~left="300px", ~opacity="0", ()),
           ~trail = 100,
         ));
     let playerIsLeader =
@@ -184,6 +185,11 @@ module FaceUpHand = {
                     let springStyle = switch( props->HandTransitionConf.topGet ){
                       | None => springStyle
                       | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
+                    };
+
+                    let springStyle = switch( props->HandTransitionConf.opacityGet ){
+                      | None => springStyle
+                      | Some(opacity') => ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
                     };
 
                     let isCardPlayable = checkIsCardPlayable(kCard.card);

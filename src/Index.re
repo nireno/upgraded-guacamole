@@ -9,6 +9,20 @@ let isPlayerTurn = (turn, playerId) => {
 };
 
 module App = {
+   module BoardTransitionConf = {
+    type item = Card.t;
+
+    [@bs.deriving abstract]
+    type props = {
+      [@bs.optional] left: string,
+      [@bs.optional] opacity: string,
+    }
+    
+    let getKey = Card.stringOfCard
+  };
+
+  module BoardTransition = ReactSpring.MakeTransition(BoardTransitionConf);
+
   [@react.component]
   let make = () => {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
@@ -130,21 +144,42 @@ module App = {
 
             <h4 className=""> {ReasonReact.string("Board")} </h4>
             <div className="current-trick">
-              {List.length(state.board) == 0
-                  ? <div> {ReasonReact.string("No cards on the board")} </div>
-                  : <div />}
               <div>
-                {List.map(
-                    c =>
-                      <Card
-                        key={Card.stringOfCard(c)}
-                        card=c
-                        clickAction=?None
-                      />,
-                    state.board,
+                {
+                  let transitions =
+                    BoardTransition.useTransition(
+                      state.board |> Belt.List.toArray,
+                      BoardTransition.options(
+                        ~from=BoardTransitionConf.props(~left="-300px", ~opacity="0", ()),
+                        ~enter=BoardTransitionConf.props(~left="0", ~opacity="1", ()),
+                        ~leave=BoardTransitionConf.props(~left="300px", ~opacity="0", ()),
+                        ~trail=100,
+                      ),
+                    );
+                  Array.map(
+                    (transition: BoardTransition.transition) => {
+                      let card = transition->BoardTransition.itemGet;
+                      let props = transition->BoardTransition.propsGet;
+                      let key = transition->BoardTransition.keyGet;
+
+                      let springStyle =
+                        switch (props->BoardTransitionConf.leftGet) {
+                        | None => ReactDOMRe.Style.make(~left="0", ())
+                        | Some(left) => ReactDOMRe.Style.make(~left, ())
+                        };
+
+                      let springStyle =
+                        switch (props->BoardTransitionConf.opacityGet) {
+                        | None => springStyle
+                        | Some(opacity') =>
+                          ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
+                        };
+                      <Card key style=springStyle card />
+                    },
+                    transitions,
                   )
-                  |> Belt.List.toArray
-                  |> ReasonReact.array}
+                  |> ReasonReact.array
+                }
               </div>
             </div>
           </div>
