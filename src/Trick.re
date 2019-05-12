@@ -62,26 +62,12 @@ let playerTakesTrick = (trumpSuit, leaderSuit, trick) => {
   };
 };
 
-let component = ReasonReact.statelessComponent("Trick");
-
-let make = (~trick, _children) => {
-  {
-    ...component,
-    render: _self => {
-      <ul>
-        <li>
-          {ReasonReact.string("P1: " ++ Card.stringOfCard(trick.p1Card))}
-        </li>
-        <li>
-          {ReasonReact.string("P2: " ++ Card.stringOfCard(trick.p2Card))}
-        </li>
-        <li>
-          {ReasonReact.string("P3: " ++ Card.stringOfCard(trick.p3Card))}
-        </li>
-        <li>
-          {ReasonReact.string("P4: " ++ Card.stringOfCard(trick.p4Card))}
-        </li>
-      </ul>;
-    },
-  };
+[@react.component]
+let make = (~trick) => {
+  <ul>
+    <li> {ReasonReact.string("P1: " ++ Card.stringOfCard(trick.p1Card))} </li>
+    <li> {ReasonReact.string("P2: " ++ Card.stringOfCard(trick.p2Card))} </li>
+    <li> {ReasonReact.string("P3: " ++ Card.stringOfCard(trick.p3Card))} </li>
+    <li> {ReasonReact.string("P4: " ++ Card.stringOfCard(trick.p4Card))} </li>
+  </ul>;
 };

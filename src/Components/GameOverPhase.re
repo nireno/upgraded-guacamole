@@ -1,5 +1,5 @@
-let createElement = ({ReasonReact.state}) => {
-  let teamWinner = ClientGame.(state.team1Points >= state.team2Points ? Team.T1 : T2);
+let createElement = (team1Points, team2Points) => {
+  let teamWinner = ClientGame.(team1Points >= team2Points ? Team.T1 : T2);
 
   <div>
     <h1> {ReasonReact.string("Game over")} </h1>

@@ -1,12 +1,16 @@
-// let component = ReasonReact.reducerComponent("Card");
-let component = ReasonReact.statelessComponent("Card");
-
 module Suit = {
   type t =
     | Clubs
     | Diamonds
     | Spades
     | Hearts;
+
+  let codeOfSuit = 
+    fun
+    | Clubs => "C"
+    | Diamonds => "D"
+    | Spades => "S"
+    | Hearts => "H";
 
   let toString =
     fun
@@ -63,6 +67,22 @@ module Rank = {
     | Queen
     | King
     | Ace;
+  
+  let codeOfRank = 
+    fun
+    | Ace => "A"
+    | Two => "2"
+    | Three => "3"
+    | Four => "4"
+    | Five => "5"
+    | Six => "6"
+    | Seven => "7"
+    | Eight => "8"
+    | Nine => "9"
+    | Ten => "10"
+    | Jack => "J"
+    | Queen => "Q"
+    | King => "K";
 
   let stringOfRank =
     fun
@@ -184,39 +204,31 @@ let stringOfMaybeCard = maybeCard =>
   | Some(card) => stringOfCard(card)
   };
 
-type state = {card: t};
-
-// type action =
-//   | Click;
-
 let stringOfSpriteOffset = ( {rank, suit} ) => {
   let xSpacing = 195; // image pixels between each rank in a suit
   let ySpacing = 285; // image pixels between each suit
   let xOffset = Rank.indexOfRank(rank) * xSpacing + 1; // +1 offset in tandem with a 1 px solid border on the client 
   let yOffset = Suit.indexOfSuit(suit) * ySpacing + 1; //   currently hides the black 1px border around cards in the deck image
   "-" ++ string_of_int(xOffset) ++ "px " ++ "-" ++ string_of_int(yOffset) ++ "px"
-}
+};
 
-let make = (~card, ~clickAction=?, _children) => {
-  ...component,
-  render: _self => {
+let getImageSrc = ({rank, suit}) => {
+  let suitCode = Suit.codeOfSuit(suit);
+  let rankCode = Rank.codeOfRank(rank);
+  "/static/cardsjs/cards/" ++ rankCode ++ suitCode ++ ".svg"
+};
+
+[@react.component]
+let make = (~card, ~clickAction=?, ~style=?) => {
     let (clickAction, isClickable) =
       switch (clickAction) {
       | None => (ignore, false)
       | Some(ca) => (ca, true)
       };
-    let style = ReactDOMRe.Style.make(~backgroundPosition=stringOfSpriteOffset(card), ());
-    <div
-      style
-      className={"card " ++ (isClickable ? "bg-blue text-white cursor-pointer": "")}
-      onClick={_event => clickAction(card)}>
-    </div>;
-  },
-  // reducer: (action, state) =>
-  //   switch (action) {
-  //   | Click => ReasonReact.Update({...state, board: state.board @ [c]})
-  //   },
-  // initialState: () => {
-  //   {card: (Four, Hearts)};
-  // },
+    <ReactSpring.AnimatedImg
+      ?style
+      className={"card" ++ (isClickable ? " cursor-pointer": "")}
+      onClick={_event => clickAction(card)}
+      src=getImageSrc(card)>
+    </ReactSpring.AnimatedImg>;
 };
