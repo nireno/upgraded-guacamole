@@ -41,7 +41,7 @@ module FaceDownHand = {
           ~trail = 100,)
         );
 
-        <div>
+        <>
           {Array.map(
              (transition: Transition.transition) => {
                let props = transition->Transition.propsGet;
@@ -68,7 +68,7 @@ module FaceDownHand = {
              transitions,
            )
            |> ReasonReact.array}
-        </div>;
+        </>;
       }
   };
 };
@@ -167,11 +167,7 @@ module FaceUpHand = {
       handPhase == HandPlayPhase
       && (playerIsLeader || cardIsTrump(card) || cardFollowsSuit(card) || cantFollowSuit);
 
-        <div>
-          {switch (keyedCards) {
-           | [] => <div> {ReasonReact.string("No cards in hand")} </div>
-           | _ =>
-             <div>
+             <>
                {Array.map(
                   (transition:HandTransition.transition) => {
                     let kCard = transition->HandTransition.itemGet;
@@ -203,8 +199,6 @@ module FaceUpHand = {
                   transitions,
                 )
                 |> ReasonReact.array}
-             </div>
-           }}
-        </div>;
+             </>
   };
 };

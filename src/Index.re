@@ -68,13 +68,71 @@ module App = {
         </div>;
       };
 
-      <div className="">
-        <div className="scoreboard flex-column">
-          <h3 className="text-center"> {ReasonReact.string("Scoreboard")} </h3>
-          <h5 className="text-center"> {ReasonReact.string("Team 1: " ++ string_of_int(state.team1Points) ++ " ")} </h5>
-          <h5 className="text-center"> {ReasonReact.string("Team 2: " ++ string_of_int(state.team2Points) ++ " ")} </h5>
+      <div>
+        <div className="scoreboard flex flex-row justify-around">
+          <div className="text-center">
+            <div> {ReasonReact.string("Us")} </div>
+            <div> {ReasonReact.string(string_of_int(state.team1Points))} </div>
+          </div>
+          <div className="text-center">
+            <div> {ReasonReact.string("Them")} </div>
+            <div> {ReasonReact.string(string_of_int(state.team2Points))} </div>
+          </div>
         </div>
+
         <WaitingMessage player=state.me activePlayer=state.activePlayer activePlayerPhase=state.activePlayerPhase  />
+
+        <div className="game-board section flex flex-row justify-around"> 
+          // <h4 className=""> {ReasonReact.string("Board")} </h4>
+          <div className="current-trick flex-1 flex flex-row justify-around  m-4">
+              {
+                let transitions =
+                  BoardTransition.useTransition(
+                    state.board |> Belt.List.toArray,
+                    BoardTransition.options(
+                      ~from=BoardTransitionConf.props(~left="-300px", ~opacity="0", ()),
+                      ~enter=BoardTransitionConf.props(~left="0", ~opacity="1", ()),
+                      ~leave=BoardTransitionConf.props(~left="300px", ~opacity="0", ()),
+                      ~trail=100,
+                    ),
+                  );
+                Array.map(
+                  (transition: BoardTransition.transition) => {
+                    let card = transition->BoardTransition.itemGet;
+                    let props = transition->BoardTransition.propsGet;
+                    let key = transition->BoardTransition.keyGet;
+
+                    let springStyle =
+                      switch (props->BoardTransitionConf.leftGet) {
+                      | None => ReactDOMRe.Style.make(~left="0", ())
+                      | Some(left) => ReactDOMRe.Style.make(~left, ())
+                      };
+
+                    let springStyle =
+                      switch (props->BoardTransitionConf.opacityGet) {
+                      | None => springStyle
+                      | Some(opacity') =>
+                        ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
+                      };
+                    <Card key style=springStyle card />
+                  },
+                  transitions,
+                )
+                |> ReasonReact.array
+              }
+          </div>
+          <div className="trump-card flex-none m-4">
+            {switch (state.maybeTrumpCard) {
+            | None => ReasonReact.null
+            | Some(kick) => 
+              <> 
+                <h4 className="size-3"> {ReasonReact.string("Trump")} </h4> 
+                <Card card=kick /> 
+              </>;
+            }}
+          </div>
+        </div>
+
         <Player
           id={state.me}
           sendDeal={sendIO(SocketMessages.IO_Deal)}
@@ -100,9 +158,7 @@ module App = {
           msg == "" ? ReasonReact.null : <div className="text-center text-white bg-orange my-5 p-2"> {ReasonReact.string({msg})} </div>;
 
         }
-        <div className="flex justify-around content-center">
-          <div>
-            <h4> {ReasonReact.string("Your hand")} </h4>
+        <div className="flex flex-row justify-around content-center">
             {
               switch (state.hand) {
               | ClientGame.FaceDownHand(n) => <Hand.FaceDownHand nCards=n />
@@ -128,61 +184,7 @@ module App = {
                 />
               };
             }
-          </div>
-          <div className="game-board section"> 
 
-            <div className="trump-card">
-              {switch (state.maybeTrumpCard) {
-              | None => ReasonReact.null
-              | Some(kick) => 
-                <> 
-                  <h4 className="size-3"> {ReasonReact.string("Trump")} </h4> 
-                  <Card card=kick /> 
-                </>;
-              }}
-            </div>
-
-            <h4 className=""> {ReasonReact.string("Board")} </h4>
-            <div className="current-trick">
-              <div>
-                {
-                  let transitions =
-                    BoardTransition.useTransition(
-                      state.board |> Belt.List.toArray,
-                      BoardTransition.options(
-                        ~from=BoardTransitionConf.props(~left="-300px", ~opacity="0", ()),
-                        ~enter=BoardTransitionConf.props(~left="0", ~opacity="1", ()),
-                        ~leave=BoardTransitionConf.props(~left="300px", ~opacity="0", ()),
-                        ~trail=100,
-                      ),
-                    );
-                  Array.map(
-                    (transition: BoardTransition.transition) => {
-                      let card = transition->BoardTransition.itemGet;
-                      let props = transition->BoardTransition.propsGet;
-                      let key = transition->BoardTransition.keyGet;
-
-                      let springStyle =
-                        switch (props->BoardTransitionConf.leftGet) {
-                        | None => ReactDOMRe.Style.make(~left="0", ())
-                        | Some(left) => ReactDOMRe.Style.make(~left, ())
-                        };
-
-                      let springStyle =
-                        switch (props->BoardTransitionConf.opacityGet) {
-                        | None => springStyle
-                        | Some(opacity') =>
-                          ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
-                        };
-                      <Card key style=springStyle card />
-                    },
-                    transitions,
-                  )
-                  |> ReasonReact.array
-                }
-              </div>
-            </div>
-          </div>
         </div>
 
         <div className="flex justify-around">
