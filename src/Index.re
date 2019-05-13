@@ -80,7 +80,6 @@ module App = {
           </div>
         </div>
 
-        <WaitingMessage player=state.me activePlayer=state.activePlayer activePlayerPhase=state.activePlayerPhase  />
 
         <div className="game-board section flex flex-row justify-around"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
@@ -133,6 +132,8 @@ module App = {
           </div>
         </div>
 
+        <WaitingMessage player=state.me activePlayer=state.activePlayer activePlayerPhase=state.activePlayerPhase  />
+
         <Player
           id={state.me}
           sendDeal={sendIO(SocketMessages.IO_Deal)}
@@ -158,6 +159,8 @@ module App = {
           msg == "" ? ReasonReact.null : <div className="text-center text-white bg-orange my-5 p-2"> {ReasonReact.string({msg})} </div>;
 
         }
+
+
         <div className="flex flex-row justify-around content-center">
             {
               switch (state.hand) {
