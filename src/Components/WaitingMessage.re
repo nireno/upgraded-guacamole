@@ -10,14 +10,12 @@ let make = (~player, ~activePlayer, ~activePlayerPhase) => {
     | PlayerGiveOnePhase => str_waitingFor ++ " to run the pack."
     | PlayerRunPackPhase => str_waitingFor ++ " to run the pack again."
     // This last case should never happen. The active player should never be in the PlayerIdlePhase.
-    | PlayerIdlePhase => ""
+    | PlayerIdlePhase => "..."
     };
-  msg == ""
-    ? ReasonReact.null
-    : <div
-        className={
-          "text-center text-white p-2 my-4 " ++ (player == activePlayer ? "bg-green" : "bg-orange")
-        }>
-        {ReasonReact.string(msg)}
-      </div>;
+    <div
+      className={
+        "text-center text-white p-2 my-4 " ++ (player == activePlayer ? "bg-green" : "bg-orange")
+      }>
+      {ReasonReact.string(msg)}
+    </div>;
 };
