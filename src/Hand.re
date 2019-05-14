@@ -62,7 +62,7 @@ module FaceDownHand = {
                  key={transition->Transition.keyGet}
                  style=springStyle
                  className="card"
-                 src="/static/cardsjs/cards/Red_Back.svg"
+                 src="./static/cardsjs/cards/Red_Back.svg"
                />;
              },
              transitions,
