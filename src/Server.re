@@ -1,17 +1,11 @@
 [%%debugger.chrome];
 open AppPrelude;
 
-[@bs.val] external node_env: string = "process.env.NODE_ENV";
+[@bs.val] external nodeEnv: string = "process.env.NODE_ENV";
+[@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.HTTP_PORT_ENV";
 
 [@bs.module] external nanoid: unit => string = "";
 
-let onListen = e =>
-  switch (e) {
-  | exception (Js.Exn.Error(e)) =>
-    Js.log(e);
-    Node.Process.exit(1);
-  | _ => Js.log @@ "Listening at http://127.0.0.1:3000"
-  };
 
 let app = Express.express();
 
@@ -327,4 +321,9 @@ SockServ.onConnect(
   },
 );
 
-Http.listen(http, 3000, () => print_endline("listening on *:3000"));
+
+let httpPort = Js.Nullable.toOption(httpPortEnv)
+ |> Js.Option.getWithDefault("3000")
+ |> int_of_string;
+
+Http.listen(http, httpPort, () => print_endline("Listening on *:" ++ string_of_int(httpPort)));
