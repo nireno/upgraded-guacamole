@@ -8,6 +8,10 @@ type state = {
   gameId: string,
   phase: Player.phase,
   gamePhase: SharedGame.phase,
+  p1Name: string,
+  p2Name: string,
+  p3Name: string,
+  p4Name: string,
   me: Player.id,
   dealer: Player.id,
   leader: Player.id,
@@ -37,9 +41,13 @@ let stateOfJson = json => json |> stateOfJson |> stateFromJs;
 
 
 let initialState = {
-  gameId: "initializing",
+  gameId: "",
   phase: PlayerIdlePhase,
   gamePhase: FindPlayersPhase(3),
+  p1Name: Player.stringOfId(P1),
+  p2Name: Player.stringOfId(P2),
+  p3Name: Player.stringOfId(P3),
+  p4Name: Player.stringOfId(P4),
   me: P1,
   dealer: P1,
   leader: P1,
@@ -66,6 +74,15 @@ let reducer = (_state, action) => {
   | MatchServerState(state) => state
   };
 };
+
+let getPlayerName = (playerId, state) => {
+  switch(playerId){
+    | Player.P1 => state.p1Name
+    | Player.P2 => state.p2Name
+    | Player.P3 => state.p3Name
+    | Player.P4 => state.p4Name
+  }
+}
 
 let stringOfState = (state) => {
   "ClientGame.state."

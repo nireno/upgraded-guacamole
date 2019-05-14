@@ -27,6 +27,10 @@ type state = {
   p2Socket: option(BsSocket.Server.socketT),
   p3Socket: option(BsSocket.Server.socketT),
   p4Socket: option(BsSocket.Server.socketT),
+  p1Name: string,
+  p2Name: string,
+  p3Name: string,
+  p4Name: string,
   p1Hand: Hand.FaceUpHand.t,
   p2Hand: Hand.FaceUpHand.t,
   p3Hand: Hand.FaceUpHand.t,
@@ -70,6 +74,10 @@ let initialState = () => {
     p2Socket: None,
     p3Socket: None,
     p4Socket: None,
+    p1Name: Player.stringOfId(P1),
+    p2Name: Player.stringOfId(P2),
+    p3Name: Player.stringOfId(P3),
+    p4Name: Player.stringOfId(P4),
     p1Hand: [],
     p2Hand: [],
     p3Hand: [],
@@ -131,6 +139,25 @@ let getPlayerSocket = (player, state) => {
   | P4 => state.p4Socket
   };
 };
+
+let getPlayerName = (player, state) => {
+  switch (player) {
+  | Player.P1 => state.p1Name
+  | P2 => state.p2Name
+  | P3 => state.p3Name
+  | P4 => state.p4Name
+  };
+};
+
+let updatePlayerName = (player, name, state) => {
+  switch (player) {
+  | Player.P1 => {...state, p1Name: name}
+  | P2 => {...state, p2Name: name}
+  | P3 => {...state, p3Name: name}
+  | P4 => {...state, p4Name: name}
+  };
+}
+
 
 let getPlayerHand = (player, state) => {
   switch (player) {

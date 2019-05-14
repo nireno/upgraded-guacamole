@@ -12,6 +12,14 @@
 
 <body>
   <div class="app"></div>
+  <script>
+    /* 
+      When the app is being proxied through wordpress this variable is meant to hold
+      the display name of the currently logged in wordpress user. It is left
+      undefined here so that the app can still run independently of wordpress.
+    */ 
+    let g_display_name = undefined; 
+  </script>
   <script src="./Index.js"></script>
 </body>
 

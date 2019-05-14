@@ -3,6 +3,7 @@ type ioPlayerId = int
 type ioTeamId = int
 
 type clientToServer =
+  | IO_JoinGame(string)
   | IO_PlayCard(ioPlayerId, str_json)
   | IO_BlockPlay(ioPlayerId) //#todo Remove. blockplay doesn't make sense in client-server model.
   | IO_EndTrick

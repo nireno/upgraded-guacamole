@@ -1,4 +1,11 @@
 [@bs.val] external node_env: string = "process.env.NODE_ENV";
+
+[@bs.val] external username: Js.Nullable.t(string) = "g_display_name";
+let username = 
+  username 
+  |> Js.Nullable.toOption 
+  |> Js.Option.getWithDefault("");
+
 open ClientGame;
 
 let isPlayerTurn = (turn, playerId) => {
@@ -27,6 +34,17 @@ module App = {
   let make = () => {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
+
+    let transitions =
+      BoardTransition.useTransition(
+        state.board |> Belt.List.toArray,
+        BoardTransition.options(
+          ~from=BoardTransitionConf.props(~left="-300px", ~opacity="0", ()),
+          ~enter=BoardTransitionConf.props(~left="0", ~opacity="1", ()),
+          ~leave=BoardTransitionConf.props(~left="300px", ~opacity="0", ()),
+          ~trail=100,
+        ),
+      );
 
     React.useEffect1(() => {
       let socket = ClientSocket.T.create();
@@ -68,6 +86,14 @@ module App = {
         </div>;
       };
 
+      state.gameId == "" 
+      ? 
+      <div className="flex flex-row justify-around">
+        <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username))}>
+          {ReasonReact.string("Join Game")}
+        </button> 
+      </div>
+      :
       <div>
         <div className="scoreboard flex flex-row justify-around">
           <div className="text-center">
@@ -85,16 +111,6 @@ module App = {
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
           <div className="current-trick flex-1 flex flex-row justify-around  m-4">
               {
-                let transitions =
-                  BoardTransition.useTransition(
-                    state.board |> Belt.List.toArray,
-                    BoardTransition.options(
-                      ~from=BoardTransitionConf.props(~left="-300px", ~opacity="0", ()),
-                      ~enter=BoardTransitionConf.props(~left="0", ~opacity="1", ()),
-                      ~leave=BoardTransitionConf.props(~left="300px", ~opacity="0", ()),
-                      ~trail=100,
-                    ),
-                  );
                 Array.map(
                   (transition: BoardTransition.transition) => {
                     let card = transition->BoardTransition.itemGet;
@@ -132,7 +148,11 @@ module App = {
           </div>
         </div>
 
-        <WaitingMessage player=state.me activePlayer=state.activePlayer activePlayerPhase=state.activePlayerPhase  />
+        <WaitingMessage 
+          activePlayerName={ClientGame.getPlayerName(state.activePlayer, state)} 
+          player=state.me 
+          activePlayer=state.activePlayer 
+          activePlayerPhase=state.activePlayerPhase />
 
         <Player
           id={state.me}
