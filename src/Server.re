@@ -46,28 +46,16 @@ let socketId_RoomKey: StringMap.t(string) =
   StringMap.make(~hintSize=(expectedGameCount*4));
 
 /** Map of room keys to respective game states */
-let gameRooms: StringMap.t(Game.state) =
+let roomKey_gameState: StringMap.t(Game.state) =
   StringMap.make(~hintSize=expectedGameCount);
 
-let debugGameRooms = (~n=0, ()) => {
-  let roomCount = StringMap.size(gameRooms);
+let debugGameStates = (~n=0, ()) => {
+  let roomCount = StringMap.size(roomKey_gameState);
   let strAre = Grammar.byNumber(roomCount, "is");
   let strRooms = Grammar.byNumber(roomCount, "room");
   let strRoomCount = string_of_int(roomCount);
   Js.log({j|There $strAre $strRoomCount $strRooms.|j} |> leftPad(_, ~n=n, ()));
 };
-
-let unfilledRoom: StringMap.t(Game.state) => option(Game.state) =
-  gameRooms => {
-    let gameRooms = StringMap.valuesToArray(gameRooms) |> Array.to_list;
-    let unfilledRooms =
-      List.filter(gameRoom => Game.playerCount(gameRoom) < 4, gameRooms);
-    switch (unfilledRooms) {
-    | [] => None
-    | [r, ..._rs] => Some(r)
-    };
-  };
-
 
 let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
   let playerHand = Game.getPlayerHand(player, gameState);
@@ -131,8 +119,8 @@ let buildSocketStatePairs: Game.state => list((option(BsSocket.Server.socketT),C
     (gameState|>Game.getPlayerSocket(player), buildClientState(player, playerPhase)))
 }
 
-let updateClientStates = gameRoom =>
-  gameRoom
+let updateClientStates = gameState =>
+  gameState
   ->buildSocketStatePairs
   ->Belt.List.forEach(((socket, clientState)) =>
       switch (socket) {
@@ -178,28 +166,28 @@ let onSocketDisconnect = socket =>
       Js.log("Server:onSocketDisconnect");
       debugSocket(socket, ~n=1, ());
 
-      StringMap.toArray(gameRooms)
+      StringMap.toArray(roomKey_gameState)
       |> Belt.Array.forEach(_, ((key, game)) =>
            switch (Game.maybeGetSocketPlayer(socket, game)) {
            | None => ()
            | Some(player) =>
              let game = Game.removePlayerSocket(player, game);
              if (Game.isEmpty(game)) {
-               StringMap.remove(gameRooms, key);
+               StringMap.remove(roomKey_gameState, key);
              } else {
                let game = 
                switch(game.phase){
                  | FindPlayersPhase(_n) => {...game, phase: FindPlayersPhase(4 - Game.playerCount(game))}
                  | _ => {...game, phase: FindSubsPhase(4 - Game.playerCount(game), game.phase)}
                };
-               StringMap.set(gameRooms, key, game);
+               StringMap.set(roomKey_gameState, key, game);
                updateClientStates(game);
              };
            }
          );
       
       StringMap.remove(socketId_RoomKey, socket->SockServ.Socket.getId);
-      debugGameRooms(~n=1, ());
+      debugGameStates(~n=1, ());
     },
   );
 
@@ -248,21 +236,20 @@ SockServ.onConnect(
         | IO_JoinGame(username) => 
           let socketId = SockServ.Socket.(socket->getId);
 
-          /** Consider changing names with "room" to game where room is actually a Game.state */
-          let maybeUnfilledRoom = gameRoom =>
-            switch (gameRoom |> Game.findEmptySeat) {
+          let maybeUnfilledGame = gameState =>
+            switch (gameState |> Game.findEmptySeat) {
             | None => None
-            | Some(_) => Some(gameRoom)
+            | Some(_) => Some(gameState)
             };
 
-          let unfilledRooms =
-            gameRooms
+          let unfilledGames =
+            roomKey_gameState
             |> StringMap.valuesToArray
-            |> Belt.Array.keepMap(_, gameRoom => maybeUnfilledRoom(gameRoom))
+            |> Belt.Array.keepMap(_, gameState => maybeUnfilledGame(gameState))
             |> Array.to_list;
 
-          let gameRoom =
-            switch (unfilledRooms) {
+          let gameState =
+            switch (unfilledGames) {
             | [] =>
               let keysToRooms = getKeysToRooms();
               let room = Js.Dict.unsafeGet(keysToRooms, socketId);
@@ -271,7 +258,7 @@ SockServ.onConnect(
                 roomKey: socketId,
                 room,
               };
-            | [gameRoom, ..._rest] => gameRoom
+            | [gameState, ..._rest] => gameState
             };
 
           // let maybeRoom =
@@ -284,61 +271,61 @@ SockServ.onConnect(
           // | None => failwith("Expected Some AdapterRoom but got None.") // Improve error handling #unsafe #todo
           // };
 
-          let socket = SockServ.Socket.join(socket, gameRoom.roomKey);
-          StringMap.set(socketId_RoomKey, socketId, gameRoom.roomKey);
+          let socket = SockServ.Socket.join(socket, gameState.roomKey);
+          StringMap.set(socketId_RoomKey, socketId, gameState.roomKey);
 
-          let playerId = Game.findEmptySeat(gameRoom) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
+          let playerId = Game.findEmptySeat(gameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
 
-          let gameRoom =
-            Game.updatePlayerSocket(playerId, socket, gameRoom)
+          let gameState =
+            Game.updatePlayerSocket(playerId, socket, gameState)
             |> Game.updatePlayerName(playerId, username == "" ? Player.stringOfId(playerId) : username);
 
-          let playerCount = Game.playerCount(gameRoom);
+          let playerCount = Game.playerCount(gameState);
           let playersNeeded = 4 - playerCount;
 
-          let gameRoom =
-              switch(gameRoom.phase){
+          let gameState =
+              switch(gameState.phase){
                 | FindSubsPhase(_n, subPhase) => 
-                  playersNeeded == 0 ? {...gameRoom, phase: subPhase} : {...gameRoom, phase: FindSubsPhase(playersNeeded, subPhase)}
+                  playersNeeded == 0 ? {...gameState, phase: subPhase} : {...gameState, phase: FindSubsPhase(playersNeeded, subPhase)}
                 | FindPlayersPhase(_n) => 
-                  playersNeeded == 0 ? {...gameRoom, phase: DealPhase} : {...gameRoom, phase: FindPlayersPhase(playersNeeded)}
-                | _ => gameRoom
+                  playersNeeded == 0 ? {...gameState, phase: DealPhase} : {...gameState, phase: FindPlayersPhase(playersNeeded)}
+                | _ => gameState
               }
 
-          StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
+          StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
 
-          updateClientStates(gameRoom);
+          updateClientStates(gameState);
 
-          debugGameRooms(~n=1, ());
+          debugGameStates(~n=1, ());
 
         | ioAction => 
           let roomKey = 
             StringMap.get(socketId_RoomKey, socket->SockServ.Socket.getId) 
             |> Js.Option.getWithDefault("");
 
-          switch (StringMap.get(gameRooms, roomKey)) {
+          switch (StringMap.get(roomKey_gameState, roomKey)) {
           | None => ()
-          | Some(gameRoom) =>
+          | Some(gameState) =>
             let action = ioAction |> actionOfIO_Action;
             let isEndTrick = switch(action){
-              | PlayCard(player, _) => Player.nextPlayer(player) == gameRoom.leader 
+              | PlayCard(player, _) => Player.nextPlayer(player) == gameState.leader 
               | _ => false
             };
 
-            let gameRoom = GameReducer.reducer(action, gameRoom);
+            let gameState = GameReducer.reducer(action, gameState);
 
             let advanceRound = () => {
-              let gameRoom = GameReducer.reducer(AdvanceRound, gameRoom);
-              StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
-              updateClientStates(gameRoom);
+              let gameState = GameReducer.reducer(AdvanceRound, gameState);
+              StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
+              updateClientStates(gameState);
             }
 
             if(isEndTrick){
               Js.Global.setTimeout(advanceRound, 2000) |> ignore
             }
 
-            StringMap.set(gameRooms, gameRoom.roomKey, gameRoom);
-            updateClientStates(gameRoom);
+            StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
+            updateClientStates(gameState);
           }
       }
     );
