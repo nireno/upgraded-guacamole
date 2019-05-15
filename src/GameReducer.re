@@ -120,6 +120,10 @@ let rec reducer = (action, state) =>
         };
 
       | EndTrick =>
+        let updatePlayers = state => {...state, maybePlayerTurn: None};
+        state |> updatePlayers;
+
+      | AdvanceRound => 
         let (p1Index, p2Index, p3Index, p4Index) =
           playerBoardIndices(state.leader);
         let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadCard. #unsafe */
@@ -136,22 +140,6 @@ let rec reducer = (action, state) =>
         let trickWinner: Player.id =
           Trick.playerTakesTrick(trumpSuit, leadSuit, trick);
 
-        
-        let updatePlayers = state => {...state, leader: trickWinner, maybePlayerTurn: None};
-        state |> updatePlayers;
-
-      | AdvanceRound => 
-        let (p1Index, p2Index, p3Index, p4Index) =
-          playerBoardIndices(state.leader);
-
-        let trick =
-          Trick.{
-            p1Card: List.nth(state.board, p1Index),
-            p2Card: List.nth(state.board, p2Index),
-            p3Card: List.nth(state.board, p3Index),
-            p4Card: List.nth(state.board, p4Index),
-          }; /* Action requires that the board has four cards. #unsafe*/
-
         let collectTrick = (player, trick, state) =>
           switch (player) {
           | Player.P1 => {...state, p1Tricks: state.p1Tricks @ [trick]}
@@ -162,12 +150,13 @@ let rec reducer = (action, state) =>
 
         let advanceRound = state => {
           ...state,
-          maybePlayerTurn: Some(state.leader),
+          leader: trickWinner,
+          maybePlayerTurn: Some(trickWinner),
           maybeLeadCard: None,
           board: [],
         };
 
-        let state = state  |> collectTrick(state.leader, trick) |> advanceRound;
+        let state = state  |> collectTrick(trickWinner, trick) |> advanceRound;
         List.length(state.p1Hand) == 0
           ? reducer(EndRound, state) : state;
       | EndRound =>

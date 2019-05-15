@@ -77,6 +77,7 @@ let buildClientState = (activePlayer, activePlayerPhase, gameState, player, play
     p3Name: gameState.p3Name,
     p4Name: gameState.p4Name,
     me: player,
+    myTricks: Game.getPlayerTricks(player, gameState),
     dealer: gameState.dealer,
     leader: gameState.leader,
     activePlayer,
@@ -307,6 +308,7 @@ SockServ.onConnect(
           | None => ()
           | Some(gameState) =>
             let action = ioAction |> actionOfIO_Action;
+
             let isEndTrick = switch(action){
               | PlayCard(player, _) => Player.nextPlayer(player) == gameState.leader 
               | _ => false

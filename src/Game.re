@@ -166,7 +166,7 @@ let getPlayerHand = (player, state) => {
   | P3 => state.p3Hand
   | P4 => state.p4Hand
   };
-}
+};
 
 let getAllPlayerSockets = state => {
   let rec f:
@@ -181,6 +181,15 @@ let getAllPlayerSockets = state => {
       player == P4 ? playerSockets : f(Player.nextPlayer(player), playerSockets);
     };
   f(P1, []);
+};
+
+let getPlayerTricks = (playerId, state) => {
+  switch (playerId) {
+  | Player.P1 => state.p1Tricks
+  | P2 => state.p2Tricks
+  | P3 => state.p3Tricks
+  | P4 => state.p4Tricks
+  };
 };
 
 let playerCount = state => {
