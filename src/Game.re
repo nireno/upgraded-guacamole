@@ -19,7 +19,6 @@ type action =
   | CheatPoints(Team.id, int);
 
 type state = {
-  room: BsSocketExtra.AdapterRoom.t,
   roomKey: string,
   deck: Deck.t,
   board: list(Card.t),
@@ -67,7 +66,6 @@ let stringOfState = (state) => {
 let initialState = () => {
   {
     roomKey: "",
-    room: Js.null |> Obj.magic,
     deck: Deck.make() |> Deck.shuffle,
     board: [],
     p1Socket: None,

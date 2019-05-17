@@ -251,11 +251,9 @@ SockServ.onConnect(
             switch (unfilledGames) {
             | [] =>
               let keysToRooms = getKeysToRooms();
-              let room = Js.Dict.unsafeGet(keysToRooms, socketId);
               {
                 ...Game.initialState(),
                 roomKey: socketId,
-                room,
               };
             | [gameState, ..._rest] => gameState
             };
