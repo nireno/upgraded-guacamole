@@ -351,7 +351,11 @@ let rec reducer = (action, state) =>
           deck: deck @ [prevKick],
           maybeTrumpCard: Some(kick'),
         };
-        state;
+        
+        let updateStatePhase = state => 
+          {...state, phase: isGameOverTest(state) ? GameOverPhase : state.phase};
+
+        state |> updateStatePhase;
       | DealAgain =>
         {
           ...state,
