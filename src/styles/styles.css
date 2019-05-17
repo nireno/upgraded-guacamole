@@ -40,3 +40,7 @@
 .card + .card {
   margin-left: -55%;
 }
+
+.zneg-10 {
+  z-index: -10;
+}

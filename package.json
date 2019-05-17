@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "scripts": {
     "build": "bsb -make-world",
-    "start": "bsb -make-world -w",
+    "start": "BS_WATCH_CLEAR=1 bsb -make-world -w",
     "clean": "bsb -clean-world",
     "re:build": "bsb -make-world -clean-world",
     "re:watch": "bsb -make-world -clean-world -w",

@@ -101,11 +101,18 @@ module App = {
       | FindPlayersPhase(n) => <FindPlayersView n />
       | FindSubsPhase(n, _) => <FindSubsView n />
       | GameOverPhase => <GameOverView team1Points=state.team1Points team2Points=state.team2Points />
-      | RoundSummaryPhase => 
-        let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
-        <RoundSummaryView maybeTeamHigh maybeTeamLow maybeTeamJack maybeTeamGame continueClick={sendIO(IO_NewRound)} />
       | _ => 
       <div>
+        {
+          switch(state.gamePhase){
+          | RoundSummaryPhase => 
+            let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
+            <Modal visible=true>
+            <RoundSummaryView maybeTeamHigh maybeTeamLow maybeTeamJack maybeTeamGame continueClick={sendIO(IO_NewRound)} />
+            </Modal>
+          | _ => <Modal visible=false />
+          }
+        }
         <div className="scoreboard flex flex-row justify-around">
           <div className="text-center">
             <div> {ReasonReact.string("Us")} </div>
