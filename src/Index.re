@@ -71,7 +71,7 @@ module App = {
         };
       };
 
-      let createPlayerTricks = tricks => {
+      let _createPlayerTricks = tricks => {
         <div className="column">
           {List.length(tricks) == 0
              ? <div> {ReasonReact.string("No tricks")} </div>
@@ -219,9 +219,13 @@ module App = {
         //       }}
         //   </div>
         // </div>
-        {createPlayerTricks(state.myTricks)}
-        <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
-        <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
+
+        // {createPlayerTricks(state.myTricks)}
+
+        <div className="debug-info" style={ReactDOMRe.Style.make(~position="absolute", ~bottom="0", ())}>
+          <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
+          <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
+        </div>
       </div>;
       }
   };
