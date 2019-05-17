@@ -40,7 +40,8 @@ type phase =
   | PlayerDealPhase
   | PlayerBegPhase
   | PlayerGiveOnePhase
-  | PlayerRunPackPhase;
+  | PlayerRunPackPhase
+  | PlayerRedealPhase;
 
 let stringOfPhase =
   fun
@@ -52,7 +53,8 @@ let stringOfPhase =
   | PlayerDealPhase => "PlayerDealPhase"
   | PlayerBegPhase => "PlayerBegPhase"
   | PlayerGiveOnePhase => "PlayerGiveOnePhase"
-  | PlayerRunPackPhase => "PlayerRunPackPhase";
+  | PlayerRunPackPhase => "PlayerRunPackPhase"
+  | PlayerRedealPhase => "PlayerRedealPhase";
 
 
 let maybeIdEqual = (maybeId, id) =>
@@ -61,12 +63,12 @@ let maybeIdEqual = (maybeId, id) =>
 [@react.component]
 let make =
     (
-      ~id,
       ~sendDeal,
       ~sendBeg,
       ~sendStandUp,
       ~sendGiveOne,
       ~sendRunPack,
+      ~sendReshuffle,
       ~playerPhase=PlayerIdlePhase,
     ) => {
     <div className="player__actions flex justify-around my-4">
@@ -93,6 +95,10 @@ let make =
           <button className="btn btn-blue" onClick=sendRunPack>
             {ReasonReact.string("Run Again")}
           </button>
+        | PlayerRedealPhase =>
+            <button className="btn btn-blue" onClick=sendReshuffle>
+              {ReasonReact.string("Reshuffle")}
+            </button>
         | PlayerTurnPhase(_)
         | PlayerIdlePhase => ReasonReact.null
         }}

@@ -97,6 +97,14 @@ module App = {
         </button> 
       </div>
       :
+      switch(state.gamePhase){
+      | FindPlayersPhase(n) => <FindPlayersView n />
+      | FindSubsPhase(n, _) => <FindSubsView n />
+      | GameOverPhase => <GameOverView team1Points=state.team1Points team2Points=state.team2Points />
+      | RoundSummaryPhase => 
+        let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
+        <RoundSummaryView maybeTeamHigh maybeTeamLow maybeTeamJack maybeTeamGame continueClick={sendIO(IO_NewRound)} />
+      | _ => 
       <div>
         <div className="scoreboard flex flex-row justify-around">
           <div className="text-center">
@@ -158,31 +166,14 @@ module App = {
           activePlayerPhase=state.activePlayerPhase />
 
         <Player
-          id={state.me}
           sendDeal={sendIO(SocketMessages.IO_Deal)}
           sendStandUp={sendIO(SocketMessages.IO_Stand)}
           sendBeg={sendIO(IO_Beg)}
           sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
           sendRunPack={sendIO(IO_RunPack)}
+          sendReshuffle={sendIO(IO_DealAgain)}
           playerPhase=state.phase
         />
-        {
-          let msg = switch (state.gamePhase) {
-          | FindPlayersPhase(n) =>
-            let playersAsText = Grammar.byNumber(n, "player");
-            let nAsText = string_of_int(n);
-            {j|Finding $nAsText more $playersAsText ...|j}
-          | FindSubsPhase(n, _phase) => 
-            let playersAsText = Grammar.byNumber(n, "player");
-            let nAsText = string_of_int(n);
-            {j|$nAsText $playersAsText disconnected. Finding substitutes...|j}
-          | _ => 
-            ""
-          };
-          msg == "" ? ReasonReact.null : <div className="text-center text-white bg-orange my-5 p-2"> {ReasonReact.string({msg})} </div>;
-
-        }
-
 
         <div className="flex flex-row justify-around content-center">
             {
@@ -213,80 +204,18 @@ module App = {
 
         </div>
 
-        <div className="flex justify-around">
-          <div className="round-summary column">
-            {switch (state.gamePhase) {
-              | GameOverPhase => GameOverPhase.createElement(state.team1Points, state.team2Points)
-              | PackDepletedPhase =>
-                <div>
-                  <div> {ReasonReact.string("No more cards")} </div>
-                  <button className="btn btn-blue" onClick={sendIO(IO_DealAgain)}>
-                    {ReasonReact.string("Reshuffle")}
-                  </button>
-                </div>
-              | RoundSummaryPhase =>
-                <div>
-                  <div>
-                    {ReasonReact.string(
-                      switch (state.maybeTeamHigh) {
-                      | None => "No one has high"
-                      | Some(teamHigh) =>
-                        Team.stringOfTeam(teamHigh) ++ " has high."
-                      },
-                    )}
-                  </div>
-                  <div>
-                    {ReasonReact.string(
-                      switch (state.maybeTeamLow) {
-                      | None => "No one has low"
-                      | Some(teamLow) =>
-                        Team.stringOfTeam(teamLow) ++ " has low."
-                      },
-                    )}
-                  </div>
-                  <div>
-                    {switch (state.maybeTeamJack) {
-                    | None => ReasonReact.null
-                    | Some((team, value)) =>
-                      switch (value) {
-                      | HangJackAward =>
-                        <div>
-                          {ReasonReact.string(
-                              Team.stringOfTeam(team) ++ " hanged the jack.",
-                            )}
-                        </div>
-                      | RunJackAward =>
-                        <div>
-                          {ReasonReact.string(
-                              Team.stringOfTeam(team)
-                              ++ " gets away with jack.",
-                            )}
-                        </div>
-                      | _ => ReasonReact.null
-                      }
-                    }}
-                  </div>
-                  <div>
-                    {switch (state.maybeTeamGame) {
-                    | None => ReasonReact.string("Tied for game.")
-                    | Some(teamGame) =>
-                      ReasonReact.string(
-                        Team.stringOfTeam(teamGame) ++ " gets game.",
-                      )
-                    }}
-                  </div>
-                  <button className="btn btn-blue" onClick={sendIO(IO_NewRound)}>
-                    {ReasonReact.string("Continue")}
-                  </button>
-                </div>
-              | _ => ReasonReact.null
-              }}
-          </div>
-        </div>
+        // <div className="flex justify-around">
+        //   <div className="round-summary column">
+        //     {switch (state.gamePhase) {
+        //       | _ => ReasonReact.null
+        //       }}
+        //   </div>
+        // </div>
         {createPlayerTricks(state.myTricks)}
         <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
         <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
       </div>;
+      }
   };
 };
 

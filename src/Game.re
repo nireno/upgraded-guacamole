@@ -301,8 +301,10 @@ let decidePlayerPhase:
               ? (player, PlayerGiveOnePhase)
               : dealer == player && gamePhase == RunPackPhase
                   ? (player, PlayerRunPackPhase)
-                  : leader == player && gamePhase == BegPhase
-                      ? (player, PlayerBegPhase) : (player, PlayerIdlePhase);
+                  : dealer == player && gamePhase == PackDepletedPhase
+                      ? (player, PlayerRedealPhase)
+                      : leader == player && gamePhase == BegPhase
+                          ? (player, PlayerBegPhase) : (player, PlayerIdlePhase);
   };
 
 

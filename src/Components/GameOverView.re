@@ -1,4 +1,5 @@
-let createElement = (team1Points, team2Points) => {
+[@react.component]
+let make = (~team1Points, ~team2Points) => {
   let teamWinner = team1Points >= team2Points ? Team.T1 : T2;
 
   <div>
@@ -7,4 +8,4 @@ let createElement = (team1Points, team2Points) => {
       {Team.stringOfTeam(teamWinner) ++ " wins!" |> ReasonReact.string}
     </div>
   </div>;
-};
+}
