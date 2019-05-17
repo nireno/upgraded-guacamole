@@ -1,11 +1,8 @@
 [@react.component]
-let make = (~team1Points, ~team2Points) => {
-  let teamWinner = team1Points >= team2Points ? Team.T1 : T2;
-
-  <div>
+let make = (~wePoints, ~demPoints) => {
+  let outcome = wePoints >= demPoints ? "We win :)" : "We loss :(";
+  <>
     <h1> {ReasonReact.string("Game over")} </h1>
-    <div>
-      {Team.stringOfTeam(teamWinner) ++ " wins!" |> ReasonReact.string}
-    </div>
-  </div>;
-}
+    <div> {outcome |> ReasonReact.string} </div>
+  </>;
+};

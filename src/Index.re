@@ -90,6 +90,12 @@ module App = {
         </div>;
       };
 
+      let (wePoints, demPoints) = switch(teamOfPlayer(state.me)){
+      | Team.T1 => (state.team1Points, state.team2Points)
+      | Team.T2 => (state.team2Points, state.team1Points)
+      };
+      
+
       state.gameId == "" 
       ? 
       <div className="flex flex-row justify-around">
@@ -101,7 +107,6 @@ module App = {
       switch(state.gamePhase){
       | FindPlayersPhase(n) => <FindPlayersView n />
       | FindSubsPhase(n, _) => <FindSubsView n />
-      | GameOverPhase => <GameOverView team1Points=state.team1Points team2Points=state.team2Points />
       | _ => 
       <div>
         {
@@ -109,18 +114,17 @@ module App = {
           | RoundSummaryPhase => 
             let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
             <Modal visible=true>
-            <RoundSummaryView maybeTeamHigh maybeTeamLow maybeTeamJack maybeTeamGame continueClick={sendIO(IO_NewRound)} />
+              <RoundSummaryView maybeTeamHigh maybeTeamLow maybeTeamJack maybeTeamGame continueClick={sendIO(IO_NewRound)} />
+            </Modal>
+          | GameOverPhase => 
+            <Modal visible=true>
+              <GameOverView wePoints demPoints />
             </Modal>
           | _ => <Modal visible=false />
           }
         }
-        {
-          let (wePoints, demPoints) = switch(teamOfPlayer(state.me)){
-          | Team.T1 => (state.team1Points, state.team2Points)
-          | Team.T2 => (state.team2Points, state.team1Points)
-          };
-          <ScoreboardView wePoints demPoints />
-        }
+
+        <ScoreboardView wePoints demPoints />
 
         <div className="game-board section flex flex-row justify-around"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
