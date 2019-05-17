@@ -1,3 +1,4 @@
+open AppPrelude;
 [@bs.val] external node_env: string = "process.env.NODE_ENV";
 
 [@bs.val] external username: Js.Nullable.t(string) = "g_display_name";
@@ -113,17 +114,13 @@ module App = {
           | _ => <Modal visible=false />
           }
         }
-        <div className="scoreboard flex flex-row justify-around">
-          <div className="text-center">
-            <div> {ReasonReact.string("Us")} </div>
-            <div> {ReasonReact.string(string_of_int(state.team1Points))} </div>
-          </div>
-          <div className="text-center">
-            <div> {ReasonReact.string("Them")} </div>
-            <div> {ReasonReact.string(string_of_int(state.team2Points))} </div>
-          </div>
-        </div>
-
+        {
+          let (wePoints, demPoints) = switch(teamOfPlayer(state.me)){
+          | Team.T1 => (state.team1Points, state.team2Points)
+          | Team.T2 => (state.team2Points, state.team1Points)
+          };
+          <ScoreboardView wePoints demPoints />
+        }
 
         <div className="game-board section flex flex-row justify-around"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
