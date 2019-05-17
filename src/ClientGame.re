@@ -1,9 +1,12 @@
 open AppPrelude;
 include SharedGame;
 
-type hand = FaceUpHand(Hand.FaceUpHand.t) | FaceDownHand(Hand.FaceDownHand.t);
+[@decco]
+type handFacing =
+  | FaceUpHand(Hand.FaceUpHand.t)
+  | FaceDownHand(Hand.FaceDownHand.t);
 
-[@bs.deriving {jsConverter: newType}]
+[@decco]
 type state = {
   gameId: string,
   phase: Player.phase,
@@ -19,7 +22,7 @@ type state = {
   activePlayer: Player.id,
   activePlayerPhase: Player.phase,
   maybePlayerTurn: option(Player.id),
-  hand: hand,
+  handFacing: handFacing,
   maybeLeadCard: option(Card.t),
   maybeTrumpCard: option(Card.t),
   board: list(Card.t),
@@ -30,15 +33,6 @@ type state = {
   maybeTeamJack: option((Team.id, award)),
   maybeTeamGame: option(Team.id),
 };
-
-
-/**
-  For parsing a stringified version of state back to one I can work with in
-  Reason. Used when passing data via socket.io.
- */
-[@bs.scope "JSON"] [@bs.val]
-external stateOfJson: string => abs_state = "parse";
-let stateOfJson = json => json |> stateOfJson |> stateFromJs;
 
 
 let initialState = {
@@ -56,7 +50,7 @@ let initialState = {
   activePlayer: P1,
   activePlayerPhase: PlayerIdlePhase,
   maybePlayerTurn: None,
-  hand: FaceDownHand(0),
+  handFacing: FaceDownHand(0),
   maybeLeadCard: None,
   maybeTrumpCard: None,
   board: [],

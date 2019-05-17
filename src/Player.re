@@ -1,5 +1,7 @@
+[@decco]
 type hand = list(Card.t);
 
+[@decco]
 type id =
   | P1
   | P2
@@ -31,6 +33,7 @@ let stringOfMaybeId = fun
   | None => "None"
   | Some(player) => stringOfId(player);
 
+[@decco]
 type phase =
   | PlayerIdlePhase
   | PlayerTurnPhase(id)

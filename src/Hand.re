@@ -1,4 +1,5 @@
 module FaceDownHand = {
+  [@decco]
   type t = int;
 
   module TransitionConf = {
@@ -95,6 +96,7 @@ module HandTransitionConf = {
 module HandTransition = ReactSpring.MakeTransition(HandTransitionConf);
 
 module FaceUpHand = {
+  [@decco]
   type t = list(Card.t);
 
   let hasSuitTest = (targetSuit, cards) =>

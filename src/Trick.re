@@ -1,5 +1,6 @@
 /** One trick is completed when each player play's one card on the board */;
 
+[@decco]
 type t = {
   p1Card: Card.t,
   p2Card: Card.t,

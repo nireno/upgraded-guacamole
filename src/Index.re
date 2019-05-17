@@ -51,10 +51,13 @@ module App = {
       setMaybeSocket(_ => Some(socket));
       ClientSocket.T.on(socket, x =>
         switch (x) {
-        | SetState(jsonString) =>
-          let state = SocketMessages.clientGameStateOfJsonUnsafe(jsonString)
-          debugState(state, ~ctx="ClientSocket.T.on SetState", ());
-          dispatch(MatchServerState(state));
+        | SetState(ioClientState) =>
+          switch (ClientGame.state_decode(ioClientState |> Js.Json.parseExn)) {
+          | Belt.Result.Error(_) => ()
+          | Belt.Result.Ok(state) =>
+            debugState(state, ~ctx="ClientSocket.T.on SetState", ());
+            dispatch(MatchServerState(state));
+          };
         }
       );
       None
@@ -183,7 +186,7 @@ module App = {
 
         <div className="flex flex-row justify-around content-center">
             {
-              switch (state.hand) {
+              switch (state.handFacing) {
               | ClientGame.FaceDownHand(n) => <Hand.FaceDownHand nCards=n />
               | ClientGame.FaceUpHand(cards) =>
                 <Hand.FaceUpHand
@@ -199,7 +202,7 @@ module App = {
                       | Some(socket) => 
                           ClientSocket.T.emit(
                           socket,
-                          SocketMessages.(IO_PlayCard(ioOfPlayer(state.me), jsonOfCardUnsafe(card))))
+                          SocketMessages.(IO_PlayCard(Player.id_encode(state.me) |> Js.Json.stringify, Card.t_encode(card) |> Js.Json.stringify)))
                     }
                     
                   }

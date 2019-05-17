@@ -1,3 +1,4 @@
+[@decco]
 type id =
   | T1
   | T2;

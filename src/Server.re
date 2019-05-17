@@ -59,7 +59,7 @@ let debugGameStates = (~n=0, ()) => {
 
 let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
   let playerHand = Game.getPlayerHand(player, gameState);
-  let hand =
+  let handFacing =
     if (SharedGame.isFaceDownPhase(gameState.phase)) {
       player == gameState.dealer || player == gameState.leader 
         ? ClientGame.FaceUpHand(playerHand) 
@@ -83,7 +83,7 @@ let buildClientState = (activePlayer, activePlayerPhase, gameState, player, play
     activePlayer,
     activePlayerPhase,
     maybePlayerTurn: gameState.maybePlayerTurn,
-    hand,
+    handFacing,
     maybeTrumpCard: gameState.maybeTrumpCard,
     maybeLeadCard: gameState.maybeLeadCard,
     board: gameState.board,
@@ -130,7 +130,7 @@ let updateClientStates = gameState =>
         // clientState->ClientGame.debugState(~ctx="Server.updateClientStates", ())
         let msg: SocketMessages.serverToClient =
           SetState(
-            clientState |> SocketMessages.jsonOfClientGameState // #unsafe
+            clientState |> ClientGame.state_encode |> Js.Json.stringify // #unsafe
           );
         SockServ.Socket.emit(socket, msg);
       }
@@ -196,17 +196,14 @@ let onSocketDisconnect = socket =>
 let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
   fun
   | IO_JoinGame(_) => Noop
-  | IO_PlayCard(ioPlayerId, cardStr_json) => {
-      let card = SocketMessages.cardOfJsonUnsafe(cardStr_json);
-      switch (SocketMessages.maybePlayerOfIO(ioPlayerId)) {
-      | None => Noop
-      | Some(player) => PlayCard(player, card)
-      };
-    }
-  | IO_BlockPlay(ioPlayerId) => {
-      switch (SocketMessages.maybePlayerOfIO(ioPlayerId)) {
-      | None => Noop
-      | Some(player) => BlockPlay(player)
+  | IO_PlayCard(ioPlayerId, ioCard) => {
+      switch (Player.id_decode(ioPlayerId |> Js.Json.parseExn)) {
+      | Belt.Result.Error(_) => Noop
+      | Belt.Result.Ok(playerId) =>
+        switch (Card.t_decode(ioCard |> Js.Json.parseExn)) {
+        | Belt.Result.Error(_) => Noop
+        | Belt.Result.Ok(card) => PlayCard(playerId, card)
+        }
       };
     }
   | IO_EndTrick => EndTrick
@@ -218,12 +215,13 @@ let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
   | IO_Deal => Deal
   | IO_RunPack => RunPack
   | IO_DealAgain => DealAgain
-  | IO_CheatPoints(ioTeamId, points) =>
-    switch (SocketMessages.maybeTeamOfIO(ioTeamId)) {
-    | None => Noop
-    | Some(team) => CheatPoints(team, points)
+  | IO_CheatPoints(ioTeamId, points) => {
+    switch(ioTeamId |> Js.Json.parseExn |> Team.id_decode){
+      | Belt.Result.Error(_) => Noop
+      | Belt.Result.Ok(teamId) => CheatPoints(teamId, points)
     };
-
+    
+  };
 
 SockServ.onConnect(
   io,

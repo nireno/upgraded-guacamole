@@ -1,4 +1,5 @@
 module Suit = {
+  [@decco]
   type t =
     | Clubs
     | Diamonds
@@ -53,6 +54,7 @@ module Suit = {
 };
 
 module Rank = {
+  [@decco]
   type t =
     | Two
     | Three
@@ -188,7 +190,7 @@ module Rank = {
   };
 };
 
-[@bs.deriving {jsConverter: newType}]
+[@decco]
 type t = {
   rank: Rank.t,
   suit: Suit.t,
