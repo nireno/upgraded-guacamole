@@ -42,33 +42,44 @@ module FaceDownHand = {
           ~trail = 100,)
         );
 
+        let makeAnimatedCard = (transition: Transition.transition) => {
+          let props = transition->Transition.propsGet;
+
+          let springStyle =
+            switch (props->TransitionConf.leftGet) {
+            | None => ReactDOMRe.Style.make()
+            | Some(left) => ReactDOMRe.Style.make(~left, ())
+            };
+
+          let springStyle =
+            switch (props->TransitionConf.topGet) {
+            | None => springStyle
+            | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
+            };
+
+          <ReactSpring.AnimatedDiv
+            key={transition->Transition.keyGet} className="hand-card" style=springStyle>
+            <img src="./static/cardsjs/cards/Red_Back.svg" />
+          </ReactSpring.AnimatedDiv>;
+        };
+
         <>
-          {Array.map(
-             (transition: Transition.transition) => {
-               let props = transition->Transition.propsGet;
-
-               let springStyle =
-                 switch (props->TransitionConf.leftGet) {
-                 | None => ReactDOMRe.Style.make()
-                 | Some(left) => ReactDOMRe.Style.make(~left, ())
-                 };
-
-               let springStyle =
-                 switch (props->TransitionConf.topGet) {
-                 | None => springStyle
-                 | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
-                 };
-
-               <ReactSpring.AnimatedImg
-                 key={transition->Transition.keyGet}
-                 style=springStyle
-                 className="card"
-                 src="./static/cardsjs/cards/Red_Back.svg"
-               />;
-             },
-             transitions,
-           )
-           |> ReasonReact.array}
+          <div
+            className="flex flex-row justify-around content-center"
+            style={ReactDOMRe.Style.make(~position="relative", ())}>
+            {
+              let first6 = transitions->Belt.Array.slice(~offset=0, ~len=6);
+              Array.map(makeAnimatedCard, first6) |> ReasonReact.array;
+            }
+          </div>
+          <div
+            className="flex flex-row justify-center content-center"
+            style={ReactDOMRe.Style.make(~marginTop="-10%", ())}>
+            {
+              let second6 = transitions->Belt.Array.slice(~offset=6, ~len=12);
+              Array.map(makeAnimatedCard, second6) |> ReasonReact.array;
+            }
+          </div>
         </>;
       }
   };
@@ -168,39 +179,53 @@ module FaceUpHand = {
     let checkIsCardPlayable = card =>
       handPhase == HandPlayPhase
       && (playerIsLeader || cardIsTrump(card) || cardFollowsSuit(card) || cantFollowSuit);
+    
+    let makeAnimatedCard = (transition: HandTransition.transition) => {
+      let kCard = transition->HandTransition.itemGet;
+      let props = transition->HandTransition.propsGet;
 
-             <>
-               {Array.map(
-                  (transition:HandTransition.transition) => {
-                    let kCard = transition->HandTransition.itemGet;
-                    let props = transition->HandTransition.propsGet;
+      let springStyle =
+        switch (props->HandTransitionConf.leftGet) {
+        | None => ReactDOMRe.Style.make(~left="0", ())
+        | Some(left) => ReactDOMRe.Style.make(~left, ())
+        };
 
-                    let springStyle = switch(props->HandTransitionConf.leftGet){
-                      | None => ReactDOMRe.Style.make(~left="0", ());
-                      | Some(left) => ReactDOMRe.Style.make(~left, ());
-                    };
+      let springStyle =
+        switch (props->HandTransitionConf.topGet) {
+        | None => springStyle
+        | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
+        };
 
-                    let springStyle = switch( props->HandTransitionConf.topGet ){
-                      | None => springStyle
-                      | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
-                    };
+      let springStyle =
+        switch (props->HandTransitionConf.opacityGet) {
+        | None => springStyle
+        | Some(opacity') =>
+          ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
+        };
 
-                    let springStyle = switch( props->HandTransitionConf.opacityGet ){
-                      | None => springStyle
-                      | Some(opacity') => ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
-                    };
+      let isCardPlayable = checkIsCardPlayable(kCard.card);
+      <ReactSpring.AnimatedDiv key={kCard.key} className="hand-card" style=springStyle>
+        <Card clickAction=?{isCardPlayable ? Some(sendPlayCard) : None} card={kCard.card} />
+      </ReactSpring.AnimatedDiv>;
+    };
 
-                    let isCardPlayable = checkIsCardPlayable(kCard.card);
-                    <Card
-                      key={kCard.key}
-                      style=springStyle
-                      clickAction=?{isCardPlayable ? Some(sendPlayCard) : None}
-                      card={kCard.card}
-                    />;
-                  },
-                  transitions,
-                )
-                |> ReasonReact.array}
-             </>
+    <>
+      <div
+        className="flex flex-row justify-around content-center"
+        style={ReactDOMRe.Style.make(~position="relative", ())}>
+        {
+          let first6 = transitions->Belt.Array.slice(~offset=0, ~len=6);
+          Array.map(makeAnimatedCard, first6) |> ReasonReact.array;
+        }
+      </div>
+      <div
+        className="flex flex-row justify-center content-center"
+        style={ReactDOMRe.Style.make(~marginTop="-10%", ())}>
+        {
+          let second6 = transitions->Belt.Array.slice(~offset=6, ~len=12);
+          Array.map(makeAnimatedCard, second6) |> ReasonReact.array;
+        }
+      </div>
+    </>;
   };
 };

@@ -128,7 +128,7 @@ module App = {
 
         <div className="game-board section flex flex-row justify-around"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
-          <div className="current-trick flex-1 flex flex-row justify-around  m-4">
+          <div className="current-trick flex-1 flex flex-row justify-around">
               {
                 Array.map(
                   (transition: BoardTransition.transition) => {
@@ -148,14 +148,16 @@ module App = {
                       | Some(opacity') =>
                         ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
                       };
-                    <Card key style=springStyle card />
+                    <ReactSpring.AnimatedDiv key className="board-card" style=springStyle>
+                      <Card card />
+                    </ReactSpring.AnimatedDiv>;
                   },
                   transitions,
                 )
                 |> ReasonReact.array
               }
           </div>
-          <div className="trump-card flex-none m-4">
+          <div className="trump-card flex-none">
             {switch (state.maybeTrumpCard) {
             | None => ReasonReact.null
             | Some(kick) => 
@@ -183,7 +185,7 @@ module App = {
           playerPhase=state.phase
         />
 
-        <div className="flex flex-row justify-around content-center">
+        <div className="flex flex-col justify-around content-center">
             {
               switch (state.handFacing) {
               | ClientGame.FaceDownHand(n) => <Hand.FaceDownHand nCards=n />
@@ -222,7 +224,7 @@ module App = {
 
         // {createPlayerTricks(state.myTricks)}
 
-        <div className="debug-info" style={ReactDOMRe.Style.make(~position="absolute", ~bottom="0", ())}>
+        <div className="debug-info" style={ReactDOMRe.Style.make(~position="fixed", ~bottom="0", ())}>
           <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
           <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
         </div>
