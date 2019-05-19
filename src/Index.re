@@ -225,8 +225,8 @@ module App = {
         // {createPlayerTricks(state.myTricks)}
 
         <div className="debug-info" style={ReactDOMRe.Style.make(~position="fixed", ~bottom="0", ())}>
-          <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
-          <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
+          <div className="text-gray-500 text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
+          <div className="text-gray-500 text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
         </div>
       </div>;
       }

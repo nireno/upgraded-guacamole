@@ -10,17 +10,18 @@
 }
 
 .btn-blue {
-  @apply bg-blue text-white;
+  @apply bg-blue-600 text-white;
 }
+
 .btn-blue:hover {
-  @apply bg-blue-dark;
+  @apply bg-blue-400;
 }
 
 .btn-grey {
-  @apply bg-grey-light text-grey-darkest;
+  @apply bg-gray-200 text-gray-900;
 }
 .btn-grey:hover {
-  @apply bg-grey;
+  @apply bg-gray-400;
 }
 
 .trump-card {
@@ -47,4 +48,8 @@
 
 .zneg-10 {
   z-index: -10;
+}
+
+img.card {
+  width: 100%;
 }

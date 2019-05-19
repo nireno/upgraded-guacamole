@@ -59,7 +59,7 @@ module FaceDownHand = {
 
           <ReactSpring.AnimatedDiv
             key={transition->Transition.keyGet} className="hand-card" style=springStyle>
-            <img src="./static/cardsjs/cards/Red_Back.svg" />
+            <img className="card" src="./static/cardsjs/cards/Red_Back.svg" />
           </ReactSpring.AnimatedDiv>;
         };
 

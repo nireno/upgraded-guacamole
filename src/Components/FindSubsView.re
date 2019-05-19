@@ -2,7 +2,7 @@
 let make = (~n) => {
   let players = Grammar.byNumber(n, "player");
   let n = string_of_int(n);
-  <div className="text-center text-white bg-orange my-5 p-2">
+  <div className="text-center text-white bg-orange-500 my-5 p-2">
     {ReasonReact.string({j|$n $players disconnected. Finding substitutes ...|j})}
   </div>;
 };
