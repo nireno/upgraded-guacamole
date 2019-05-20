@@ -16,6 +16,7 @@ type action =
   | Deal
   | RunPack
   | DealAgain
+  | LeaveGame(Player.id)
   | CheatPoints(Team.id, int);
 
 type state = {
@@ -119,15 +120,6 @@ let updatePlayerSocket: (Player.id, BsSocket.Server.socketT, state) => state =
     };
   };
 
-let removePlayerSocket: (Player.id, state) => state =
-  (player, state) => {
-    switch (player) {
-    | P1 => {...state, p1Socket: None}
-    | P2 => {...state, p2Socket: None}
-    | P3 => {...state, p3Socket: None}
-    | P4 => {...state, p4Socket: None}
-    };
-  };
 
 let getPlayerSocket = (player, state) => {
   switch (player) {
@@ -283,6 +275,33 @@ let maybeGetSocketPlayer = (socket, state) => {
        None,
      );
 };
+
+let removePlayerName = (playerId, state) => {
+  switch (playerId) {
+  | Player.P1 => {...state, p1Name: ""}
+  | Player.P2 => {...state, p2Name: ""}
+  | Player.P3 => {...state, p3Name: ""}
+  | Player.P4 => {...state, p4Name: ""}
+  };
+};
+
+let removePlayerSocket = (playerId, state) => {
+  switch (playerId) {
+  | Player.P1 => {...state, p1Socket: None}
+  | Player.P2 => {...state, p2Socket: None}
+  | Player.P3 => {...state, p3Socket: None}
+  | Player.P4 => {...state, p4Socket: None}
+  };
+};
+
+let removePlayerBySocket = (socketId, state) => {
+  switch(maybeGetSocketPlayer(socketId, state)){
+    | None => state
+    | Some(playerId) => 
+      state |> removePlayerName(playerId) |> removePlayerSocket(playerId)
+  };
+}
+
 
 let isEmpty = (state) => {
   [Player.P1, P2, P3, P4]

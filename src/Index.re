@@ -118,7 +118,12 @@ module App = {
             </Modal>
           | GameOverPhase => 
             <Modal visible=true>
-              <GameOverView wePoints demPoints />
+              <GameOverView
+                wePoints
+                demPoints
+                playAgainClick={sendIO(IO_PlayAgain)}
+                leaveClick={sendIO(IO_LeaveGame)}
+              />
             </Modal>
           | _ => <Modal visible=false />
           }

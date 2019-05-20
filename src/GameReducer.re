@@ -376,6 +376,8 @@ let rec reducer = (action, state) =>
         };
 
         state;
+      | LeaveGame(playerId) => 
+        state |> Game.removePlayerSocket(playerId) |> Game.removePlayerName(playerId)
       | CheatPoints(team, value) =>
         addPoints(team, value, state)
       }
