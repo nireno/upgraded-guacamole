@@ -320,9 +320,11 @@ let leaveGame = (socket, roomKey) => {
 SockServ.onConnect(
   io,
   socket => {
-    onSocketDisconnect(socket);
     Js.log("Server: onConnect");
     debugSocket(socket, ~n=1, ());
+
+    onSocketDisconnect(socket);
+    updateClientState(socket, ClientGame.initialState);
 
     SockServ.Socket.on(socket, io =>
       switch (io) {
