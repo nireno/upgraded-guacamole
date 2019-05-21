@@ -53,16 +53,28 @@ type state = {
   phase,
 };
 
+module SockServ = BsSocket.Server.Make(SocketMessages);
+
+let stringOfMaybeSocket = fun
+  | None => "None"
+  | Some(socket) => SockServ.Socket.getId(socket);
+
 let stringOfState = (state) => {
   "Game.state."
     ++ "{" ++ str_crlf
+    ++ str_tab ++ "socketIds: [" ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p1Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p2Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p3Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p4Socket |> stringOfMaybeSocket ) ++ str_crlf
+    ++ str_tab ++ "]" ++ str_crlf
     ++ str_tab ++ "roomKey: " ++ state.roomKey ++ str_crlf
     ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
     ++ str_tab ++ "dealer: " ++ Player.stringOfId(state.dealer) ++ str_crlf
     ++ str_tab ++ "leader: " ++ Player.stringOfId(state.leader) ++ str_crlf
     ++ str_tab ++ "maybePlayerTurn: " ++ Player.stringOfMaybeId(state.maybePlayerTurn) ++ str_crlf
     ++ "}" ++ str_crlf
-}
+};
 
 let initialState = () => {
   {
