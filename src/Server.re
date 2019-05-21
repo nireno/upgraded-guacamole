@@ -183,12 +183,6 @@ let onSocketDisconnect = socket =>
              if (Game.isEmpty(game)) {
                StringMap.remove(roomKey_gameState, key);
              } else {
-               let game = 
-               switch(game.phase){
-                 | FindPlayersPhase(_n) => {...game, phase: FindPlayersPhase(4 - Game.playerCount(game))}
-                 | GameOverPhase => game
-                 | _ => {...game, phase: FindSubsPhase(4 - Game.playerCount(game), game.phase)}
-               };
                StringMap.set(roomKey_gameState, key, game);
                updateClientStates(game);
              };
