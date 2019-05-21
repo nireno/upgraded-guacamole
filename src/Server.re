@@ -62,6 +62,17 @@ let debugGameStates = (~n=0, ()) => {
   Js.log({j|There $strAre $strRoomCount $strRooms.|j} |> leftPad(_, ~n=n, ()));
 };
 
+let debugGameBySocket = socket => {
+  switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
+  | None => ()
+  | Some({maybeRoomKey}) =>
+    switch (StringMap.get(roomKey_gameState, maybeRoomKey |> Js.Option.getWithDefault(""))) {
+    | None => ()
+    | Some(gameState) => Js.log(Game.stringOfState(gameState))
+    }
+  };
+};
+
 let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
   let playerHand = Game.getPlayerHand(player, gameState);
   let handFacing =
@@ -188,7 +199,9 @@ let onSocketDisconnect = socket =>
              };
            }
          );
-      
+
+      debugGameBySocket(socket);
+
       StringMap.remove(socketId_playerData, socket->SockServ.Socket.getId);
       debugGameStates(~n=1, ());
     },
@@ -290,6 +303,7 @@ let joinGame = (socket, username) => {
     | _ => gameState
     };
 
+  Js.log(Game.stringOfState(gameState));
   StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
   updateClientStates(gameState);
 };
