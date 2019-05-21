@@ -17,6 +17,8 @@ type clientToServer =
   | IO_Deal
   | IO_RunPack
   | IO_DealAgain
+  | IO_LeaveGame
+  | IO_PlayAgain
   | IO_CheatPoints(ioTeamId, int);
 
 type serverToClient =

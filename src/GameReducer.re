@@ -351,7 +351,11 @@ let rec reducer = (action, state) =>
           deck: deck @ [prevKick],
           maybeTrumpCard: Some(kick'),
         };
-        state;
+        
+        let updateStatePhase = state => 
+          {...state, phase: isGameOverTest(state) ? GameOverPhase : state.phase};
+
+        state |> updateStatePhase;
       | DealAgain =>
         {
           ...state,
@@ -372,6 +376,22 @@ let rec reducer = (action, state) =>
         };
 
         state;
+
+      | LeaveGame(playerId) => 
+        let phasemod = game => {
+          switch (game.phase) {
+          | FindSubsPhase(_n, subPhase) => {...game, phase: FindSubsPhase(4 - Game.playerCount(game), subPhase)}
+          | FindPlayersPhase(_n) => {...game, phase: FindPlayersPhase(4 - Game.playerCount(game))}
+          | GameOverPhase => game
+          | phase => {...game, phase: FindSubsPhase(4 - Game.playerCount(game), phase)}
+          };
+        };
+
+        state 
+        |> Game.removePlayerSocket(playerId) 
+        |> Game.removePlayerName(playerId) 
+        |> phasemod;
+
       | CheatPoints(team, value) =>
         addPoints(team, value, state)
       }

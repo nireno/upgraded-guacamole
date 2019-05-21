@@ -10,33 +10,46 @@
 }
 
 .btn-blue {
-  @apply bg-blue text-white;
+  @apply bg-blue-600 text-white;
 }
+
 .btn-blue:hover {
-  @apply bg-blue-dark;
+  @apply bg-blue-400;
 }
 
 .btn-grey {
-  @apply bg-grey-light text-grey-darkest;
+  @apply bg-gray-200 text-gray-900;
 }
 .btn-grey:hover {
-  @apply bg-grey;
+  @apply bg-gray-400;
 }
 
-.card {
-  /* PERFORMANCE - border-radius and shadow negatively affects performance on mobile. */
-  /* @apply shadow-md; */
-  /* border-top-left-radius: 4% 4%;
-  border-top-right-radius: 4% 4%;
-  border-bottom-left-radius: 4% 4%;
-  border-bottom-right-radius: 4% 4%; */
-  display: block;
+.trump-card {
+  width: 15%
+}
+
+.hand-card {
+  width: 25%;
   position: relative;
-  width: 112px; 
-  height: 156px; 
-  /* border: 1px solid #b9b9b9;  */
 }
 
-.card + .card {
-  margin-left: -55%;
+.hand-card + .hand-card {
+  margin-left: -10%;
+}
+
+.board-card {
+  width: 30%;
+  position: relative;
+}
+
+.board-card + .board-card{
+  width: -5%;
+}
+
+.zneg-10 {
+  z-index: -10;
+}
+
+img.card {
+  width: 100%;
 }

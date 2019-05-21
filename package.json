@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "scripts": {
     "build": "bsb -make-world",
-    "start": "bsb -make-world -w",
+    "start": "BS_WATCH_CLEAR=1 bsb -make-world -w",
     "clean": "bsb -clean-world",
     "re:build": "bsb -make-world -clean-world",
     "re:watch": "bsb -make-world -clean-world -w",
@@ -33,7 +33,7 @@
     "reason-react": "^0.7.0",
     "socket.io": "^2.2.0",
     "style-loader": "^0.21.0",
-    "tailwindcss": "^0.7.4"
+    "tailwindcss": "^1.0.0"
   },
   "devDependencies": {
     "bs-platform": "^5.0.4",

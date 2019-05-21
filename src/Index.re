@@ -1,3 +1,4 @@
+open AppPrelude;
 [@bs.val] external node_env: string = "process.env.NODE_ENV";
 
 [@bs.val] external username: Js.Nullable.t(string) = "g_display_name";
@@ -70,7 +71,7 @@ module App = {
         };
       };
 
-      let createPlayerTricks = tricks => {
+      let _createPlayerTricks = tricks => {
         <div className="column">
           {List.length(tricks) == 0
              ? <div> {ReasonReact.string("No tricks")} </div>
@@ -89,6 +90,12 @@ module App = {
         </div>;
       };
 
+      let (wePoints, demPoints) = switch(teamOfPlayer(state.me)){
+      | Team.T1 => (state.team1Points, state.team2Points)
+      | Team.T2 => (state.team2Points, state.team1Points)
+      };
+      
+
       state.gameId == "" 
       ? 
       <div className="flex flex-row justify-around">
@@ -97,22 +104,36 @@ module App = {
         </button> 
       </div>
       :
+      switch(state.gamePhase){
+      | FindPlayersPhase(n) => <FindPlayersView n />
+      | FindSubsPhase(n, _) => <FindSubsView n />
+      | _ => 
       <div>
-        <div className="scoreboard flex flex-row justify-around">
-          <div className="text-center">
-            <div> {ReasonReact.string("Us")} </div>
-            <div> {ReasonReact.string(string_of_int(state.team1Points))} </div>
-          </div>
-          <div className="text-center">
-            <div> {ReasonReact.string("Them")} </div>
-            <div> {ReasonReact.string(string_of_int(state.team2Points))} </div>
-          </div>
-        </div>
+        {
+          switch(state.gamePhase){
+          | RoundSummaryPhase => 
+            let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
+            <Modal visible=true>
+              <RoundSummaryView maybeTeamHigh maybeTeamLow maybeTeamJack maybeTeamGame continueClick={sendIO(IO_NewRound)} />
+            </Modal>
+          | GameOverPhase => 
+            <Modal visible=true>
+              <GameOverView
+                wePoints
+                demPoints
+                playAgainClick={sendIO(IO_PlayAgain)}
+                leaveClick={sendIO(IO_LeaveGame)}
+              />
+            </Modal>
+          | _ => <Modal visible=false />
+          }
+        }
 
+        <ScoreboardView wePoints demPoints />
 
         <div className="game-board section flex flex-row justify-around"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
-          <div className="current-trick flex-1 flex flex-row justify-around  m-4">
+          <div className="current-trick flex-1 flex flex-row justify-around">
               {
                 Array.map(
                   (transition: BoardTransition.transition) => {
@@ -132,14 +153,16 @@ module App = {
                       | Some(opacity') =>
                         ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
                       };
-                    <Card key style=springStyle card />
+                    <ReactSpring.AnimatedDiv key className="board-card" style=springStyle>
+                      <Card card />
+                    </ReactSpring.AnimatedDiv>;
                   },
                   transitions,
                 )
                 |> ReasonReact.array
               }
           </div>
-          <div className="trump-card flex-none m-4">
+          <div className="trump-card flex-none">
             {switch (state.maybeTrumpCard) {
             | None => ReasonReact.null
             | Some(kick) => 
@@ -158,33 +181,16 @@ module App = {
           activePlayerPhase=state.activePlayerPhase />
 
         <Player
-          id={state.me}
           sendDeal={sendIO(SocketMessages.IO_Deal)}
           sendStandUp={sendIO(SocketMessages.IO_Stand)}
           sendBeg={sendIO(IO_Beg)}
           sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
           sendRunPack={sendIO(IO_RunPack)}
+          sendReshuffle={sendIO(IO_DealAgain)}
           playerPhase=state.phase
         />
-        {
-          let msg = switch (state.gamePhase) {
-          | FindPlayersPhase(n) =>
-            let playersAsText = Grammar.byNumber(n, "player");
-            let nAsText = string_of_int(n);
-            {j|Finding $nAsText more $playersAsText ...|j}
-          | FindSubsPhase(n, _phase) => 
-            let playersAsText = Grammar.byNumber(n, "player");
-            let nAsText = string_of_int(n);
-            {j|$nAsText $playersAsText disconnected. Finding substitutes...|j}
-          | _ => 
-            ""
-          };
-          msg == "" ? ReasonReact.null : <div className="text-center text-white bg-orange my-5 p-2"> {ReasonReact.string({msg})} </div>;
 
-        }
-
-
-        <div className="flex flex-row justify-around content-center">
+        <div className="flex flex-col justify-around content-center">
             {
               switch (state.handFacing) {
               | ClientGame.FaceDownHand(n) => <Hand.FaceDownHand nCards=n />
@@ -213,80 +219,22 @@ module App = {
 
         </div>
 
-        <div className="flex justify-around">
-          <div className="round-summary column">
-            {switch (state.gamePhase) {
-              | GameOverPhase => GameOverPhase.createElement(state.team1Points, state.team2Points)
-              | PackDepletedPhase =>
-                <div>
-                  <div> {ReasonReact.string("No more cards")} </div>
-                  <button className="btn btn-blue" onClick={sendIO(IO_DealAgain)}>
-                    {ReasonReact.string("Reshuffle")}
-                  </button>
-                </div>
-              | RoundSummaryPhase =>
-                <div>
-                  <div>
-                    {ReasonReact.string(
-                      switch (state.maybeTeamHigh) {
-                      | None => "No one has high"
-                      | Some(teamHigh) =>
-                        Team.stringOfTeam(teamHigh) ++ " has high."
-                      },
-                    )}
-                  </div>
-                  <div>
-                    {ReasonReact.string(
-                      switch (state.maybeTeamLow) {
-                      | None => "No one has low"
-                      | Some(teamLow) =>
-                        Team.stringOfTeam(teamLow) ++ " has low."
-                      },
-                    )}
-                  </div>
-                  <div>
-                    {switch (state.maybeTeamJack) {
-                    | None => ReasonReact.null
-                    | Some((team, value)) =>
-                      switch (value) {
-                      | HangJackAward =>
-                        <div>
-                          {ReasonReact.string(
-                              Team.stringOfTeam(team) ++ " hanged the jack.",
-                            )}
-                        </div>
-                      | RunJackAward =>
-                        <div>
-                          {ReasonReact.string(
-                              Team.stringOfTeam(team)
-                              ++ " gets away with jack.",
-                            )}
-                        </div>
-                      | _ => ReasonReact.null
-                      }
-                    }}
-                  </div>
-                  <div>
-                    {switch (state.maybeTeamGame) {
-                    | None => ReasonReact.string("Tied for game.")
-                    | Some(teamGame) =>
-                      ReasonReact.string(
-                        Team.stringOfTeam(teamGame) ++ " gets game.",
-                      )
-                    }}
-                  </div>
-                  <button className="btn btn-blue" onClick={sendIO(IO_NewRound)}>
-                    {ReasonReact.string("Continue")}
-                  </button>
-                </div>
-              | _ => ReasonReact.null
-              }}
-          </div>
+        // <div className="flex justify-around">
+        //   <div className="round-summary column">
+        //     {switch (state.gamePhase) {
+        //       | _ => ReasonReact.null
+        //       }}
+        //   </div>
+        // </div>
+
+        // {createPlayerTricks(state.myTricks)}
+
+        <div className="debug-info" style={ReactDOMRe.Style.make(~position="fixed", ~bottom="0", ())}>
+          <div className="text-gray-500 text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
+          <div className="text-gray-500 text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
         </div>
-        {createPlayerTricks(state.myTricks)}
-        <div className="text-orange text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
-        <div className="text-orange text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
       </div>;
+      }
   };
 };
 

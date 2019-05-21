@@ -16,6 +16,7 @@ type action =
   | Deal
   | RunPack
   | DealAgain
+  | LeaveGame(Player.id)
   | CheatPoints(Team.id, int);
 
 type state = {
@@ -52,16 +53,28 @@ type state = {
   phase,
 };
 
+module SockServ = BsSocket.Server.Make(SocketMessages);
+
+let stringOfMaybeSocket = fun
+  | None => "None"
+  | Some(socket) => SockServ.Socket.getId(socket);
+
 let stringOfState = (state) => {
   "Game.state."
     ++ "{" ++ str_crlf
+    ++ str_tab ++ "socketIds: [" ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p1Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p2Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p3Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( state.p4Socket |> stringOfMaybeSocket ) ++ str_crlf
+    ++ str_tab ++ "]" ++ str_crlf
     ++ str_tab ++ "roomKey: " ++ state.roomKey ++ str_crlf
     ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
     ++ str_tab ++ "dealer: " ++ Player.stringOfId(state.dealer) ++ str_crlf
     ++ str_tab ++ "leader: " ++ Player.stringOfId(state.leader) ++ str_crlf
     ++ str_tab ++ "maybePlayerTurn: " ++ Player.stringOfMaybeId(state.maybePlayerTurn) ++ str_crlf
     ++ "}" ++ str_crlf
-}
+};
 
 let initialState = () => {
   {
@@ -119,15 +132,6 @@ let updatePlayerSocket: (Player.id, BsSocket.Server.socketT, state) => state =
     };
   };
 
-let removePlayerSocket: (Player.id, state) => state =
-  (player, state) => {
-    switch (player) {
-    | P1 => {...state, p1Socket: None}
-    | P2 => {...state, p2Socket: None}
-    | P3 => {...state, p3Socket: None}
-    | P4 => {...state, p4Socket: None}
-    };
-  };
 
 let getPlayerSocket = (player, state) => {
   switch (player) {
@@ -284,6 +288,33 @@ let maybeGetSocketPlayer = (socket, state) => {
      );
 };
 
+let removePlayerName = (playerId, state) => {
+  switch (playerId) {
+  | Player.P1 => {...state, p1Name: ""}
+  | Player.P2 => {...state, p2Name: ""}
+  | Player.P3 => {...state, p3Name: ""}
+  | Player.P4 => {...state, p4Name: ""}
+  };
+};
+
+let removePlayerSocket = (playerId, state) => {
+  switch (playerId) {
+  | Player.P1 => {...state, p1Socket: None}
+  | Player.P2 => {...state, p2Socket: None}
+  | Player.P3 => {...state, p3Socket: None}
+  | Player.P4 => {...state, p4Socket: None}
+  };
+};
+
+let removePlayerBySocket = (socketId, state) => {
+  switch(maybeGetSocketPlayer(socketId, state)){
+    | None => state
+    | Some(playerId) => 
+      state |> removePlayerName(playerId) |> removePlayerSocket(playerId)
+  };
+}
+
+
 let isEmpty = (state) => {
   [Player.P1, P2, P3, P4]
   |> List.map(player => getPlayerSocket(player, state))
@@ -301,8 +332,10 @@ let decidePlayerPhase:
               ? (player, PlayerGiveOnePhase)
               : dealer == player && gamePhase == RunPackPhase
                   ? (player, PlayerRunPackPhase)
-                  : leader == player && gamePhase == BegPhase
-                      ? (player, PlayerBegPhase) : (player, PlayerIdlePhase);
+                  : dealer == player && gamePhase == PackDepletedPhase
+                      ? (player, PlayerRedealPhase)
+                      : leader == player && gamePhase == BegPhase
+                          ? (player, PlayerBegPhase) : (player, PlayerIdlePhase);
   };
 
 
