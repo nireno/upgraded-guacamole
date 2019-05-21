@@ -84,7 +84,7 @@ let stringOfState = (state) => {
   "ClientGame.state."
     ++ "{" ++ str_crlf
     ++ str_tab ++ "phase: " ++ Player.stringOfPhase(state.phase) ++ str_crlf
-    ++ str_tab ++ "gamePhase: " ++ Game.stringOfPhase(state.gamePhase) ++ str_crlf
+    ++ str_tab ++ "gamePhase: " ++ SharedGame.stringOfPhase(state.gamePhase) ++ str_crlf
     ++ "}" ++ str_crlf
 }
 
