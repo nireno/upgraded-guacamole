@@ -33,10 +33,7 @@ let rec reducer = (action, state) =>
         let updateBoard = state => {
           ...state,
           deck: Deck.make() |> Deck.shuffle,
-          p1Tricks: [],
-          p2Tricks: [],
-          p3Tricks: [],
-          p4Tricks: [],
+          players: GamePlayers.map(x => {...x, pla_tricks: []}, state.players),
           maybeTrumpCard: None,
           maybeLeadCard: None,
           maybePlayerTurn: None,
@@ -59,7 +56,7 @@ let rec reducer = (action, state) =>
               |> updatePhase
 
       | PlayCard(player, c) =>
-        let hand = Game.getPlayerHand(player, state);
+        let hand = GamePlayers.select(player, x => x.pla_hand, state.players);
         let hand' = List.filter(c' => c != c', hand);
 
         let canPlayCard = 
@@ -75,19 +72,17 @@ let rec reducer = (action, state) =>
         if(!canPlayCard){
           state;
         } else {
-          let state = Game.updateHand(player, hand', state);
-          let state =
-            switch (state.maybeLeadCard) {
-            | None => {...state, maybeLeadCard: Some(c)}
-            | _ => state
-            };
-
-          let state = {...state, board: state.board @ [c]};
-          let state =
-            switch (state.maybePlayerTurn) {
-            | None => state
-            | Some(turn) => {...state, maybePlayerTurn: Some(Player.nextPlayer(turn))}
-            };
+          let state = {
+            ...state,
+            players: GamePlayers.update(player, x => {...x, pla_hand: hand'}, state.players),
+            maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
+            maybePlayerTurn:
+              switch (state.maybePlayerTurn) {
+              | None => state.maybePlayerTurn
+              | Some(turn) => Some(Player.nextPlayer(turn))
+              },
+            board: state.board @ [c],
+          };
 
           Player.nextPlayer(player) == state.leader 
             ? reducer(EndTrick, state) 
@@ -99,7 +94,16 @@ let rec reducer = (action, state) =>
           let (p2Hand, deck) = Deck.deal(6, deck);
           let (p3Hand, deck) = Deck.deal(6, deck);
           let (p4Hand, deck) = Deck.deal(6, deck);
-          {...state, deck, p1Hand, p2Hand, p3Hand, p4Hand};
+          {
+            ...state,
+            deck,
+            players:
+              state.players
+              |> GamePlayers.update(Player.P1, x => {...x, pla_hand: p1Hand})
+              |> GamePlayers.update(Player.P2, x => {...x, pla_hand: p2Hand})
+              |> GamePlayers.update(Player.P3, x => {...x, pla_hand: p3Hand})
+              |> GamePlayers.update(Player.P4, x => {...x, pla_hand: p4Hand}),
+          };
         };
 
         let kickTrump = state => {
@@ -140,30 +144,36 @@ let rec reducer = (action, state) =>
         let trickWinner: Player.id =
           Trick.playerTakesTrick(trumpSuit, leadSuit, trick);
 
-        let collectTrick = (player, trick, state) =>
-          switch (player) {
-          | Player.P1 => {...state, p1Tricks: state.p1Tricks @ [trick]}
-          | P2 => {...state, p2Tricks: state.p2Tricks @ [trick]}
-          | P3 => {...state, p3Tricks: state.p3Tricks @ [trick]}
-          | P4 => {...state, p4Tricks: state.p4Tricks @ [trick]}
-          };
-
         let advanceRound = state => {
           ...state,
+          players:
+            GamePlayers.update(
+              trickWinner,
+              x => {...x, pla_tricks: x.pla_tricks @ [trick]},
+              state.players,
+            ),
           leader: trickWinner,
           maybePlayerTurn: Some(trickWinner),
           maybeLeadCard: None,
           board: [],
         };
 
-        let state = state  |> collectTrick(trickWinner, trick) |> advanceRound;
-        List.length(state.p1Hand) == 0
+        let state = state  |> advanceRound;
+
+        /* Any player whose hand is empty at this points indicates all players' hands are empty */
+        List.length(GamePlayers.get(P1, state.players).pla_hand) == 0
           ? reducer(EndRound, state) : state;
       | EndRound =>
         /* @endround start */
         Js.log("@EndRound");
-        let team1Tricks = state.p1Tricks @ state.p3Tricks;
-        let team2Tricks = state.p2Tricks @ state.p4Tricks;
+
+        let team1Tricks =
+          GamePlayers.get(P1, state.players).pla_tricks 
+          @ GamePlayers.get(P3, state.players).pla_tricks;
+        let team2Tricks =
+          GamePlayers.get(P2, state.players).pla_tricks 
+          @ GamePlayers.get(P4, state.players).pla_tricks;
+
         let playersCards: list((Player.id, Card.t)) =
           team1Tricks
           @ team2Tricks
@@ -344,10 +354,11 @@ let rec reducer = (action, state) =>
             };
         let state = {
           ...state,
-          p1Hand: state.p1Hand @ p1Hand,
-          p2Hand: state.p2Hand @ p2Hand,
-          p3Hand: state.p3Hand @ p3Hand,
-          p4Hand: state.p4Hand @ p4Hand,
+          players: state.players
+            |> GamePlayers.update(P1, x => {...x, pla_hand: x.pla_hand @ p1Hand})
+            |> GamePlayers.update(P2, x => {...x, pla_hand: x.pla_hand @ p2Hand})
+            |> GamePlayers.update(P3, x => {...x, pla_hand: x.pla_hand @ p3Hand})
+            |> GamePlayers.update(P4, x => {...x, pla_hand: x.pla_hand @ p4Hand}),
           deck: deck @ [prevKick],
           maybeTrumpCard: Some(kick'),
         };
@@ -359,10 +370,7 @@ let rec reducer = (action, state) =>
       | DealAgain =>
         {
           ...state,
-          p1Hand: [],
-          p2Hand: [],
-          p3Hand: [],
-          p4Hand: [],
+          players: GamePlayers.map(x => {...x, pla_hand: []}, state.players),
           maybeTrumpCard: None,
           deck: Deck.make() |> Deck.shuffle,
           phase: DealPhase,
@@ -378,19 +386,25 @@ let rec reducer = (action, state) =>
         state;
 
       | LeaveGame(playerId) => 
-        let phasemod = game => {
-          switch (game.phase) {
-          | FindSubsPhase(_n, subPhase) => {...game, phase: FindSubsPhase(4 - Game.playerCount(game), subPhase)}
-          | FindPlayersPhase(_n) => {...game, phase: FindPlayersPhase(4 - Game.playerCount(game))}
-          | GameOverPhase => game
-          | phase => {...game, phase: FindSubsPhase(4 - Game.playerCount(game), phase)}
+        let modPhase = (nPlayers, currentPhase) =>
+          switch (currentPhase) {
+          | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
+          | FindPlayersPhase(_n) => FindPlayersPhase(nPlayers)
+          | GameOverPhase => GameOverPhase
+          | phase => FindSubsPhase(nPlayers, phase)
           };
-        };
 
-        state 
-        |> Game.removePlayerSocket(playerId) 
-        |> Game.removePlayerName(playerId) 
-        |> phasemod;
+        let players =
+          state.players
+          |> GamePlayers.update(playerId, x =>
+               {...x, pla_name: Player.stringOfId(playerId), pla_socket: None}
+             );
+
+        {
+          ...state,
+          players: players,
+          phase: state.phase |> modPhase(4 - Game.countPlayers(players)),
+        };
 
       | CheatPoints(team, value) =>
         addPoints(team, value, state)

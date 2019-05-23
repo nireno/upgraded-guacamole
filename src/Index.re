@@ -175,7 +175,7 @@ module App = {
         </div>
 
         <WaitingMessage 
-          activePlayerName={ClientGame.getPlayerName(state.activePlayer, state)} 
+          activePlayerName={GamePlayers.get(state.activePlayer, state.players).pla_name} 
           player=state.me 
           activePlayer=state.activePlayer 
           activePlayerPhase=state.activePlayerPhase />
