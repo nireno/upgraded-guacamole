@@ -108,7 +108,7 @@ module App = {
       | FindPlayersPhase(n) => <FindPlayersView n />
       | FindSubsPhase(n, _) => <FindSubsView n />
       | _ => 
-      <div>
+      <div className="font-sans">
         {
           switch(state.gamePhase){
           | RoundSummaryPhase => 
@@ -129,14 +129,14 @@ module App = {
           }
         }
 
-        <ScoreboardView 
+        <ScoreboardView
           weScore=weTeam.team_score wePoints=weTeam.team_points 
           demScore=demTeam.team_score demPoints=demTeam.team_points 
         />
 
-        <div className="game-board section flex flex-row justify-around"> 
+        <div className="game-board section flex flex-row justify-around my-4"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
-          <div className="current-trick flex-1 flex flex-row justify-around">
+          <div className="current-trick flex-1 flex flex-row justify-around items-center border border-solid border-gray-400 mr-4 bg-gray-300 p-4">
               {
                 Array.map(
                   (transition: BoardTransition.transition) => {

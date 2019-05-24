@@ -1,6 +1,6 @@
 [@react.component]
 let make = (~weScore, ~wePoints, ~demScore, ~demPoints) =>
-  <div className="scoreboard flex flex-row justify-around">
+  <div className="scoreboard flex flex-row justify-around bg-gray-900 text-white p-2">
     <div className="text-center">
       <div> {ReasonReact.string("We")} </div>
       <div className="text-lg"> {ReasonReact.string(string_of_int(weScore))} </div>
