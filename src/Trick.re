@@ -72,3 +72,7 @@ let make = (~trick) => {
     <li> {ReasonReact.string("P4: " ++ Card.stringOfCard(trick.p4Card))} </li>
   </ul>;
 };
+
+let getValue = trick =>
+  cardsInTrick(trick)
+  |> List.fold_left((acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank), 0);

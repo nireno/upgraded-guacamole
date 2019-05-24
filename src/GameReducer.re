@@ -8,14 +8,25 @@ let rec reducer = (action, state) =>
         let maybeAddPoints = (maybeTeam, points, state) =>
           switch (maybeTeam) {
           | None => state
-          | Some(team) => addPoints(team, points, state)
+          | Some(teamId) => {
+              ...state,
+              teams:
+                GameTeams.update(teamId, x => {...x, team_score: x.team_score + points}, state.teams),
+            }
           };
 
         let maybeAddJackPoints = (maybeTeamJack, state) =>
           switch (maybeTeamJack) {
           | None => state
-          | Some((team, award)) =>
-            addPoints(team, valueOfAward(award), state)
+          | Some((team, award)) => {
+              ...state,
+              teams:
+                GameTeams.update(
+                  team,
+                  x => {...x, team_score: x.team_score + valueOfAward(award)},
+                  state.teams,
+                ),
+            }
           };
 
         let updateScore = state =>
@@ -34,6 +45,7 @@ let rec reducer = (action, state) =>
           ...state,
           deck: Deck.make() |> Deck.shuffle,
           players: GamePlayers.map(x => {...x, pla_tricks: []}, state.players),
+          teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
           maybeTrumpCard: None,
           maybeLeadCard: None,
           maybePlayerTurn: None,
@@ -112,8 +124,13 @@ let rec reducer = (action, state) =>
           let trumpCard = List.hd(cards); /* Dealing expects enough cards to kick trump. #unsafe */
           let points = kickPoints(trumpCard.rank);
 
-          {...state, deck, maybeTrumpCard: Some(trumpCard)}
-          |> addPoints(dealerTeam, points);
+          {
+            ...state,
+            deck,
+            maybeTrumpCard: Some(trumpCard),
+            teams:
+              GameTeams.update(dealerTeam, x => {...x, team_score: x.team_score + points}, state.teams),
+          };
         };
 
         let state = state |> dealCards |> kickTrump;
@@ -151,6 +168,12 @@ let rec reducer = (action, state) =>
               trickWinner,
               x => {...x, pla_tricks: x.pla_tricks @ [trick]},
               state.players,
+            ),
+          teams:
+            GameTeams.update(
+              teamOfPlayer(trickWinner),
+              x => {...x, team_points: x.team_points + Trick.getValue(trick)},
+              state.teams,
             ),
           leader: trickWinner,
           maybePlayerTurn: Some(trickWinner),
@@ -293,26 +316,26 @@ let rec reducer = (action, state) =>
           when
             [Player.P1, P3]
             |> List.mem(state.dealer)
-            && state.team2Points == 13
+            && GameTeams.get(T2, state.teams).team_score == 13
             || [Player.P2, P4]
             |> List.mem(state.dealer)
-            && state.team1Points == 13 =>
-        Js.log("Your opponents only need one point!");
+            && GameTeams.get(T1, state.teams).team_score == 13 =>
         state;
       | GiveOne =>
-        Js.log("Take one");
-        let state =
+        let receivingTeamId =
           switch (state.dealer) {
-          | P1
-          | P3 => {...state, team2Points: state.team2Points + 1}
-          | P2
-          | P4 => {...state, team1Points: state.team1Points + 1}
+          | P1 | P3 => Team.T2 
+          | P2 | P4 => T1
           };
+
         {
           ...state,
           phase: PlayerTurnPhase,
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
+          teams:
+            GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
         };
+
       | RunPack =>
         Js.log("I beg too");
         let (p1Hand, deck) = Deck.deal(3, state.deck);
@@ -334,12 +357,8 @@ let rec reducer = (action, state) =>
         let (cards, deck) = Deck.deal(1, deck);
         let kick' = List.hd(cards);
         let {Card.rank: kickRank', Card.suit: kickSuit'} = kick';
-        let points = kickPoints(kickRank');
-        let state =
-          switch (teamOfPlayer(state.dealer)) {
-          | Team.T1 => {...state, team1Points: state.team1Points + points}
-          | Team.T2 => {...state, team2Points: state.team2Points + points}
-          };
+        let pointsKicked = kickPoints(kickRank');
+
         let state =
           kickSuit == kickSuit'
             ? {
@@ -352,15 +371,23 @@ let rec reducer = (action, state) =>
               phase: PlayerTurnPhase,
               maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
             };
+
         let state = {
           ...state,
-          players: state.players
+          players:
+            state.players
             |> GamePlayers.update(P1, x => {...x, pla_hand: x.pla_hand @ p1Hand})
             |> GamePlayers.update(P2, x => {...x, pla_hand: x.pla_hand @ p2Hand})
             |> GamePlayers.update(P3, x => {...x, pla_hand: x.pla_hand @ p3Hand})
             |> GamePlayers.update(P4, x => {...x, pla_hand: x.pla_hand @ p4Hand}),
           deck: deck @ [prevKick],
           maybeTrumpCard: Some(kick'),
+          teams:
+            GameTeams.update(
+              teamOfPlayer(state.dealer),
+              x => {...x, team_score: x.team_score + pointsKicked},
+              state.teams,
+            ),
         };
         
         let updateStatePhase = state => 
@@ -406,6 +433,9 @@ let rec reducer = (action, state) =>
           phase: state.phase |> modPhase(4 - Game.countPlayers(players)),
         };
 
-      | CheatPoints(team, value) =>
-        addPoints(team, value, state)
+      | CheatPoints(team, points) =>
+        {
+          ...state,
+          teams: GameTeams.update(team, x => {...x, team_score: x.team_score + points}, state.teams),
+        };
       }

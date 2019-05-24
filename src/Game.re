@@ -38,13 +38,12 @@ type state = {
   deck: Deck.t,
   board: list(Card.t),
   players: (playerState, playerState, playerState, playerState),
+  teams: (teamState, teamState),
   maybeTrumpCard: option(Card.t),
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
   leader: Player.id,
   maybePlayerTurn: option(Player.id),
-  team1Points: int,
-  team2Points: int,
   maybeTeamHigh: option(Team.id),
   maybeTeamLow: option(Team.id),
   maybeTeamJack: option((Team.id, award)),
@@ -86,13 +85,12 @@ let initialState = () => {
       initialPlayerState(P3),
       initialPlayerState(P4),
     ),
+    teams: (initialTeamState, initialTeamState),
     maybePlayerTurn: None,
     maybeTrumpCard: None,
     maybeLeadCard: None,
     dealer: P1,
     leader: P2,
-    team1Points: 0,
-    team2Points: 0,
     maybeTeamHigh: None,
     maybeTeamLow: None,
     maybeTeamJack: None,
@@ -137,14 +135,8 @@ let findEmptySeat = state => {
 
 
 let isGameOverTest = state => {
-  state.team1Points >= winningScore || state.team2Points >= winningScore;
-};
-
-let addPoints = (team, value, state) => {
-  switch (team) {
-  | Team.T1 => {...state, team1Points: state.team1Points + value}
-  | T2 => {...state, team2Points: state.team2Points + value}
-  };
+  GameTeams.get(T1, state.teams).team_score >= winningScore
+  || GameTeams.get(T2, state.teams).team_score >= winningScore;
 };
 
 /** The board is just a list of cards. It doesn't track which player played them.

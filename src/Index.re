@@ -90,9 +90,9 @@ module App = {
         </div>;
       };
 
-      let (wePoints, demPoints) = switch(teamOfPlayer(state.me)){
-      | Team.T1 => (state.team1Points, state.team2Points)
-      | Team.T2 => (state.team2Points, state.team1Points)
+      let (weTeam, demTeam) = switch(teamOfPlayer(state.me)){
+        | Team.T1 => (GameTeams.get(T1, state.teams), GameTeams.get(T2, state.teams))
+        | Team.T2 => (GameTeams.get(T2, state.teams), GameTeams.get(T1, state.teams))
       };
       
 
@@ -119,8 +119,8 @@ module App = {
           | GameOverPhase => 
             <Modal visible=true>
               <GameOverView
-                wePoints
-                demPoints
+                weScore=weTeam.team_score
+                demScore=demTeam.team_score
                 playAgainClick={sendIO(IO_PlayAgain)}
                 leaveClick={sendIO(IO_LeaveGame)}
               />
@@ -129,7 +129,10 @@ module App = {
           }
         }
 
-        <ScoreboardView wePoints demPoints />
+        <ScoreboardView 
+          weScore=weTeam.team_score wePoints=weTeam.team_points 
+          demScore=demTeam.team_score demPoints=demTeam.team_points 
+        />
 
         <div className="game-board section flex flex-row justify-around"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
