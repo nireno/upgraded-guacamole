@@ -19,33 +19,31 @@ type action =
   | LeaveGame(Player.id)
   | CheatPoints(Team.id, int);
 
+type playerState = {
+  pla_socket: option(BsSocket.Server.socketT),
+  pla_name: string,
+  pla_hand: Hand.FaceUpHand.t,
+  pla_tricks: list(Trick.t),
+}
+
+let initialPlayerState = playerId => {
+  pla_socket: None,
+  pla_name: Player.stringOfId(playerId),
+  pla_hand: [],
+  pla_tricks: [],
+};
+
 type state = {
   roomKey: string,
   deck: Deck.t,
   board: list(Card.t),
-  p1Socket: option(BsSocket.Server.socketT),
-  p2Socket: option(BsSocket.Server.socketT),
-  p3Socket: option(BsSocket.Server.socketT),
-  p4Socket: option(BsSocket.Server.socketT),
-  p1Name: string,
-  p2Name: string,
-  p3Name: string,
-  p4Name: string,
-  p1Hand: Hand.FaceUpHand.t,
-  p2Hand: Hand.FaceUpHand.t,
-  p3Hand: Hand.FaceUpHand.t,
-  p4Hand: Hand.FaceUpHand.t,
-  p1Tricks: list(Trick.t),
-  p2Tricks: list(Trick.t),
-  p3Tricks: list(Trick.t),
-  p4Tricks: list(Trick.t),
-  maybeTrumpCard: option(Card.t), /* using slot suffix to denote an optional prop. */
+  players: (playerState, playerState, playerState, playerState),
+  teams: (teamState, teamState),
+  maybeTrumpCard: option(Card.t),
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
   leader: Player.id,
   maybePlayerTurn: option(Player.id),
-  team1Points: int,
-  team2Points: int,
   maybeTeamHigh: option(Team.id),
   maybeTeamLow: option(Team.id),
   maybeTeamJack: option((Team.id, award)),
@@ -63,10 +61,10 @@ let stringOfState = (state) => {
   "Game.state."
     ++ "{" ++ str_crlf
     ++ str_tab ++ "socketIds: [" ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( state.p1Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( state.p2Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( state.p3Socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( state.p4Socket |> stringOfMaybeSocket ) ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P1, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P2, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P3, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P4, state.players).pla_socket |> stringOfMaybeSocket ) ++ str_crlf
     ++ str_tab ++ "]" ++ str_crlf
     ++ str_tab ++ "roomKey: " ++ state.roomKey ++ str_crlf
     ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
@@ -81,92 +79,23 @@ let initialState = () => {
     roomKey: "",
     deck: Deck.make() |> Deck.shuffle,
     board: [],
-    p1Socket: None,
-    p2Socket: None,
-    p3Socket: None,
-    p4Socket: None,
-    p1Name: Player.stringOfId(P1),
-    p2Name: Player.stringOfId(P2),
-    p3Name: Player.stringOfId(P3),
-    p4Name: Player.stringOfId(P4),
-    p1Hand: [],
-    p2Hand: [],
-    p3Hand: [],
-    p4Hand: [],
-    p1Tricks: [],
-    p2Tricks: [],
-    p3Tricks: [],
-    p4Tricks: [],
+    players: (
+      initialPlayerState(P1),
+      initialPlayerState(P2),
+      initialPlayerState(P3),
+      initialPlayerState(P4),
+    ),
+    teams: (initialTeamState, initialTeamState),
     maybePlayerTurn: None,
     maybeTrumpCard: None,
     maybeLeadCard: None,
     dealer: P1,
     leader: P2,
-    team1Points: 0,
-    team2Points: 0,
     maybeTeamHigh: None,
     maybeTeamLow: None,
     maybeTeamJack: None,
     maybeTeamGame: None,
     phase: FindPlayersPhase(4),
-  };
-};
-
-let updateHand: (Player.id, Hand.FaceUpHand.t, state) => state =
-  (player, hand, state) => {
-    switch (player) {
-    | P1 => {...state, p1Hand: hand}
-    | P2 => {...state, p2Hand: hand}
-    | P3 => {...state, p3Hand: hand}
-    | P4 => {...state, p4Hand: hand}
-    };
-  };
-
-let updatePlayerSocket: (Player.id, BsSocket.Server.socketT, state) => state =
-  (player, socket, state) => {
-    switch (player) {
-    | P1 => {...state, p1Socket: Some(socket)}
-    | P2 => {...state, p2Socket: Some(socket)}
-    | P3 => {...state, p3Socket: Some(socket)}
-    | P4 => {...state, p4Socket: Some(socket)}
-    };
-  };
-
-
-let getPlayerSocket = (player, state) => {
-  switch (player) {
-  | Player.P1 => state.p1Socket
-  | P2 => state.p2Socket
-  | P3 => state.p3Socket
-  | P4 => state.p4Socket
-  };
-};
-
-let getPlayerName = (player, state) => {
-  switch (player) {
-  | Player.P1 => state.p1Name
-  | P2 => state.p2Name
-  | P3 => state.p3Name
-  | P4 => state.p4Name
-  };
-};
-
-let updatePlayerName = (player, name, state) => {
-  switch (player) {
-  | Player.P1 => {...state, p1Name: name}
-  | P2 => {...state, p2Name: name}
-  | P3 => {...state, p3Name: name}
-  | P4 => {...state, p4Name: name}
-  };
-}
-
-
-let getPlayerHand = (player, state) => {
-  switch (player) {
-  | Player.P1 => state.p1Hand
-  | P2 => state.p2Hand
-  | P3 => state.p3Hand
-  | P4 => state.p4Hand
   };
 };
 
@@ -176,7 +105,7 @@ let getAllPlayerSockets = state => {
     list((Player.id, BsSocket.Server.socketT)) =
     (player, playerSockets) => {
       let playerSockets =
-        switch (getPlayerSocket(player, state)) {
+        switch (GamePlayers.get(player, state.players).pla_socket) {
         | None => playerSockets
         | Some(socket) => [(player, socket), ...playerSockets]
         };
@@ -185,53 +114,29 @@ let getAllPlayerSockets = state => {
   f(P1, []);
 };
 
-let getPlayerTricks = (playerId, state) => {
-  switch (playerId) {
-  | Player.P1 => state.p1Tricks
-  | P2 => state.p2Tricks
-  | P3 => state.p3Tricks
-  | P4 => state.p4Tricks
-  };
+let playerCount = state => {
+  let (n1, n2, n3, n4) =
+    GamePlayers.map(x => Js.Option.isSome(x.pla_socket) ? 1 : 0, state.players);
+  n1 + n2 + n3 + n4;
 };
 
-let playerCount = state => {
-  let count = 0;
-  let count = Js.Option.isSome(state.p1Socket) ? count + 1 : count;
-  let count = Js.Option.isSome(state.p2Socket) ? count + 1 : count;
-  let count = Js.Option.isSome(state.p3Socket) ? count + 1 : count;
-  let count = Js.Option.isSome(state.p4Socket) ? count + 1 : count;
-  count;
-}
+let countPlayers = players => {
+  let (n1, n2, n3, n4) = 
+    GamePlayers.map(x => Js.Option.isSome(x.pla_socket) ? 1 : 0, players);
+  n1 + n2 + n3 + n4;
+};
 
 let findEmptySeat = state => {
-  let rec f: Player.id => option(Player.id) =
-    player => {
-      switch (player) {
-      | P1 =>
-        Js.Option.isSome(state.p1Socket)
-          ? f(Player.nextPlayer(player)) : Some(P1)
-      | P2 =>
-        Js.Option.isSome(state.p2Socket)
-          ? f(Player.nextPlayer(player)) : Some(P2)
-      | P3 =>
-        Js.Option.isSome(state.p3Socket)
-          ? f(Player.nextPlayer(player)) : Some(P3)
-      | P4 => Js.Option.isSome(state.p4Socket) ? None : Some(P4)
-      };
-    };
-  f(P1);
+  switch(GamePlayers.toDict(state.players) |> List.filter(((_k:Player.id, v:playerState)) => Js.Option.isNone(v.pla_socket))){
+    | [] => None
+    | [(pla_id, _v), ..._rest] => Some(pla_id)
+  }
 };
 
 
 let isGameOverTest = state => {
-  state.team1Points >= winningScore || state.team2Points >= winningScore;
-};
-
-let addPoints = (team, value, state) => {
-  switch (team) {
-  | Team.T1 => {...state, team1Points: state.team1Points + value}
-  | T2 => {...state, team2Points: state.team2Points + value}
-  };
+  GameTeams.get(T1, state.teams).team_score >= winningScore
+  || GameTeams.get(T2, state.teams).team_score >= winningScore;
 };
 
 /** The board is just a list of cards. It doesn't track which player played them.
@@ -288,38 +193,28 @@ let maybeGetSocketPlayer = (socket, state) => {
      );
 };
 
-let removePlayerName = (playerId, state) => {
-  switch (playerId) {
-  | Player.P1 => {...state, p1Name: ""}
-  | Player.P2 => {...state, p2Name: ""}
-  | Player.P3 => {...state, p3Name: ""}
-  | Player.P4 => {...state, p4Name: ""}
-  };
-};
-
-let removePlayerSocket = (playerId, state) => {
-  switch (playerId) {
-  | Player.P1 => {...state, p1Socket: None}
-  | Player.P2 => {...state, p2Socket: None}
-  | Player.P3 => {...state, p3Socket: None}
-  | Player.P4 => {...state, p4Socket: None}
-  };
-};
-
 let removePlayerBySocket = (socketId, state) => {
   switch(maybeGetSocketPlayer(socketId, state)){
     | None => state
     | Some(playerId) => 
-      state |> removePlayerName(playerId) |> removePlayerSocket(playerId)
+      {...state,
+        players: 
+          GamePlayers.update( 
+            playerId, 
+            x => {...x, pla_name: Player.stringOfId(playerId), pla_socket: None}, 
+            state.players)
+      }
   };
 }
 
 
+/* A game is considered empty if no player slot has a socket attached. */
 let isEmpty = (state) => {
-  [Player.P1, P2, P3, P4]
-  |> List.map(player => getPlayerSocket(player, state))
-  |> Belt.List.every(_, Js.Option.isNone)
-}
+  GamePlayers.(
+    map(x => x.pla_socket, state.players)
+    |> toList
+    |> Belt.List.every(_, Js.Option.isNone))
+};
 
 let decidePlayerPhase:
   (phase, Player.id, Player.id, option(Player.id), Player.id) => (Player.id, Player.phase) =

@@ -90,9 +90,9 @@ module App = {
         </div>;
       };
 
-      let (wePoints, demPoints) = switch(teamOfPlayer(state.me)){
-      | Team.T1 => (state.team1Points, state.team2Points)
-      | Team.T2 => (state.team2Points, state.team1Points)
+      let (weTeam, demTeam) = switch(teamOfPlayer(state.me)){
+        | Team.T1 => (GameTeams.get(T1, state.teams), GameTeams.get(T2, state.teams))
+        | Team.T2 => (GameTeams.get(T2, state.teams), GameTeams.get(T1, state.teams))
       };
       
 
@@ -108,7 +108,7 @@ module App = {
       | FindPlayersPhase(n) => <FindPlayersView n />
       | FindSubsPhase(n, _) => <FindSubsView n />
       | _ => 
-      <div>
+      <div className="font-sans">
         {
           switch(state.gamePhase){
           | RoundSummaryPhase => 
@@ -119,8 +119,8 @@ module App = {
           | GameOverPhase => 
             <Modal visible=true>
               <GameOverView
-                wePoints
-                demPoints
+                weScore=weTeam.team_score
+                demScore=demTeam.team_score
                 playAgainClick={sendIO(IO_PlayAgain)}
                 leaveClick={sendIO(IO_LeaveGame)}
               />
@@ -129,11 +129,14 @@ module App = {
           }
         }
 
-        <ScoreboardView wePoints demPoints />
+        <ScoreboardView
+          weScore=weTeam.team_score wePoints=weTeam.team_points 
+          demScore=demTeam.team_score demPoints=demTeam.team_points 
+        />
 
-        <div className="game-board section flex flex-row justify-around"> 
+        <div className="game-board section flex flex-row justify-around my-4"> 
           // <h4 className=""> {ReasonReact.string("Board")} </h4>
-          <div className="current-trick flex-1 flex flex-row justify-around">
+          <div className="current-trick flex-1 flex flex-row justify-around items-center border border-solid border-gray-400 mr-4 bg-gray-300 p-4">
               {
                 Array.map(
                   (transition: BoardTransition.transition) => {
@@ -175,7 +178,7 @@ module App = {
         </div>
 
         <WaitingMessage 
-          activePlayerName={ClientGame.getPlayerName(state.activePlayer, state)} 
+          activePlayerName={GamePlayers.get(state.activePlayer, state.players).pla_name} 
           player=state.me 
           activePlayer=state.activePlayer 
           activePlayerPhase=state.activePlayerPhase />

@@ -74,7 +74,7 @@ let debugGameBySocket = socket => {
 };
 
 let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
-  let playerHand = Game.getPlayerHand(player, gameState);
+  let playerHand = GamePlayers.get(player, gameState.Game.players).pla_hand;
   let handFacing =
     if (SharedGame.isFaceDownPhase(gameState.phase)) {
       player == gameState.dealer || player == gameState.leader 
@@ -88,12 +88,15 @@ let buildClientState = (activePlayer, activePlayerPhase, gameState, player, play
     gameId: gameState.roomKey,
     phase: playerPhase,
     gamePhase: gameState.phase,
-    p1Name: gameState.p1Name,
-    p2Name: gameState.p2Name,
-    p3Name: gameState.p3Name,
-    p4Name: gameState.p4Name,
+    players: (
+      {pla_name: GamePlayers.get(P1, gameState.players).pla_name},
+      {pla_name: GamePlayers.get(P2, gameState.players).pla_name},
+      {pla_name: GamePlayers.get(P3, gameState.players).pla_name},
+      {pla_name: GamePlayers.get(P4, gameState.players).pla_name},
+    ),
+    teams: gameState.teams,
     me: player,
-    myTricks: Game.getPlayerTricks(player, gameState),
+    myTricks: GamePlayers.get(player, gameState.players).pla_tricks,
     dealer: gameState.dealer,
     leader: gameState.leader,
     activePlayer,
@@ -103,8 +106,6 @@ let buildClientState = (activePlayer, activePlayerPhase, gameState, player, play
     maybeTrumpCard: gameState.maybeTrumpCard,
     maybeLeadCard: gameState.maybeLeadCard,
     board: gameState.board,
-    team1Points: gameState.team1Points,
-    team2Points: gameState.team2Points,
     maybeTeamHigh: gameState.maybeTeamHigh,
     maybeTeamLow: gameState.maybeTeamLow,
     maybeTeamJack: gameState.maybeTeamJack,
@@ -133,7 +134,7 @@ let buildSocketStatePairs: Game.state => list((option(BsSocket.Server.socketT),C
   let buildClientState = buildClientState(activePlayer, activePlayerPhase, gameState);
   playerPhasePairs->Belt.List.map(
     ( (player, playerPhase) ) => 
-    (gameState|>Game.getPlayerSocket(player), buildClientState(player, playerPhase)))
+    (GamePlayers.select(player, x => Game.(x.pla_socket), gameState.players), buildClientState(player, playerPhase)))
 }
 
 let updateClientState = (socket, clientState) => {
@@ -284,8 +285,20 @@ let joinGame = (socket, username) => {
   let playerId = Game.findEmptySeat(gameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
 
   let gameState =
-    Game.updatePlayerSocket(playerId, socket, gameState)
-    |> Game.updatePlayerName(playerId, username == "" ? Player.stringOfId(playerId) : username);
+    {
+      ...gameState,
+      players:
+        GamePlayers.update(
+          playerId,
+          x =>
+            Game.{
+              ...x,
+              pla_name: username == "" ? Player.stringOfId(playerId) : username,
+              pla_socket: Some(socket),
+            },
+          gameState.players,
+        ),
+    };
 
   let playerCount = Game.playerCount(gameState);
   let playersNeeded = 4 - playerCount;

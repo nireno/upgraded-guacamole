@@ -20,7 +20,8 @@
     "bs-express",
     "bs-socket",
     "reason-react",
-    "@ryb73/decco"
+    "@ryb73/decco",
+    "@glennsl/bs-json",
   ],
   "ppx-flags": ["ppx_decco"],
   "refmt": 3

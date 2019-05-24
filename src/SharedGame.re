@@ -27,6 +27,18 @@ let kickPoints =
     | _ => 0
   );
 
+
+[@decco]
+type teamState = {
+  team_score: int,
+  team_points: int, /* "Game" points */
+};
+
+let initialTeamState = {
+  team_score: 0,
+  team_points: 0,
+};
+
 /*[@decco] won't work. decco doesn'nt yet support recursive types
   Follow at:https://github.com/ryb73/ppx_decco/issues/6 
 */
