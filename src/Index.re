@@ -17,35 +17,21 @@ let isPlayerTurn = (turn, playerId) => {
 };
 
 module App = {
-   module BoardTransitionConf = {
-    type item = Card.t;
-
-    [@bs.deriving abstract]
-    type props = {
-      [@bs.optional] left: string,
-      [@bs.optional] opacity: string,
-    }
-    
-    let getKey = Card.stringOfCard
-  };
-
-  module BoardTransition = ReactSpring.MakeTransition(BoardTransitionConf);
-
   [@react.component]
   let make = () => {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
 
-    let transitions =
-      BoardTransition.useTransition(
-        state.board |> Belt.List.toArray,
-        BoardTransition.options(
-          ~from=BoardTransitionConf.props(~left="-300px", ~opacity="0", ()),
-          ~enter=BoardTransitionConf.props(~left="0", ~opacity="1", ()),
-          ~leave=BoardTransitionConf.props(~left="300px", ~opacity="0", ()),
-          ~trail=100,
-        ),
-      );
+    let ((southCard, southZ), (eastCard, eastZ), (northCard, northZ), (westCard, westZ)) =
+      Player.playersAsQuad(~startFrom=state.leader, ())
+      |> Quad.map(playerId =>
+           GamePlayers.select(
+             playerId,
+             x => (x.pla_card, Player.turnDistance(state.leader, playerId)),
+             state.players,
+           )
+         )
+      |> Quad.rotateBy(Player.turnDistance(state.leader, state.me));
 
     React.useEffect1(() => {
       let socket = ClientSocket.T.create();
@@ -108,127 +94,140 @@ module App = {
       | FindPlayersPhase(n) => <FindPlayersView n />
       | FindSubsPhase(n, _) => <FindSubsView n />
       | _ => 
-      <div className="font-sans">
-        {
-          switch(state.gamePhase){
-          | RoundSummaryPhase => 
-            let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
-            <Modal visible=true>
-              <RoundSummaryView maybeTeamHigh maybeTeamLow maybeTeamJack maybeTeamGame continueClick={sendIO(IO_NewRound)} />
-            </Modal>
-          | GameOverPhase => 
-            <Modal visible=true>
-              <GameOverView
-                weScore=weTeam.team_score
-                demScore=demTeam.team_score
-                playAgainClick={sendIO(IO_PlayAgain)}
-                leaveClick={sendIO(IO_LeaveGame)}
-              />
-            </Modal>
-          | _ => <Modal visible=false />
-          }
-        }
+      <div className="all-fours-game font-sans flex flex-col relative">
+        
 
+        <div className="trump-card self-center">
+          <CardTransition.PlayCard
+            maybeCard={state.maybeTrumpCard}
+            enterFrom=CardTransition.North
+            leaveTo=CardTransition.North 
+          />
+        </div>
         <ScoreboardView
           weScore=weTeam.team_score wePoints=weTeam.team_points 
           demScore=demTeam.team_score demPoints=demTeam.team_points 
         />
 
-        <div className="game-board section flex flex-row justify-around my-4"> 
-          // <h4 className=""> {ReasonReact.string("Board")} </h4>
-          <div className="current-trick flex-1 flex flex-row justify-around items-center border border-solid border-gray-400 mr-4 bg-gray-300 p-4">
-              {
-                Array.map(
-                  (transition: BoardTransition.transition) => {
-                    let card = transition->BoardTransition.itemGet;
-                    let props = transition->BoardTransition.propsGet;
-                    let key = transition->BoardTransition.keyGet;
+        <div className="the-rest flex-grow flex flex-col">
+          <div className="game-board flex-grow flex-shrink-0 flex justify-between items-center bg-gray-300">
+            <div
+              className="board-card board-card-west flex-shrink-0"
+              style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
+              <CardTransition.PlayCard
+                maybeCard=westCard
+                enterFrom=CardTransition.West
+                leaveTo=CardTransition.West
+              />
+            </div>
+            <div
+              className="board-card board-card-north self-start flex-shrink-0"
+              style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
+              <CardTransition.PlayCard
+                maybeCard=northCard
+                enterFrom=CardTransition.North
+                leaveTo=CardTransition.North
+              />
+            </div>
+            <div
+              className="board-card board-card-south flex-shrink-0 self-end"
+              style={ReactDOMRe.Style.make(~zIndex=string_of_int(southZ), ())}>
+              <CardTransition.PlayCard
+                maybeCard=southCard
+                enterFrom=CardTransition.South
+                leaveTo=CardTransition.South
+              />
+            </div>
+            <div
+              className="board-card board-card-east flex-shrink-0"
+              style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
+              <CardTransition.PlayCard
+                maybeCard=eastCard
+                enterFrom=CardTransition.East
+                leaveTo=CardTransition.East
+              />
+            </div>
+          </div>
 
-                    let springStyle =
-                      switch (props->BoardTransitionConf.leftGet) {
-                      | None => ReactDOMRe.Style.make(~left="0", ())
-                      | Some(left) => ReactDOMRe.Style.make(~left, ())
-                      };
+          <WaitingMessage 
+            activePlayerName={GamePlayers.get(state.activePlayer, state.players).pla_name} 
+            player=state.me 
+            activePlayer=state.activePlayer 
+            activePlayerPhase=state.activePlayerPhase />
 
-                    let springStyle =
-                      switch (props->BoardTransitionConf.opacityGet) {
-                      | None => springStyle
-                      | Some(opacity') =>
-                        ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
-                      };
-                    <ReactSpring.AnimatedDiv key className="board-card" style=springStyle>
-                      <Card card />
-                    </ReactSpring.AnimatedDiv>;
-                  },
-                  transitions,
-                )
-                |> ReasonReact.array
+          <Player
+            sendDeal={sendIO(SocketMessages.IO_Deal)}
+            sendStandUp={sendIO(SocketMessages.IO_Stand)}
+            sendBeg={sendIO(IO_Beg)}
+            sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
+            sendRunPack={sendIO(IO_RunPack)}
+            sendReshuffle={sendIO(IO_DealAgain)}
+            playerPhase=state.phase
+          />
+
+          <div className="player-hand flex flex-col">
+            <div
+              className="player-hand__placeholder-row flex flex-row justify-around">
+              <img className="hand-card" src="./static/img/card_placeholder.svg" />
+              <img className="hand-card" src="./static/img/card_placeholder.svg" />
+              <img className="hand-card" src="./static/img/card_placeholder.svg" />
+              <img className="hand-card" src="./static/img/card_placeholder.svg" />
+              <img className="hand-card" src="./static/img/card_placeholder.svg" />
+              <img className="hand-card" src="./static/img/card_placeholder.svg" />
+            </div>
+            <Hand
+              handFacing={state.handFacing}
+              maybeLeadCard={state.maybeLeadCard}
+              maybeTrumpCard={state.maybeTrumpCard}
+              handPhase={
+                Player.maybeIdEqual(state.maybePlayerTurn, state.me)
+                  ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
               }
-          </div>
-          <div className="trump-card flex-none">
-            {switch (state.maybeTrumpCard) {
-            | None => ReasonReact.null
-            | Some(kick) => 
-              <> 
-                <h4 className="size-3"> {ReasonReact.string("Trump")} </h4> 
-                <Card card=kick /> 
-              </>;
-            }}
+              sendPlayCard={card =>
+                switch (maybeSocket) {
+                | None => ()
+                | Some(socket) =>
+                  ClientSocket.T.emit(
+                    socket,
+                    SocketMessages.(
+                      IO_PlayCard(
+                        Player.id_encode(state.me) |> Js.Json.stringify,
+                        Card.t_encode(card) |> Js.Json.stringify,
+                      )
+                    ),
+                  )
+                }
+              }
+            />
           </div>
         </div>
 
-        <WaitingMessage 
-          activePlayerName={GamePlayers.get(state.activePlayer, state.players).pla_name} 
-          player=state.me 
-          activePlayer=state.activePlayer 
-          activePlayerPhase=state.activePlayerPhase />
 
-        <Player
-          sendDeal={sendIO(SocketMessages.IO_Deal)}
-          sendStandUp={sendIO(SocketMessages.IO_Stand)}
-          sendBeg={sendIO(IO_Beg)}
-          sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
-          sendRunPack={sendIO(IO_RunPack)}
-          sendReshuffle={sendIO(IO_DealAgain)}
-          playerPhase=state.phase
-        />
-
-        <div className="flex flex-col justify-around content-center">
-            {
-              switch (state.handFacing) {
-              | ClientGame.FaceDownHand(n) => <Hand.FaceDownHand nCards=n />
-              | ClientGame.FaceUpHand(cards) =>
-                <Hand.FaceUpHand
-                  maybeLeadCard={state.maybeLeadCard}
-                  maybeTrumpCard={state.maybeTrumpCard}
-                  handPhase={
-                    Player.maybeIdEqual(state.maybePlayerTurn, state.me)
-                      ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
-                  }
-                  sendPlayCard={card =>
-                    switch(maybeSocket){
-                      | None => ()
-                      | Some(socket) => 
-                          ClientSocket.T.emit(
-                          socket,
-                          SocketMessages.(IO_PlayCard(Player.id_encode(state.me) |> Js.Json.stringify, Card.t_encode(card) |> Js.Json.stringify)))
-                    }
-                    
-                  }
-                  cards
-                />
-              };
-            }
-
-        </div>
-
-        // <div className="flex justify-around">
-        //   <div className="round-summary column">
-        //     {switch (state.gamePhase) {
-        //       | _ => ReasonReact.null
-        //       }}
-        //   </div>
-        // </div>
+        {
+          switch (state.gamePhase) {
+          | RoundSummaryPhase =>
+            let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
+            <Modal visible=true>
+              <RoundSummaryView
+                maybeTeamHigh
+                maybeTeamLow
+                maybeTeamJack
+                maybeTeamGame
+                continueClick={sendIO(IO_NewRound)}
+              />
+            </Modal>;
+          | GameOverPhase =>
+            <Modal visible=true>
+              <GameOverView
+                weScore={weTeam.team_score}
+                demScore={demTeam.team_score}
+                playAgainClick={sendIO(IO_PlayAgain)}
+                leaveClick={sendIO(IO_LeaveGame)}
+              />
+            </Modal>
+          | _ => <Modal visible=false />
+          };
+        }
 
         // {createPlayerTricks(state.myTricks)}
 

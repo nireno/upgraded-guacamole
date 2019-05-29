@@ -22,6 +22,26 @@ let prevPlayer =
   | P3 => P2
   | P4 => P1;
 
+let playersAsQuad = (~startFrom=P1, ()) => {
+  let a = startFrom;
+  let b = nextPlayer(a);
+  let c = nextPlayer(b);
+  let d = nextPlayer(c);
+  (a, b, c, d)
+};
+
+
+/** How many turns does it take to get from playerA to playerB 
+   Returns 0, 1, 2 or 3
+   Example: turnDistance(P2, P1) = 3 
+*/
+let turnDistance = (playerA, playerB) => {
+   let rec f = (n, a, b) => {
+     a == b ? n : f(n+1, nextPlayer(a), b);
+   }
+   f(0, playerA, playerB)
+};
+
 let stringOfId =
   fun
   | P1 => "Player 1"

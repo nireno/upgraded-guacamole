@@ -44,7 +44,7 @@ let rec reducer = (action, state) =>
         let updateBoard = state => {
           ...state,
           deck: Deck.make() |> Deck.shuffle,
-          players: GamePlayers.map(x => {...x, pla_tricks: []}, state.players),
+          players: Quad.map(x => {...x, pla_tricks: []}, state.players),
           teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
           maybeTrumpCard: None,
           maybeLeadCard: None,
@@ -81,19 +81,22 @@ let rec reducer = (action, state) =>
               : true
         }
 
-        if(!canPlayCard){
+        if (!canPlayCard) {
           state;
         } else {
           let state = {
             ...state,
-            players: GamePlayers.update(player, x => {...x, pla_hand: hand'}, state.players),
+            players: GamePlayers.update(
+                player,
+                x => {...x, pla_hand: hand', pla_card: Some(c)},
+                state.players,
+              ),
             maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
             maybePlayerTurn:
               switch (state.maybePlayerTurn) {
               | None => state.maybePlayerTurn
               | Some(turn) => Some(Player.nextPlayer(turn))
               },
-            board: state.board @ [c],
           };
 
           Player.nextPlayer(player) == state.leader 
@@ -145,17 +148,18 @@ let rec reducer = (action, state) =>
         state |> updatePlayers;
 
       | AdvanceRound => 
-        let (p1Index, p2Index, p3Index, p4Index) =
-          playerBoardIndices(state.leader);
         let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadCard. #unsafe */
         let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCard. #unsafe */
 
-        let trick =
+        let getPlayerCard = playerId =>
+          GamePlayers.select(playerId, x => Js.Option.getExn(x.pla_card), state.players); /* #unsafe */
+
+        let trick = 
           Trick.{
-            p1Card: List.nth(state.board, p1Index),
-            p2Card: List.nth(state.board, p2Index),
-            p3Card: List.nth(state.board, p3Index),
-            p4Card: List.nth(state.board, p4Index),
+            p1Card: getPlayerCard(P1),
+            p2Card: getPlayerCard(P2),            
+            p3Card: getPlayerCard(P3),
+            p4Card: getPlayerCard(P4),
           }; /* Action requires that the board has four cards. #unsafe*/
 
         let trickWinner: Player.id =
@@ -168,7 +172,7 @@ let rec reducer = (action, state) =>
               trickWinner,
               x => {...x, pla_tricks: x.pla_tricks @ [trick]},
               state.players,
-            ),
+            ) |> Quad.map(x => {...x, pla_card: None}),
           teams:
             GameTeams.update(
               teamOfPlayer(trickWinner),
@@ -178,7 +182,6 @@ let rec reducer = (action, state) =>
           leader: trickWinner,
           maybePlayerTurn: Some(trickWinner),
           maybeLeadCard: None,
-          board: [],
         };
 
         let state = state  |> advanceRound;
@@ -397,7 +400,7 @@ let rec reducer = (action, state) =>
       | DealAgain =>
         {
           ...state,
-          players: GamePlayers.map(x => {...x, pla_hand: []}, state.players),
+          players: Quad.map(x => {...x, pla_hand: []}, state.players),
           maybeTrumpCard: None,
           deck: Deck.make() |> Deck.shuffle,
           phase: DealPhase,

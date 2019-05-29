@@ -16,6 +16,31 @@ module FaceDownHand = {
 
   module Transition = ReactSpring.MakeTransition(TransitionConf);
 
+  module AnimatedCard = {
+    [@react.component]
+    let make = (~transition: Transition.transition) => {
+      let props = transition->Transition.propsGet;
+
+      let springStyle =
+        switch (props->TransitionConf.leftGet) {
+        | None => ReactDOMRe.Style.make()
+        | Some(left) => ReactDOMRe.Style.make(~left, ())
+        };
+
+      let springStyle =
+        switch (props->TransitionConf.topGet) {
+        | None => springStyle
+        | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
+        };
+
+      <ReactSpring.AnimatedImg
+        className="animated-card"
+        src="./static/cardsjs/cards/Red_Back.svg" 
+        key={transition->Transition.keyGet} 
+        style=springStyle />
+    };
+  };
+
   [@react.component]
   let make = (~nCards) => {
       if (nCards == 0) {
@@ -63,24 +88,14 @@ module FaceDownHand = {
           </ReactSpring.AnimatedDiv>;
         };
 
-        <>
-          <div
-            className="flex flex-row justify-around content-center"
-            style={ReactDOMRe.Style.make(~position="relative", ())}>
-            {
-              let first6 = transitions->Belt.Array.slice(~offset=0, ~len=6);
-              Array.map(makeAnimatedCard, first6) |> ReasonReact.array;
-            }
-          </div>
-          <div
-            className="flex flex-row justify-center content-center"
-            style={ReactDOMRe.Style.make(~marginTop="-10%", ())}>
-            {
-              let second6 = transitions->Belt.Array.slice(~offset=6, ~len=12);
-              Array.map(makeAnimatedCard, second6) |> ReasonReact.array;
-            }
-          </div>
-        </>;
+        <div
+          className="player-hand-row flex flex-row justify-around" >
+          {
+            Belt.Array.(
+              map(transitions, makeAnimatedCard)
+            ) |> ReasonReact.array
+          }
+        </div>
       }
   };
 };
@@ -99,10 +114,10 @@ module HandTransitionConf = {
     [@bs.optional] left: string,
     [@bs.optional] top: string,
     [@bs.optional] opacity: string,
-  }
-  
+  };
+
   let getKey = ({card}) => Card.stringOfCard(card);
-}
+};
 
 module HandTransition = ReactSpring.MakeTransition(HandTransitionConf);
 
@@ -125,6 +140,67 @@ module FaceUpHand = {
   let generateKey = (kCards, card) => {
     let maxKey = kCards |> List.filter(kCard => kCard.card == card) |> List.length;
     Card.stringOfCard(card) ++ string_of_int(maxKey);
+  };
+
+  let checkIsCardPlayable = (handPhase, maybeLeadCard, maybeTrumpCard, cards, card) => {
+    let playerIsLeader =
+      switch (maybeLeadCard) {
+      | None => true
+      | Some(_) => false
+      };
+
+    let cardIsTrump = ({Card.suit}) =>
+      switch (maybeTrumpCard) {
+      | Some({Card.suit: trumpSuit}) when suit == trumpSuit => true
+      | _ => false
+      };
+
+    let cardFollowsSuit = ({Card.suit}) =>
+      switch (maybeLeadCard) {
+      | Some({Card.suit: leadSuit}) when leadSuit == suit => true
+      | _ => false
+      };
+
+    let handHasSuitTest: Card.Suit.t => bool =
+      testSuit => {
+        List.exists(({Card.suit}) => suit == testSuit, cards);
+      };
+
+    let cantFollowSuit =
+      switch (maybeLeadCard) {
+      | Some({suit: leadSuit}) => handHasSuitTest(leadSuit) ? false : true
+      | None => false
+      };
+    handPhase == HandPlayPhase
+    && (playerIsLeader || cardIsTrump(card) || cardFollowsSuit(card) || cantFollowSuit);
+  };
+
+  let makeAnimatedCard = (transition: HandTransition.transition, clickAction) => {
+    let kCard = transition->HandTransition.itemGet;
+    let props = transition->HandTransition.propsGet;
+
+    let springStyle =
+      switch (props->HandTransitionConf.leftGet) {
+      | None => ReactDOMRe.Style.make(~left="0", ())
+      | Some(left) => ReactDOMRe.Style.make(~left, ())
+      };
+
+    let springStyle =
+      switch (props->HandTransitionConf.topGet) {
+      | None => springStyle
+      | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
+      };
+
+    let springStyle =
+      switch (props->HandTransitionConf.opacityGet) {
+      | None => springStyle
+      | Some(opacity') =>
+        ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
+      };
+
+    <ReactSpring.AnimatedDiv key={kCard.key} className="hand-card" style=springStyle>
+      <Card ?clickAction card={kCard.card} />
+    </ReactSpring.AnimatedDiv>;
   };
 
   [@react.component]
@@ -210,22 +286,36 @@ module FaceUpHand = {
     };
 
     <>
-      <div
-        className="flex flex-row justify-around content-center"
-        style={ReactDOMRe.Style.make(~position="relative", ())}>
+      <div className="player-hand-row flex flex-row justify-around content-center">
         {
           let first6 = transitions->Belt.Array.slice(~offset=0, ~len=6);
           Array.map(makeAnimatedCard, first6) |> ReasonReact.array;
         }
       </div>
-      <div
-        className="flex flex-row justify-center content-center"
-        style={ReactDOMRe.Style.make(~marginTop="-10%", ())}>
+      <div className="player-hand-row flex flex-row justify-center content-center">
         {
           let second6 = transitions->Belt.Array.slice(~offset=6, ~len=12);
           Array.map(makeAnimatedCard, second6) |> ReasonReact.array;
         }
       </div>
     </>;
+  };
+};
+
+[@decco] type handFacing = | FaceUpHand(FaceUpHand.t) | FaceDownHand(FaceDownHand.t);
+
+
+[@react.component]
+let make =
+    (
+      ~handFacing,
+      ~handPhase: FaceUpHand.phase,
+      ~maybeLeadCard: option(Card.t),
+      ~maybeTrumpCard: option(Card.t),
+      ~sendPlayCard: Card.t => unit,
+    ) => {
+  switch (handFacing) {
+  | FaceDownHand(n) => <FaceDownHand nCards=n />
+  | FaceUpHand(cards) => <FaceUpHand cards handPhase maybeLeadCard maybeTrumpCard sendPlayCard />
   };
 };
