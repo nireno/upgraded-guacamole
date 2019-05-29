@@ -404,7 +404,7 @@ SockServ.onConnect(
           };
 
           if (isEndTrick) {
-            Js.Global.setTimeout(advanceRound, 2000) |> ignore;
+            Js.Global.setTimeout(advanceRound, 2750) |> ignore;
           };
 
           StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
