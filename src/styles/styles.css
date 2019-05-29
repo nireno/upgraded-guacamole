@@ -92,7 +92,7 @@ body {
 
 
 .trump-card {
-  position: fixed;
+  position: absolute;
   width: 25%;
 }
 
