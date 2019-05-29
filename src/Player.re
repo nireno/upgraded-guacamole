@@ -91,36 +91,40 @@ let make =
       ~sendReshuffle,
       ~playerPhase=PlayerIdlePhase,
     ) => {
-    <div className="player__actions flex justify-around my-4">
       {switch (playerPhase) {
         | PlayerDealPhase =>
-          <button className="btn btn-blue" onClick=sendDeal> {ReasonReact.string("Deal")} </button>
+          <Modal visible=true>
+            <button className="btn btn-blue" onClick=sendDeal> {ReasonReact.string("Deal")} </button>
+          </Modal>
         | PlayerBegPhase =>
-          <>
+          <Modal visible=true>
             <button className="btn btn-blue m-2" onClick=sendBeg> {ReasonReact.string("Beg")} </button>
             <button className="btn btn-blue m-2" onClick=sendStandUp>
               {ReasonReact.string("Stand")}
             </button>
-          </>
+          </Modal>
         | PlayerGiveOnePhase =>
-          <>
+          <Modal visible=true>
             <button className="btn btn-blue m-2" onClick=sendGiveOne>
               {ReasonReact.string("Give One")}
             </button>
             <button className="btn btn-blue m-2" onClick=sendRunPack>
               {ReasonReact.string("Run Pack")}
             </button>
-          </>
+          </Modal>
         | PlayerRunPackPhase =>
-          <button className="btn btn-blue" onClick=sendRunPack>
-            {ReasonReact.string("Run Again")}
-          </button>
+          <Modal visible=true>
+            <button className="btn btn-blue" onClick=sendRunPack>
+              {ReasonReact.string("Run Again")}
+            </button>
+          </Modal>
         | PlayerRedealPhase =>
+          <Modal visible=true>
             <button className="btn btn-blue" onClick=sendReshuffle>
               {ReasonReact.string("Reshuffle")}
             </button>
+          </Modal>
         | PlayerTurnPhase(_)
         | PlayerIdlePhase => ReasonReact.null
         }}
-    </div>
 };

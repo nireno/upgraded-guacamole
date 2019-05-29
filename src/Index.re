@@ -92,6 +92,7 @@ module App = {
         | Team.T2 => (GameTeams.get(T2, state.teams), GameTeams.get(T1, state.teams))
       };
       
+      let bgBoard = state.me == state.activePlayer ? " bg-green-500 " : " bg-orange-500 ";
 
       state.gameId == "" 
       ? 
@@ -121,7 +122,7 @@ module App = {
         />
 
         <div className="the-rest flex-grow flex flex-col">
-          <div className="game-board flex-grow flex-shrink-0 flex justify-between items-center bg-gray-300">
+          <div className={"game-board relative flex-grow flex-shrink-0 flex justify-between items-center " ++ bgBoard} >
             <div
               className="board-card board-card-west flex-shrink-0"
               style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
