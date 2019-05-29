@@ -1,4 +1,6 @@
-type playerData('a) = ('a, 'a, 'a, 'a);
+open AppPrelude;
+
+type playerData('a) = Quad.t('a);
 
 let get = (id, rs: playerData('a)) => {
   let (r1, r2, r3, r4) = rs;
@@ -12,10 +14,6 @@ let get = (id, rs: playerData('a)) => {
 
 let select = (id, f, rs: playerData('a)) => {
   get(id, rs) |> f
-};
-
-let map = (f, (a,b,c,d):playerData('a)) => {
-  (f(a), f(b), f(c), f(d))
 };
 
 let put = (id, r', rs: playerData('a)) => {
@@ -32,6 +30,5 @@ let update = (id, f, rs: playerData('a)) => {
   put(id, get(id, rs) |> f, rs);
 };
 
-let toList = ( (a, b, c, d) ) => [a, b, c, d];
 
 let toDict = ( (a, b, c, d) ) => [(Player.P1, a), (P2, b), (P3, c), (P4, d)];
