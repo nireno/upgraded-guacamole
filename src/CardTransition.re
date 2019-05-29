@@ -1,5 +1,11 @@
 type direction = | North | South | East | West;
 
+let directionToString = fun
+| North => "north"
+| South => "south"
+| East => "east"
+| West => "west";
+
 module PlayCard = {
   module PlayCardTransitionConf = {
     type item = Card.t;
@@ -27,18 +33,18 @@ module PlayCard = {
 
     let (enterLeft, enterTop) =
       switch (enterFrom) {
-      | North => ("0", "-300px")
-      | South => ("0", "300px")
-      | East => ("300px", "0")
-      | West => ("-300px", "0")
+      | North => ("0px", "-300px")
+      | South => ("0px", "300px")
+      | East => ("300px", "0px")
+      | West => ("-300px", "0px")
       };
 
     let (leaveLeft, leaveTop) =
       switch (leaveTo) {
-      | North => ("0", "-300px")
-      | South => ("0", "300px")
-      | East => ("300px", "0")
-      | West => ("-300px", "0")
+      | North => ("0px", "-300px")
+      | South => ("0px", "300px")
+      | East => ("300px", "0px")
+      | West => ("-300px", "0px")
       };
 
     let transitions =
@@ -56,7 +62,6 @@ module PlayCard = {
         let card = transition->PlayCardTransition.itemGet;
         let key = Card.stringOfCard(card);
         let props = transition->PlayCardTransition.propsGet;
-        // let key = transition->SouthCardTransition.keyGet;
 
         let springStyle =
           switch (props->PlayCardTransitionConf.leftGet) {

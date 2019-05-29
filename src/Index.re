@@ -23,15 +23,26 @@ module App = {
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
 
     let ((southCard, southZ), (eastCard, eastZ), (northCard, northZ), (westCard, westZ)) =
-      Player.playersAsQuad(~startFrom=state.leader, ())
+      Player.playersAsQuad(~startFrom=state.me, ())
       |> Quad.map(playerId =>
            GamePlayers.select(
              playerId,
              x => (x.pla_card, Player.turnDistance(state.leader, playerId)),
              state.players,
            )
-         )
-      |> Quad.rotateBy(Player.turnDistance(state.leader, state.me));
+         );
+
+    /**
+    When it is time to remove cards from the board, state.leader should also
+    be the trick winner. So this will determine the direction/player the cards
+    should animate toward.
+    */
+    let animationLeaveTo = switch( Player.turnDistance(state.me, state.leader)){
+      | 1 => CardTransition.East
+      | 2 => CardTransition.North
+      | 3 => CardTransition.West
+      | _ => CardTransition.South
+    };
 
     React.useEffect1(() => {
       let socket = ClientSocket.T.create();
@@ -117,7 +128,7 @@ module App = {
               <CardTransition.PlayCard
                 maybeCard=westCard
                 enterFrom=CardTransition.West
-                leaveTo=CardTransition.West
+                leaveTo=animationLeaveTo
               />
             </div>
             <div
@@ -126,7 +137,7 @@ module App = {
               <CardTransition.PlayCard
                 maybeCard=northCard
                 enterFrom=CardTransition.North
-                leaveTo=CardTransition.North
+                leaveTo=animationLeaveTo
               />
             </div>
             <div
@@ -135,7 +146,7 @@ module App = {
               <CardTransition.PlayCard
                 maybeCard=southCard
                 enterFrom=CardTransition.South
-                leaveTo=CardTransition.South
+                leaveTo=animationLeaveTo
               />
             </div>
             <div
@@ -144,7 +155,7 @@ module App = {
               <CardTransition.PlayCard
                 maybeCard=eastCard
                 enterFrom=CardTransition.East
-                leaveTo=CardTransition.East
+                leaveTo=animationLeaveTo
               />
             </div>
           </div>
