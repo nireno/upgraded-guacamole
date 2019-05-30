@@ -71,41 +71,36 @@ let rec reducer = (action, state) =>
         let hand = GamePlayers.select(player, x => x.pla_hand, state.players);
         let hand' = List.filter(c' => c != c', hand);
 
-        let canPlayCard = 
-        switch(state.maybePlayerTurn){
-          | None => false
-          | Some(playerId) when playerId != player => false
-          | Some(_) => 
-            hand == hand' 
-              ? false  // Card c was not in player hand
-              : true
-        }
+        let canPlayCard =
+          switch (state.maybePlayerTurn) {
+          | Some(playerTurn) 
+              when playerTurn == player 
+              // Card c was in player hand
+              &&   hand != hand'  
+              // and there is an empty slot on the board for the player
+              && GamePlayers.get(player, state.players).pla_card == None =>  
+            true
+          | _ => false
+          };
 
         if (!canPlayCard) {
           state;
         } else {
+          let nextPlayer = Player.nextPlayer(player);
           let state = {
             ...state,
-            players: GamePlayers.update(
-                player,
-                x => {...x, pla_hand: hand', pla_card: Some(c)},
-                state.players,
-              ),
+            players:
+              GamePlayers.update(player, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players),
             maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
             maybePlayerTurn:
-              switch (state.maybePlayerTurn) {
-              | None => state.maybePlayerTurn
-              | Some(turn) => 
-                let nextTurn = Player.nextPlayer(turn);
-                /* 
-                When the current player is the last player in the trick (i.e. the next player
-                is the lead player), it means this current player will end the trick. There
-                is no need to advance the turn since The true next player will be determined
-                later by computing the trick winner. This test keeps the ui more consistent
-                if the player who wins the trick is the last player in the trick.
-                */
-                Some(nextTurn == state.leader ? turn : nextTurn) 
-              },
+              /*
+               When the current player is the last player in the trick (i.e. the next player
+               is the lead player), it means this current player will end the trick. There
+               is no need to advance the turn since The true next player will be determined
+               later by computing the trick winner. This test keeps the ui more consistent
+               if the player who wins the trick is the last player in the trick.
+               */
+              Some(nextPlayer == state.leader ? player : nextPlayer),
           };
 
           Player.nextPlayer(player) == state.leader 
