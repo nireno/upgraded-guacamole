@@ -95,7 +95,16 @@ let rec reducer = (action, state) =>
             maybePlayerTurn:
               switch (state.maybePlayerTurn) {
               | None => state.maybePlayerTurn
-              | Some(turn) => Some(Player.nextPlayer(turn))
+              | Some(turn) => 
+                let nextTurn = Player.nextPlayer(turn);
+                /* 
+                When the current player is the last player in the trick (i.e. the next player
+                is the lead player), it means this current player will end the trick. There
+                is no need to advance the turn since The true next player will be determined
+                later by computing the trick winner. This test keeps the ui more consistent
+                if the player who wins the trick is the last player in the trick.
+                */
+                Some(nextTurn == state.leader ? turn : nextTurn) 
               },
           };
 
@@ -143,9 +152,11 @@ let rec reducer = (action, state) =>
           phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
         };
 
-      | EndTrick =>
-        let updatePlayers = state => {...state, maybePlayerTurn: None};
-        state |> updatePlayers;
+      | EndTrick => state
+        // TODO: Endtrick is practically a noop at this point. 
+        // It is probably unecessary and can be removed.
+        // let updatePlayers = state => {...state, maybePlayerTurn: None};
+        // state |> updatePlayers;
 
       | AdvanceRound => 
         let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadCard. #unsafe */
