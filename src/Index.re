@@ -241,7 +241,7 @@ module App = {
             <Modal visible=true>
               <FindSubsView n />
             </Modal>
-          | _ => <Modal visible=false />
+          | _ => ReasonReact.null
           };
         }
 
