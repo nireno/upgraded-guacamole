@@ -15,6 +15,10 @@ let teamOfPlayer =
     | P4 => Team.T2
   );
 
+let teamIdtoName = (weTeamId, teamId) => {
+  teamId == weTeamId ? "We" : "Dem"
+};
+
 let leftPad = (s, ~n=0, ~c="\t", ()) => {
   let tabs = Js.String.repeat(n, c); 
   Js.String.split("\n", s)

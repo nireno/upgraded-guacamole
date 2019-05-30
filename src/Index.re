@@ -220,6 +220,7 @@ module App = {
             let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
             <Modal visible=true>
               <RoundSummaryView
+                weTeamId=teamOfPlayer(state.me)
                 maybeTeamHigh
                 maybeTeamLow
                 maybeTeamJack
