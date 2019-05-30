@@ -294,7 +294,7 @@ module FaceUpHand = {
       </div>
       <div className="player-hand-row flex flex-row justify-center content-center">
         {
-          let second6 = transitions->Belt.Array.slice(~offset=6, ~len=12);
+          let second6 = transitions->Belt.Array.slice(~offset=6, ~len=6);
           Array.map(makeAnimatedCard, second6) |> ReasonReact.array;
         }
       </div>
