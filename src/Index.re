@@ -96,14 +96,14 @@ module App = {
 
       state.gameId == "" 
       ? 
-      <div className="flex flex-row justify-around">
+      <Modal visible=true>
         <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username))}>
           {ReasonReact.string("Join Game")}
         </button> 
-      </div>
+      </Modal>
       :
       switch(state.gamePhase){
-      | FindPlayersPhase(n) => <FindPlayersView n />
+      | FindPlayersPhase(n) => <Modal visible=true><FindPlayersView n /></Modal>
       | _ => 
       <div className="all-fours-game font-sans flex flex-col relative">
         
