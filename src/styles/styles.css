@@ -94,3 +94,11 @@ body {
 img.card {
   display: block;
 }
+
+.text-shadow--wait-msg {
+  text-shadow: -1px 1px 1px #9c4221;
+}
+
+.text-shadow--play-msg {
+  text-shadow: -1px 1px 1px #276749;;
+}

@@ -104,7 +104,6 @@ module App = {
       :
       switch(state.gamePhase){
       | FindPlayersPhase(n) => <FindPlayersView n />
-      | FindSubsPhase(n, _) => <FindSubsView n />
       | _ => 
       <div className="all-fours-game font-sans flex flex-col relative">
         
@@ -236,6 +235,10 @@ module App = {
                 playAgainClick={sendIO(IO_PlayAgain)}
                 leaveClick={sendIO(IO_LeaveGame)}
               />
+            </Modal>
+          | FindSubsPhase(n, _) => 
+            <Modal visible=true>
+              <FindSubsView n />
             </Modal>
           | _ => <Modal visible=false />
           };
