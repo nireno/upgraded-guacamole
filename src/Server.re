@@ -15,17 +15,12 @@ Express.App.useOnPath(
   Express.Static.(make("./build", defaultOptions()) |> asMiddleware),
 );
 
-// Express.App.useOnPath(
-//   app,
-//   ~path="/static",
-//   Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
-// );
-
 Express.App.useOnPath(
   app,
-  ~path="/static/cardsjs",
-  Express.Static.(make("./node_modules/cardsJS/dist", defaultOptions()) |> asMiddleware),
+  ~path="/static",
+  Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
 );
+
 
 module SockServ = BsSocket.Server.Make(SocketMessages);
 module Namespace = BsSocket.Namespace.Make(SocketMessages);
@@ -78,21 +73,37 @@ let buildClientState = (activePlayer, activePlayerPhase, gameState, player, play
   let handFacing =
     if (SharedGame.isFaceDownPhase(gameState.phase)) {
       player == gameState.dealer || player == gameState.leader 
-        ? ClientGame.FaceUpHand(playerHand) 
-        : ClientGame.FaceDownHand(List.length(playerHand));
+        ? Hand.FaceUpHand(playerHand) 
+        : Hand.FaceDownHand(List.length(playerHand));
     } else {
-      ClientGame.FaceUpHand(playerHand);
+      Hand.FaceUpHand(playerHand);
     };
 
+  let p1State = GamePlayers.get(P1, gameState.players);
+  let p2State = GamePlayers.get(P2, gameState.players);
+  let p3State = GamePlayers.get(P3, gameState.players);
+  let p4State = GamePlayers.get(P4, gameState.players);
   ClientGame.{
     gameId: gameState.roomKey,
     phase: playerPhase,
     gamePhase: gameState.phase,
     players: (
-      {pla_name: GamePlayers.get(P1, gameState.players).pla_name},
-      {pla_name: GamePlayers.get(P2, gameState.players).pla_name},
-      {pla_name: GamePlayers.get(P3, gameState.players).pla_name},
-      {pla_name: GamePlayers.get(P4, gameState.players).pla_name},
+      {
+        pla_name: p1State.pla_name,
+        pla_card: p1State.pla_card
+      },
+      {
+        pla_name: p2State.pla_name,
+        pla_card: p2State.pla_card
+      },
+      {
+        pla_name: p3State.pla_name,
+        pla_card: p3State.pla_card
+      },
+      {
+        pla_name: p4State.pla_name,
+        pla_card: p4State.pla_card
+      },
     ),
     teams: gameState.teams,
     me: player,
@@ -105,7 +116,6 @@ let buildClientState = (activePlayer, activePlayerPhase, gameState, player, play
     handFacing,
     maybeTrumpCard: gameState.maybeTrumpCard,
     maybeLeadCard: gameState.maybeLeadCard,
-    board: gameState.board,
     maybeTeamHigh: gameState.maybeTeamHigh,
     maybeTeamLow: gameState.maybeTeamLow,
     maybeTeamJack: gameState.maybeTeamJack,
@@ -404,7 +414,7 @@ SockServ.onConnect(
           };
 
           if (isEndTrick) {
-            Js.Global.setTimeout(advanceRound, 2000) |> ignore;
+            Js.Global.setTimeout(advanceRound, 2750) |> ignore;
           };
 
           StringMap.set(roomKey_gameState, gameState.roomKey, gameState);

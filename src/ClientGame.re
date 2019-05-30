@@ -1,7 +1,6 @@
 open AppPrelude;
 include SharedGame;
 
-[@decco] type handFacing = | FaceUpHand(Hand.FaceUpHand.t) | FaceDownHand(Hand.FaceDownHand.t);
 [@decco] type maybePlayerId = option(Player.id);
 [@decco] type maybeTeamId = option(Team.id);
 [@decco] type maybeTeamJackAward = option( (Team.id, award) );
@@ -9,7 +8,8 @@ include SharedGame;
 
 [@decco]
 type playerState = {
-  pla_name: string
+  pla_name: string,
+  pla_card: option(Card.t),
 };
 
 [@decco]
@@ -26,10 +26,9 @@ type state = {
   activePlayer: Player.id,
   activePlayerPhase: Player.phase,
   maybePlayerTurn: maybePlayerId,
-  handFacing: handFacing,
+  handFacing: Hand.handFacing,
   maybeLeadCard: maybeCard,
   maybeTrumpCard: maybeCard,
-  board: list(Card.t),
   maybeTeamHigh: maybeTeamId,
   maybeTeamLow: maybeTeamId,
   maybeTeamJack: maybeTeamJackAward,
@@ -41,10 +40,10 @@ let initialState = {
   phase: PlayerIdlePhase,
   gamePhase: FindPlayersPhase(3),
   players: (
-    {pla_name: Player.stringOfId(P1)},
-    {pla_name: Player.stringOfId(P2)},
-    {pla_name: Player.stringOfId(P3)},
-    {pla_name: Player.stringOfId(P4)},
+    {pla_name: Player.stringOfId(P1), pla_card: None},
+    {pla_name: Player.stringOfId(P2), pla_card: None},
+    {pla_name: Player.stringOfId(P3), pla_card: None},
+    {pla_name: Player.stringOfId(P4), pla_card: None},
   ),
   me: P1,
   myTricks: [],
@@ -57,7 +56,6 @@ let initialState = {
   handFacing: FaceDownHand(0),
   maybeLeadCard: None,
   maybeTrumpCard: None,
-  board: [],
   maybeTeamHigh: None,
   maybeTeamLow: None,
   maybeTeamJack: None,

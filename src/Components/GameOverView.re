@@ -1,6 +1,6 @@
 [@react.component]
 let make = (~weScore, ~demScore, ~playAgainClick, ~leaveClick) => {
-  let outcome = weScore >= demScore ? "We win :)" : "We loss :(";
+  let outcome = weScore >= demScore ? "We win :)" : "We lost :(";
   <>
     <h1> {ReasonReact.string("Game over")} </h1>
     <div> {outcome |> ReasonReact.string} </div>

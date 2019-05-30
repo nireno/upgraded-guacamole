@@ -13,7 +13,10 @@ let make = (~player, ~activePlayer, ~activePlayerName, ~activePlayerPhase) => {
     };
     <div
       className={
-        "text-center text-white p-2 my-4 " ++ (player == activePlayer ? "bg-green-500" : "bg-orange-500")
+        "waiting-message text-center text-white text-lg p-2 shadow-sm mb-2 rounded-b " 
+        ++ (player == activePlayer 
+            ? "bg-green-600 text-shadow--play-msg" 
+            : "bg-orange-600 text-shadow--wait-msg")
       }>
       {ReasonReact.string(msg)}
     </div>;

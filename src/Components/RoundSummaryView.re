@@ -1,11 +1,14 @@
+open AppPrelude;
+
 [@react.component]
-let make = (~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeamGame, ~continueClick) => {
+let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeamGame, ~continueClick) => {
+  let teamIdToName = teamIdtoName(weTeamId);
   <>
     <div>
       {ReasonReact.string(
          switch (maybeTeamHigh) {
          | None => "No one has high"
-         | Some(teamHigh) => Team.stringOfTeam(teamHigh) ++ " has high."
+         | Some(teamHigh) => teamIdToName(teamHigh) ++ " have high."
          },
        )}
     </div>
@@ -13,7 +16,7 @@ let make = (~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeamGame, ~cont
       {ReasonReact.string(
          switch (maybeTeamLow) {
          | None => "No one has low"
-         | Some(teamLow) => Team.stringOfTeam(teamLow) ++ " has low."
+         | Some(teamLow) => teamIdToName(teamLow) ++ " have low."
          },
        )}
     </div>
@@ -23,9 +26,11 @@ let make = (~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeamGame, ~cont
        | Some((team, value)) =>
          switch (value) {
          | SharedGame.HangJackAward =>
-           <div> {ReasonReact.string(Team.stringOfTeam(team) ++ " hanged the jack.")} </div>
+           let hangJackMsg = team == weTeamId ? teamIdToName(weTeamId) ++ " hang the jack."
+           : teamIdToName(team) ++ " hang we jack.";
+           <div> {ReasonReact.string(hangJackMsg)} </div>
          | RunJackAward =>
-           <div> {ReasonReact.string(Team.stringOfTeam(team) ++ " gets away with jack.")} </div>
+           <div> {ReasonReact.string(teamIdToName(team) ++ " get away with jack.")} </div>
          | _ => ReasonReact.null
          }
        }}
@@ -33,7 +38,7 @@ let make = (~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeamGame, ~cont
     <div>
       {switch (maybeTeamGame) {
        | None => ReasonReact.string("Tied for game.")
-       | Some(teamGame) => ReasonReact.string(Team.stringOfTeam(teamGame) ++ " gets game.")
+       | Some(teamGame) => ReasonReact.string(teamIdToName(teamGame) ++ " get game.")
        }}
     </div>
     <button className="mt-4 btn btn-blue" onClick=continueClick>

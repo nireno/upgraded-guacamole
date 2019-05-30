@@ -1,5 +1,10 @@
 # all-fours
 
+Card images taken from cardsJS package. See my github for a fork of the repo.
+Note that the version installed using `npm install cardsJS` has a `dist` dir
+which contains optimized/minified versions of the svg files. These are the
+files I copied.
+
 ## Run Project
 
 ```sh

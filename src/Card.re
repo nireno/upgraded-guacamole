@@ -217,7 +217,7 @@ let stringOfSpriteOffset = ( {rank, suit} ) => {
 let getImageSrc = ({rank, suit}) => {
   let suitCode = Suit.codeOfSuit(suit);
   let rankCode = Rank.codeOfRank(rank);
-  "./static/cardsjs/cards/" ++ rankCode ++ suitCode ++ ".svg"
+  "./static/cards/" ++ rankCode ++ suitCode ++ ".svg"
 };
 
 [@react.component]

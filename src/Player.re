@@ -22,6 +22,26 @@ let prevPlayer =
   | P3 => P2
   | P4 => P1;
 
+let playersAsQuad = (~startFrom=P1, ()) => {
+  let a = startFrom;
+  let b = nextPlayer(a);
+  let c = nextPlayer(b);
+  let d = nextPlayer(c);
+  (a, b, c, d)
+};
+
+
+/** How many turns does it take to get from playerA to playerB 
+   Returns 0, 1, 2 or 3
+   Example: turnDistance(P2, P1) = 3 
+*/
+let turnDistance = (playerA, playerB) => {
+   let rec f = (n, a, b) => {
+     a == b ? n : f(n+1, nextPlayer(a), b);
+   }
+   f(0, playerA, playerB)
+};
+
 let stringOfId =
   fun
   | P1 => "Player 1"
@@ -71,36 +91,40 @@ let make =
       ~sendReshuffle,
       ~playerPhase=PlayerIdlePhase,
     ) => {
-    <div className="player__actions flex justify-around my-4">
       {switch (playerPhase) {
         | PlayerDealPhase =>
-          <button className="btn btn-blue" onClick=sendDeal> {ReasonReact.string("Deal")} </button>
+          <Modal visible=true>
+            <button className="btn btn-blue" onClick=sendDeal> {ReasonReact.string("Deal")} </button>
+          </Modal>
         | PlayerBegPhase =>
-          <>
+          <Modal visible=true>
             <button className="btn btn-blue m-2" onClick=sendBeg> {ReasonReact.string("Beg")} </button>
             <button className="btn btn-blue m-2" onClick=sendStandUp>
               {ReasonReact.string("Stand")}
             </button>
-          </>
+          </Modal>
         | PlayerGiveOnePhase =>
-          <>
+          <Modal visible=true>
             <button className="btn btn-blue m-2" onClick=sendGiveOne>
               {ReasonReact.string("Give One")}
             </button>
             <button className="btn btn-blue m-2" onClick=sendRunPack>
               {ReasonReact.string("Run Pack")}
             </button>
-          </>
+          </Modal>
         | PlayerRunPackPhase =>
-          <button className="btn btn-blue" onClick=sendRunPack>
-            {ReasonReact.string("Run Again")}
-          </button>
+          <Modal visible=true>
+            <button className="btn btn-blue" onClick=sendRunPack>
+              {ReasonReact.string("Run Again")}
+            </button>
+          </Modal>
         | PlayerRedealPhase =>
+          <Modal visible=true>
             <button className="btn btn-blue" onClick=sendReshuffle>
               {ReasonReact.string("Reshuffle")}
             </button>
+          </Modal>
         | PlayerTurnPhase(_)
         | PlayerIdlePhase => ReasonReact.null
         }}
-    </div>
 };

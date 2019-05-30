@@ -24,6 +24,7 @@ type playerState = {
   pla_name: string,
   pla_hand: Hand.FaceUpHand.t,
   pla_tricks: list(Trick.t),
+  pla_card: option(Card.t), /* Card on board */
 }
 
 let initialPlayerState = playerId => {
@@ -31,12 +32,12 @@ let initialPlayerState = playerId => {
   pla_name: Player.stringOfId(playerId),
   pla_hand: [],
   pla_tricks: [],
+  pla_card: None,
 };
 
 type state = {
   roomKey: string,
   deck: Deck.t,
-  board: list(Card.t),
   players: (playerState, playerState, playerState, playerState),
   teams: (teamState, teamState),
   maybeTrumpCard: option(Card.t),
@@ -78,7 +79,6 @@ let initialState = () => {
   {
     roomKey: "",
     deck: Deck.make() |> Deck.shuffle,
-    board: [],
     players: (
       initialPlayerState(P1),
       initialPlayerState(P2),
@@ -116,13 +116,13 @@ let getAllPlayerSockets = state => {
 
 let playerCount = state => {
   let (n1, n2, n3, n4) =
-    GamePlayers.map(x => Js.Option.isSome(x.pla_socket) ? 1 : 0, state.players);
+    Quad.map(x => Js.Option.isSome(x.pla_socket) ? 1 : 0, state.players);
   n1 + n2 + n3 + n4;
 };
 
 let countPlayers = players => {
   let (n1, n2, n3, n4) = 
-    GamePlayers.map(x => Js.Option.isSome(x.pla_socket) ? 1 : 0, players);
+    Quad.map(x => Js.Option.isSome(x.pla_socket) ? 1 : 0, players);
   n1 + n2 + n3 + n4;
 };
 
@@ -139,18 +139,6 @@ let isGameOverTest = state => {
   || GameTeams.get(T2, state.teams).team_score >= winningScore;
 };
 
-/** The board is just a list of cards. It doesn't track which player played them.
-But if I know which player is the leader, I can tell which card belongs to which player */
-let playerBoardIndices = leader => {
-  Player.(
-    switch (leader) {
-    | P1 => (0, 1, 2, 3)
-    | P2 => (3, 0, 1, 2)
-    | P3 => (2, 3, 0, 1)
-    | P4 => (1, 2, 3, 0)
-    }
-  );
-};
 
 let trickToPlayerCards: Trick.t => list((Player.id, Card.t)) =
   trick => {
@@ -210,7 +198,7 @@ let removePlayerBySocket = (socketId, state) => {
 
 /* A game is considered empty if no player slot has a socket attached. */
 let isEmpty = (state) => {
-  GamePlayers.(
+  Quad.(
     map(x => x.pla_socket, state.players)
     |> toList
     |> Belt.List.every(_, Js.Option.isNone))
