@@ -16,31 +16,6 @@ module FaceDownHand = {
 
   module Transition = ReactSpring.MakeTransition(TransitionConf);
 
-  module AnimatedCard = {
-    [@react.component]
-    let make = (~transition: Transition.transition) => {
-      let props = transition->Transition.propsGet;
-
-      let springStyle =
-        switch (props->TransitionConf.leftGet) {
-        | None => ReactDOMRe.Style.make()
-        | Some(left) => ReactDOMRe.Style.make(~left, ())
-        };
-
-      let springStyle =
-        switch (props->TransitionConf.topGet) {
-        | None => springStyle
-        | Some(top) => ReactDOMRe.(Style.combine(springStyle, Style.make(~top, ())))
-        };
-
-      <ReactSpring.AnimatedImg
-        className="animated-card"
-        src="./static/cardsjs/cards/Red_Back.svg" 
-        key={transition->Transition.keyGet} 
-        style=springStyle />
-    };
-  };
-
   [@react.component]
   let make = (~nCards) => {
       if (nCards == 0) {
@@ -84,7 +59,7 @@ module FaceDownHand = {
 
           <ReactSpring.AnimatedDiv
             key={transition->Transition.keyGet} className="hand-card" style=springStyle>
-            <img className="card" src="./static/cardsjs/cards/Red_Back.svg" />
+            <img className="card" src="./static/cards/Red_Back.svg" />
           </ReactSpring.AnimatedDiv>;
         };
 

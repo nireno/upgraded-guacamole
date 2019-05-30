@@ -15,18 +15,6 @@ Express.App.useOnPath(
   Express.Static.(make("./build", defaultOptions()) |> asMiddleware),
 );
 
-// Express.App.useOnPath(
-//   app,
-//   ~path="/static",
-//   Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
-// );
-
-Express.App.useOnPath(
-  app,
-  ~path="/static/cardsjs",
-  Express.Static.(make("./node_modules/cardsJS/dist", defaultOptions()) |> asMiddleware),
-);
-
 Express.App.useOnPath(
   app,
   ~path="/static",
