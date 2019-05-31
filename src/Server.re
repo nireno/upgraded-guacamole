@@ -331,20 +331,31 @@ let joinGame = (socket, username) => {
   updateClientStates(gameState);
 };
 
-let leaveGame = (socket, roomKey) => {
-  switch (StringMap.get(roomKey_gameState, roomKey)) {
+let leaveGame = socket => {
+  switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
   | None => ()
-  | Some(gameState) =>
-    let updatedGameState = Game.removePlayerBySocket(socket, gameState);
-    if (Game.playerCount(updatedGameState) == 0) {
-      StringMap.remove(roomKey_gameState, gameState.roomKey);
-    } else {
-      StringMap.set(
-        roomKey_gameState,
-        gameState.roomKey,
-        updatedGameState,
-      );
-    };
+  | Some({maybeRoomKey}) =>
+    switch (maybeRoomKey) {
+    | None => ()
+    | Some(roomKey) =>
+      switch (StringMap.get(roomKey_gameState, roomKey)) {
+      | None => ()
+      | Some(gameState) =>
+        switch (Game.maybeGetSocketPlayer(socket, gameState)) {
+        | None => ()
+        | Some(playerId) =>
+          Js.log(Player.stringOfId(playerId) ++ " is leaving the game");
+          let gameState' = GameReducer.reducer(LeaveGame(playerId), gameState);
+          if (Game.playerCount(gameState') == 0) {
+            StringMap.remove(roomKey_gameState, roomKey);
+          } else {
+            StringMap.set(roomKey_gameState, roomKey, gameState');
+          };
+          updateClientStates(gameState');
+          updateClientState(socket, ClientGame.initialState);
+        }
+      }
+    }
   };
 };
 
@@ -363,30 +374,17 @@ SockServ.onConnect(
         joinGame(socket, username);
 
         debugGameStates(~n=1, ());
-
-      | IO_LeaveGame =>
+      
+      | IO_LeaveGame => 
         Js.log("Got IO_LeaveGame");
-        switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
-        | None => ()
-        | Some({maybeRoomKey}) =>
-          switch (maybeRoomKey) {
-          | None => ()
-          | Some(roomKey) =>
-            leaveGame(socket, roomKey);
-            updateClientState(socket, ClientGame.initialState);
-          }
-        };
+        leaveGame(socket);
       | IO_PlayAgain =>
         Js.log("Got IO_PlayAgain");
         switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
         | None => ()
-        | Some({username, maybeRoomKey}) =>
-          switch (maybeRoomKey) {
-          | None => ()
-          | Some(roomKey) =>
-            leaveGame(socket, roomKey);
+        | Some({username, maybeRoomKey: _}) =>
+            leaveGame(socket);
             joinGame(socket, username);
-          }
         };
       | ioAction =>
         let roomKey =

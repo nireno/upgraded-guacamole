@@ -103,7 +103,13 @@ module App = {
       </Modal>
       :
       switch(state.gamePhase){
-      | FindPlayersPhase(n) => <Modal visible=true><FindPlayersView n /></Modal>
+      | FindPlayersPhase(n) => 
+        <Modal visible=true>
+          <FindPlayersView n />
+          <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
+            {ReasonReact.string("Cancel")}
+          </button>
+        </Modal>
       | _ => 
       <div className="all-fours-game font-sans flex flex-col relative">
         
