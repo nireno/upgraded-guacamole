@@ -98,20 +98,31 @@ module App = {
       {
         state.gameId == "" 
         ? 
-        <Modal visible=true>
+        <MenuView>
+          <div
+            className="app-name text-white text-5xl"
+            style={ReactDOMRe.Style.make(
+              ~fontFamily="'Days One', sans-serif",
+              ~textShadow="-1px 1px 2px black, 1px -1px 0px #00000080",
+              (),
+            )}>
+            {ReasonReact.string("All Fours")}
+          </div>
           <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username))}>
             {ReasonReact.string("Join Game")}
-          </button> 
-        </Modal>
+          </button>
+        </MenuView>
         :
         switch(state.gamePhase){
         | FindPlayersPhase(n) => 
-          <Modal visible=true>
-            <FindPlayersView n />
-            <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
-              {ReasonReact.string("Cancel")}
-            </button>
-          </Modal>
+          <MenuView>
+            <Modal visible=true>
+              <FindPlayersView n />
+              <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
+                {ReasonReact.string("Cancel")}
+              </button>
+            </Modal>
+          </MenuView>
         | _ => 
           <>
             <div className="trump-card self-center">
