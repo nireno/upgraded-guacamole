@@ -2,7 +2,7 @@
 open AppPrelude;
 
 [@bs.val] external nodeEnv: string = "process.env.NODE_ENV";
-[@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.HTTP_PORT_ENV";
+[@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.ALL_FOURS_PORT";
 
 [@bs.module] external nanoid: unit => string = "";
 
