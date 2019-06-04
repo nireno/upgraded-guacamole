@@ -4,10 +4,11 @@
   "scripts": {
     "bsb": "bsb -make-world -clean-world",
     "bsb:watch": "BS_WATCH_CLEAR=1 bsb -make-world -clean-world -w",
+    "bsb:clean": "bsb -clean-world",
     "build": "npm run postcss && npm run bsb && npm run webpack",
     "postcss": "postcss src/styles --dir ./build",
     "postcss:watch": "postcss src/styles --verbose --dir ./build -w",
-    "start": "node src/Server.bs.js",
+    "start": "node lib/js/src/Server.bs.js",
     "start:watch": "nodemon src/Server.bs.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "webpack": "webpack",
