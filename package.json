@@ -4,13 +4,14 @@
   "scripts": {
     "bsb": "bsb -make-world -clean-world",
     "bsb:watch": "BS_WATCH_CLEAR=1 bsb -make-world -clean-world -w",
+    "bsb:clean": "bsb -clean-world",
     "build": "npm run postcss && npm run bsb && npm run webpack",
     "postcss": "postcss src/styles --dir ./build",
     "postcss:watch": "postcss src/styles --verbose --dir ./build -w",
-    "start": "node src/Server.bs.js",
+    "start": "node lib/js/src/Server.bs.js",
     "start:watch": "nodemon src/Server.bs.js",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "webpack": "NODE_ENV=production webpack",
+    "webpack": "webpack",
     "webpack:watch": "webpack -w"
   },
   "keywords": [
@@ -34,9 +35,12 @@
     "tailwindcss": "^1.0.0"
   },
   "devDependencies": {
+    "@fullhuman/postcss-purgecss": "^1.2.0",
     "bs-platform": "^5.0.4",
+    "cssnano": "^4.1.10",
     "html-webpack-plugin": "^3.2.0",
     "postcss-cli": "^6.1.2",
+    "terser-webpack-plugin": "^1.3.0",
     "webpack": "^4.0.1",
     "webpack-cli": "^3.1.1",
     "webpack-dev-middleware": "^3.6.2",
