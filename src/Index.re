@@ -21,6 +21,16 @@ module App = {
   let make = () => {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
+    let (notis, setNotis) = React.useState(() => []);
+    let (appRect, setAppRect) =
+      React.useState(() => Webapi.Dom.DomRect.make(~x=0.0, ~y=0.0, ~width=0.0, ~height=0.0));
+
+    let appRef: React.Ref.t(Js.Nullable.t(Webapi.Dom.Element.t)) = React.useRef(Js.Nullable.null);
+    React.useEffect0(() => {
+      let el = My.Nullable.getUnsafe(React.Ref.current(appRef))
+      setAppRect(_ => Webapi.Dom.Element.getBoundingClientRect(el))
+      None
+    });
 
     let ((southCard, southZ), (eastCard, eastZ), (northCard, northZ), (westCard, westZ)) =
       Player.playersAsQuad(~startFrom=state.me, ())
@@ -55,6 +65,12 @@ module App = {
           | Belt.Result.Ok(state) =>
             debugState(state, ~ctx="ClientSocket.T.on SetState", ());
             dispatch(MatchServerState(state));
+          };
+        | AddNotis(ioNotis) => 
+          switch (ClientGame.notis_decode(ioNotis |> Js.Json.parseExn)) {
+          | Belt.Result.Error(_) => ()
+          | Belt.Result.Ok(newNotis) =>
+            setNotis(notis => notis @ newNotis);
           };
         }
       );
@@ -94,7 +110,10 @@ module App = {
       
       let bgBoard = state.me == state.activePlayer ? " bg-green-500 " : " bg-orange-500 ";
 
-      <div className="all-fours-game font-sans flex flex-col relative">
+      <div  
+        ref={ReactDOMRe.Ref.domRef(appRef)} 
+        className="all-fours-game font-sans flex flex-col relative">
+
       {
         state.gameId == "" 
         ? 
@@ -270,6 +289,19 @@ module App = {
             </div>
           </>
         }
+      }
+      {
+        if (List.length(notis) > 0) {
+          Js.Global.setTimeout(
+            () =>
+              notis->Belt.List.forEach(notiToRemove =>
+                setNotis(List.filter(noti => noti != notiToRemove))
+              ),
+              3333
+          )
+          |> ignore;
+        };
+        <NotificationsView id="notifications_view" notis appRect />;
       }
       </div>;
   };

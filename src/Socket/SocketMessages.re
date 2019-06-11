@@ -4,6 +4,7 @@ type ioTeamId = str_json
 type ioCard = str_json
 type ioUsername = string
 type ioClientState = str_json
+type ioClientNotis = str_json
 
 type clientToServer =
   | IO_JoinGame(ioUsername)
@@ -22,4 +23,5 @@ type clientToServer =
   | IO_CheatPoints(ioTeamId, int);
 
 type serverToClient =
-  | SetState(ioClientState);
+  | SetState(ioClientState)
+  | AddNotis(ioClientNotis);
