@@ -55,6 +55,7 @@ module PlayCard = {
           ~enter=PlayCardTransitionConf.props(~left="0", ~top="0", ~opacity="1", ()),
           ~leave=PlayCardTransitionConf.props(~left=leaveLeft, ~top=leaveTop, ~opacity="0", ()),
           ~trail=100,
+          (),
         ),
       );
     Array.map(

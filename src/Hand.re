@@ -35,12 +35,17 @@ module FaceDownHand = {
           n := n^ - 1;
         };
 
-        let transitions = Transition.useTransition(ns, Transition.options(
-          ~from = TransitionConf.props(~left="300px", ~top="-500px", ()),
-          ~enter = TransitionConf.props(~left="0", ~top="0", ()),
-          ~leave = TransitionConf.props(~left="25vw", ()),
-          ~trail = 100,)
-        );
+        let transitions =
+          Transition.useTransition(
+            ns,
+            Transition.options(
+              ~from=TransitionConf.props(~left="300px", ~top="-500px", ()),
+              ~enter=TransitionConf.props(~left="0", ~top="0", ()),
+              ~leave=TransitionConf.props(~left="25vw", ()),
+              ~trail=100,
+              (),
+            ),
+          );
 
         let makeAnimatedCard = (transition: Transition.transition) => {
           let props = transition->Transition.propsGet;
@@ -190,14 +195,18 @@ module FaceUpHand = {
     let keyedCards =
       List.fold_left((acc, card) => [{card, key: generateKey(acc, card)}, ...acc], [], cards);
     
-    let transitions = HandTransition.useTransition(
-        keyedCards |> Belt.List.toArray, 
+    let transitions =
+      HandTransition.useTransition(
+        keyedCards |> Belt.List.toArray,
         HandTransition.options(
-          ~from = HandTransitionConf.props(~left="300px", ~top="-500px", ~opacity="1", ()),
-          ~enter = HandTransitionConf.props(~left="0", ~top="0", ()),
-          ~leave = HandTransitionConf.props(~left="300px", ~opacity="0", ()),
-          ~trail = 100,
-        ));
+          ~from=HandTransitionConf.props(~left="300px", ~top="-500px", ~opacity="1", ()),
+          ~enter=HandTransitionConf.props(~left="0", ~top="0", ()),
+          ~leave=HandTransitionConf.props(~left="300px", ~opacity="0", ()),
+          ~trail=100,
+          (),
+        ),
+      );
+
     let playerIsLeader =
       switch (maybeLeadCard) {
       | None => true

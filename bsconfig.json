@@ -19,6 +19,7 @@
   "bs-dependencies": [
     "bs-express",
     "bs-socket",
+    "bs-webapi",
     "reason-react",
     "@ryb73/decco",
     "@glennsl/bs-json",

@@ -17,6 +17,7 @@ type action =
   | RunPack
   | DealAgain
   | LeaveGame(Player.id)
+  | ClearNotis
   | CheatPoints(Team.id, int);
 
 type playerState = {
@@ -40,6 +41,7 @@ type state = {
   deck: Deck.t,
   players: (playerState, playerState, playerState, playerState),
   teams: (teamState, teamState),
+  notis: notis,
   maybeTrumpCard: option(Card.t),
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
@@ -86,6 +88,7 @@ let initialState = () => {
       initialPlayerState(P4),
     ),
     teams: (initialTeamState, initialTeamState),
+    notis: [],
     maybePlayerTurn: None,
     maybeTrumpCard: None,
     maybeLeadCard: None,

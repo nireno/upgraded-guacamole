@@ -2,6 +2,8 @@ open AppPrelude;
 
 let winningScore = 7;
 
+[@decco] type notis = list(Noti.t);
+
 [@decco]
 type award =
   | HighAward

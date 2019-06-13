@@ -1,3 +1,21 @@
+module Common = {
+  [@bs.deriving abstract]
+  type config = {
+      [@bs.optional] mass: int,
+      [@bs.optional] tension: int,
+      [@bs.optional] friction: int,
+  };
+
+  module Presets = {
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external default: config = "";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external gentle: config = "";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external wobbly: config = "";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external stiff: config = "";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external slow: config = "";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external molasses: config = "";
+  };
+}
+
 module type TransitionConfig = {
   type item;
   type props;
@@ -21,6 +39,7 @@ module type Transition = {
     from: props,
     enter: props,
     leave: props,
+    [@bs.optional] config: Common.config,
     trail: int,
   };
 
@@ -46,6 +65,7 @@ module MakeTransition = (Conf: TransitionConfig):
     from: props,
     enter: props,
     leave: props,
+    [@bs.optional] config: Common.config,
     trail: int,
   };
 
@@ -58,6 +78,8 @@ module MakeTransition = (Conf: TransitionConfig):
 module AnimatedDiv = {
   [@react.component] [@bs.module "react-spring"][@bs.scope "animated"] 
   external make: (
+      ~id: string=?,
+      ~ref: ReactDOMRe.domRef=?,
       ~key: string, 
       ~style: ReactDOMRe.Style.t, 
       ~className: string, 

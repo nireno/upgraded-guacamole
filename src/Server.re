@@ -155,15 +155,38 @@ let updateClientState = (socket, clientState) => {
   SockServ.Socket.emit(socket, msg);
 };
 
-let updateClientStates = gameState =>
+let updateClientStates = gameState => {
   gameState
   ->buildSocketStatePairs
   ->Belt.List.forEach(((socket, clientState)) =>
       switch (socket) {
       | None => ()
-      | Some(socket) => updateClientState(socket, clientState)
+      | Some(socket) =>
+        updateClientState(socket, clientState);
+
+        switch (Game.maybeGetSocketPlayer(socket, gameState)) {
+        | None => ()
+        | Some(playerId) =>
+          let notis =
+            List.filter(
+              noti => noti.Noti.noti_recipient == playerId,
+              gameState.notis,
+            );
+          let msg: SocketMessages.serverToClient =
+            AddNotis(notis |> ClientGame.notis_encode |> Js.Json.stringify);
+          SockServ.Socket.emit(socket, msg);
+        };
       }
     );
+
+  /* 
+    Clear notifications - All pending notifications for each client should have
+    been delivered at this point. Go ahead and clear them.
+  */
+  let gameState' = GameReducer.reducer(ClearNotis, gameState);
+
+  StringMap.set(roomKey_gameState, gameState'.roomKey, gameState');
+};
 
 let debugSocket: (BsSocket.Server.socketT, ~ctx: string=?, ~n: int=?, unit) => unit = 
   (socket, ~ctx="", ~n=0, ()) => {
@@ -293,7 +316,7 @@ let joinGame = (socket, username) => {
   );
 
   let playerId = Game.findEmptySeat(gameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
-
+  let pla_name = username == "" ? Player.stringOfId(playerId) : username;
   let gameState =
     {
       ...gameState,
@@ -303,7 +326,7 @@ let joinGame = (socket, username) => {
           x =>
             Game.{
               ...x,
-              pla_name: username == "" ? Player.stringOfId(playerId) : username,
+              pla_name: pla_name,
               pla_socket: Some(socket),
             },
           gameState.players,
@@ -313,18 +336,27 @@ let joinGame = (socket, username) => {
   let playerCount = Game.playerCount(gameState);
   let playersNeeded = 4 - playerCount;
 
-  let gameState =
+  let phase' = 
     switch (gameState.phase) {
     | FindSubsPhase(_n, subPhase) =>
       playersNeeded == 0
-        ? {...gameState, phase: subPhase}
-        : {...gameState, phase: FindSubsPhase(playersNeeded, subPhase)}
+        ? subPhase
+        : FindSubsPhase(playersNeeded, subPhase)
     | FindPlayersPhase(_n) =>
       playersNeeded == 0
-        ? {...gameState, phase: DealPhase}
-        : {...gameState, phase: FindPlayersPhase(playersNeeded)}
-    | _ => gameState
-    };
+        ? DealPhase
+        : FindPlayersPhase(playersNeeded);
+    | otherPhase => otherPhase
+  };
+
+  let playerJoinedNotis =
+    Noti.forBroadcast(~from=playerId, ~msg=pla_name ++ " joined the game.", ~kind=Noti.Success, ());
+
+  let gameState = {
+    ...gameState,
+    phase: phase',
+    notis: gameState.notis @ playerJoinedNotis,
+  };
 
   Js.log(Game.stringOfState(gameState));
   StringMap.set(roomKey_gameState, gameState.roomKey, gameState);

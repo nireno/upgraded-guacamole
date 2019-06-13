@@ -313,8 +313,11 @@ let rec reducer = (action, state) =>
         {...state, maybeTeamGame, phase: RoundSummaryPhase};
         /* @endround end */
       | Beg =>
-        Js.log("Ah beg");
-        {...state, phase: GiveOnePhase};
+        let beggerId = Player.nextPlayer(state.dealer);
+        let pla_name = GamePlayers.get(beggerId, state.players).pla_name;
+        let notis = Noti.forBroadcast(~from=beggerId, ~msg=pla_name ++ " begs", ());
+
+        {...state, phase: GiveOnePhase, notis};
       | Stand =>
         {
           ...state,
@@ -336,6 +339,8 @@ let rec reducer = (action, state) =>
           | P1 | P3 => Team.T2 
           | P2 | P4 => T1
           };
+        
+        let dealer = GamePlayers.get(state.dealer, state.players);
 
         {
           ...state,
@@ -343,6 +348,7 @@ let rec reducer = (action, state) =>
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
           teams:
             GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
+          notis: state.notis @ Noti.forBroadcast(~from=state.dealer, ~msg=dealer.pla_name ++ " gives one.", ())
         };
 
       | RunPack =>
@@ -421,7 +427,7 @@ let rec reducer = (action, state) =>
 
         state;
 
-      | LeaveGame(playerId) => 
+      | LeaveGame(leavingPlayerId) => 
         let modPhase = (nPlayers, currentPhase) =>
           switch (currentPhase) {
           | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
@@ -429,19 +435,31 @@ let rec reducer = (action, state) =>
           | GameOverPhase => GameOverPhase
           | phase => FindSubsPhase(nPlayers, phase)
           };
+        
+        let leavingPlayer = GamePlayers.get(leavingPlayerId, state.players);
 
         let players =
           state.players
-          |> GamePlayers.update(playerId, x =>
-               {...x, pla_name: Player.stringOfId(playerId), pla_socket: None}
+          |> GamePlayers.update(leavingPlayerId, x =>
+               {...x, pla_name: Player.stringOfId(leavingPlayerId), pla_socket: None}
              );
+
+        let playerLeftNotis =
+          Noti.forBroadcast(
+            ~from=leavingPlayerId,
+            ~msg=leavingPlayer.pla_name ++ " has left game.",
+            ~kind=Warning,
+            (),
+          );
 
         {
           ...state,
           players: players,
           phase: state.phase |> modPhase(4 - Game.countPlayers(players)),
+          notis: state.notis @ playerLeftNotis
         };
-
+      | ClearNotis => 
+        {...state, notis: []}
       | CheatPoints(team, points) =>
         {
           ...state,
