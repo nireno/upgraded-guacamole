@@ -81,7 +81,7 @@ let make = (~id=?, ~appRect, ~notis=[]) => {
     );
   
   <div
-    className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center z-20">
+    className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center justify-center z-20">
     {elements |> ReasonReact.array}
   </div>;
 };

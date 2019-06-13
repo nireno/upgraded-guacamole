@@ -315,7 +315,7 @@ let rec reducer = (action, state) =>
       | Beg =>
         let beggerId = Player.nextPlayer(state.dealer);
         let pla_name = GamePlayers.get(beggerId, state.players).pla_name;
-        let notis = Noti.forBroadcast(~from=beggerId, ~msg=pla_name ++ " begged", ());
+        let notis = Noti.forBroadcast(~from=beggerId, ~msg=pla_name ++ " begs", ());
 
         {...state, phase: GiveOnePhase, notis};
       | Stand =>
@@ -339,6 +339,8 @@ let rec reducer = (action, state) =>
           | P1 | P3 => Team.T2 
           | P2 | P4 => T1
           };
+        
+        let dealer = GamePlayers.get(state.dealer, state.players);
 
         {
           ...state,
@@ -346,6 +348,7 @@ let rec reducer = (action, state) =>
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
           teams:
             GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
+          notis: state.notis @ Noti.forBroadcast(~from=state.dealer, ~msg=dealer.pla_name ++ " gives one.", ())
         };
 
       | RunPack =>
