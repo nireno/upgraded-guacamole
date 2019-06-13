@@ -61,8 +61,12 @@ body {
 }
 
 .board-card {
-  width: 25%;
+  width: 80%;
   position: relative;
+}
+
+.board-card-west {
+  margin-left: 20%;
 }
 
 .board-card-north {
@@ -78,11 +82,12 @@ body {
 .placeholder-img {
   left: 0;
   top: 0;
-  position: absolute;
+  position: relative;
 }
 
 .animated-card {
-  position: relative;
+  position: absolute;
+  width: 100%;
 }
 
 
@@ -105,4 +110,45 @@ img.card {
 
 .modal {
   background-color: #00000099;
+}
+
+.player-tags__west {
+  width: 20%;
+  position: absolute;
+}
+
+.player-tags__east {
+  width: 20%;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.player-tags__south img {
+  width: 20%;
+}
+
+.player-tags__north img {
+  width: 20%;
+}
+
+.game-board__player {
+  position: relative;
+  width: 25%;
+}
+
+.game-board__player-offset {
+  transform: translateX(-50%);
+}
+
+.game-board__player-north {
+  position: absolute;
+  top: 0;
+  left: 50%;
+}
+
+.game-board__player-south {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
 }

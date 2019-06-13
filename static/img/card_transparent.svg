@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:xlink="http://www.w3.org/1999/xlink"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="223.228"
+   height="311.811"
+   id="svg2"
+   version="1.1"
+   inkscape:version="0.91 r13725"
+   sodipodi:docname="card_transparent.svg">
+  <metadata
+     id="metadata42">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1054"
+     id="namedview40"
+     showgrid="false"
+     inkscape:zoom="2.1407481"
+     inkscape:cx="93.412049"
+     inkscape:cy="137.93468"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2"
+     showborder="false" />
+  <defs
+     id="defs4">
+    <pattern
+       patternTransform="matrix(-0.1106005,0.11059664,-0.11059664,-0.1106005,5.5904259,-426.89259)"
+       id="j"
+       xlink:href="#a" />
+    <pattern
+       id="a"
+       patternTransform="translate(-254.024 74.426)"
+       height="110.741"
+       width="108.618"
+       patternUnits="userSpaceOnUse">
+      <path
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         transform="translate(1070.355 -11.764)"
+         fill="#131f67"
+         id="path8" />
+      <path
+         transform="rotate(30 -588.091 2050.257)"
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         fill="#131f67"
+         id="path10" />
+      <path
+         transform="translate(1124.664 -11.764)"
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         fill="#131f67"
+         id="path12" />
+      <path
+         transform="rotate(30 -560.936 2151.6)"
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         fill="#131f67"
+         id="path14" />
+    </pattern>
+    <pattern
+       patternTransform="scale(.15023) rotate(-45 922.96 6085.23)"
+       id="b"
+       xlink:href="#c" />
+    <pattern
+       patternTransform="scale(.15023) rotate(-45 -2473.244 6852.978)"
+       id="c"
+       xlink:href="#d" />
+    <pattern
+       patternTransform="scale(.15023) rotate(-45 227.657 -29.145)"
+       id="d"
+       xlink:href="#e" />
+    <pattern
+       patternTransform="scale(.15023) rotate(-45 730.249 525.163)"
+       id="e"
+       xlink:href="#f" />
+    <pattern
+       patternTransform="scale(.15023) rotate(-45 47.044 -1811.87)"
+       id="f"
+       xlink:href="#g" />
+    <pattern
+       patternTransform="matrix(.0652 -.0652 .0652 .0652 194.547 -74.73)"
+       id="g"
+       xlink:href="#h" />
+    <pattern
+       patternTransform="scale(.15565) rotate(-45 -238.81 2209.061)"
+       id="h"
+       xlink:href="#i" />
+    <pattern
+       id="i"
+       patternTransform="translate(-254.024 74.426)"
+       height="110.741"
+       width="108.618"
+       patternUnits="userSpaceOnUse">
+      <path
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         transform="translate(1070.355 -11.764)"
+         fill="#d40000"
+         id="path24" />
+      <path
+         transform="rotate(30 -588.091 2050.257)"
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         fill="#d40000"
+         id="path26" />
+      <path
+         transform="translate(1124.664 -11.764)"
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         fill="#d40000"
+         id="path28" />
+      <path
+         transform="rotate(30 -560.936 2151.6)"
+         d="M-1016.046 25.72l-10.764 16.121 7.177 18.006-18.658-5.255-14.907 12.39-.767-19.369-16.39-10.349 18.184-6.714 4.777-18.786 12.005 15.218z"
+         fill="#d40000"
+         id="path30" />
+    </pattern>
+  </defs>
+  <rect
+     style="fill:none;stroke:none"
+     id="rect34"
+     y="0.50000954"
+     x="0.49998632"
+     height="310.811"
+     width="222.228" />
+</svg>
