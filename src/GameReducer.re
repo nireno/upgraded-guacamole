@@ -150,7 +150,7 @@ let rec reducer = (action, state) =>
               maybeAddPoints(state.maybeTeamHigh, GameAward.value(HighAward)),
               maybeAddPoints(state.maybeTeamLow, GameAward.value(LowAward)),
               maybeAddJackPoints(state.maybeTeamJack),
-              maybeAddPoints(state.maybeTeamGame, GameAward.value(GameAward)),
+              maybeAddPoints(maybeTeamGame, GameAward.value(GameAward)),
             ],
             isGameOverTest,
             state,
