@@ -15,3 +15,9 @@ let debug = {
   nCardsToRun: 1,
   winningScore: 4,
 };
+
+let debugGameOver = {
+  nCardsToDeal: 1,
+  nCardsToRun: 1,
+  winningScore: 1,
+};

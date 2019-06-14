@@ -1,6 +1,6 @@
 open AppPrelude;
 
-let settings = Settings.debug;
+let settings = Settings.debugGameOver;
 
 [@decco] type notis = list(Noti.t);
 
