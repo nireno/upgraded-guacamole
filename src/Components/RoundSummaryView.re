@@ -1,9 +1,9 @@
 open AppPrelude;
 
 [@react.component]
-let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeamGame, ~continueClick) => {
+let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeamGame) => {
   let teamIdToName = teamIdtoName(weTeamId);
-  <>
+  <div>
     <div>
       {ReasonReact.string(
          switch (maybeTeamHigh) {
@@ -25,7 +25,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
        | None => ReasonReact.null
        | Some((team, value)) =>
          switch (value) {
-         | SharedGame.HangJackAward =>
+         | GameAward.HangJackAward =>
            let hangJackMsg = team == weTeamId ? teamIdToName(weTeamId) ++ " hang the jack."
            : teamIdToName(team) ++ " hang we jack.";
            <div> {ReasonReact.string(hangJackMsg)} </div>
@@ -41,8 +41,5 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
        | Some(teamGame) => ReasonReact.string(teamIdToName(teamGame) ++ " get game.")
        }}
     </div>
-    <button className="mt-4 btn btn-blue" onClick=continueClick>
-      {ReasonReact.string("Continue")}
-    </button>
-  </>;
+  </div>;
 };

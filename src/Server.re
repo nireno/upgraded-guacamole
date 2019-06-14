@@ -259,7 +259,6 @@ let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
     }
   | IO_EndTrick => EndTrick
   | IO_NewRound => NewRound
-  | IO_EndRound => EndRound
   | IO_Beg => Beg
   | IO_Stand => Stand
   | IO_GiveOne => GiveOne
@@ -350,7 +349,12 @@ let joinGame = (socket, username) => {
   };
 
   let playerJoinedNotis =
-    Noti.forBroadcast(~from=playerId, ~msg=pla_name ++ " joined the game.", ~kind=Noti.Success, ());
+    Noti.playerBroadcast(
+      ~from=playerId,
+      ~msg=Noti.Text(pla_name ++ " joined the game."),
+      ~level=Noti.Success,
+      (),
+    );
 
   let gameState = {
     ...gameState,
@@ -384,7 +388,8 @@ let leaveGame = socket => {
             StringMap.set(roomKey_gameState, roomKey, gameState');
           };
           updateClientStates(gameState');
-          updateClientState(socket, ClientGame.initialState);
+          
+          SockServ.Socket.emit(socket, SocketMessages.Reset);
         }
       }
     }
@@ -398,7 +403,7 @@ SockServ.onConnect(
     debugSocket(socket, ~n=1, ());
 
     onSocketDisconnect(socket);
-    updateClientState(socket, ClientGame.initialState);
+    SockServ.Socket.emit(socket, SocketMessages.Reset);
 
     SockServ.Socket.on(socket, io =>
       switch (io) {

@@ -1,24 +1,8 @@
 open AppPrelude;
 
-let winningScore = 7;
+let settings = Settings.debug;
 
 [@decco] type notis = list(Noti.t);
-
-[@decco]
-type award =
-  | HighAward
-  | LowAward
-  | RunJackAward
-  | HangJackAward
-  | GameAward;
-
-let valueOfAward =
-  fun
-  | HighAward
-  | LowAward
-  | GameAward
-  | RunJackAward => 1
-  | HangJackAward => 3;
 
 let kickPoints =
   Card.Rank.(
@@ -52,7 +36,6 @@ type phase =
   | GiveOnePhase
   | RunPackPhase
   | PlayerTurnPhase
-  | RoundSummaryPhase
   | PackDepletedPhase
   | GameOverPhase;
 
@@ -72,7 +55,6 @@ let rec phase_encode =
   | GiveOnePhase => Js.Json.string("give-one-phase")
   | RunPackPhase => Js.Json.string("run-pack-phase")
   | PlayerTurnPhase => Js.Json.string("player-turn-phase")
-  | RoundSummaryPhase => Js.Json.string("round-summary-phase")
   | PackDepletedPhase => Js.Json.string("pack-depleted-phase")
   | GameOverPhase => Js.Json.string("game-over-phase");
 
@@ -85,7 +67,6 @@ let rec phase_decode = json => {
         | "give-one-phase" => Belt.Result.Ok(GiveOnePhase)
         | "run-pack-phase" => Belt.Result.Ok(RunPackPhase)
         | "player-turn-phase" => Belt.Result.Ok(PlayerTurnPhase)
-        | "round-summary-phase" => Belt.Result.Ok(RoundSummaryPhase)
         | "pack-depleted-phase" => Belt.Result.Ok(PackDepletedPhase)
         | "game-over-phase" => Belt.Result.Ok(GameOverPhase)
         | _ => Decco.error("Failed to decode phase classified as string: " ++ str_phase, json)
@@ -114,7 +95,6 @@ let rec stringOfPhase = fun
   | GiveOnePhase => "GiveOnePhase"
   | RunPackPhase => "RunPackPhase"
   | PlayerTurnPhase => "PlayerTurnPhase"
-  | RoundSummaryPhase => "RoundSummaryPhase"
   | PackDepletedPhase => "PackDepletedPhase"
   | GameOverPhase => "GameOverPhase";
 

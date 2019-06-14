@@ -5,6 +5,121 @@ let rec reducer = (action, state) =>
       switch (action) {
       | Noop => state
       | NewRound =>
+        /* what used to be EndRound start */
+        let team1Tricks =
+          GamePlayers.get(P1, state.players).pla_tricks 
+          @ GamePlayers.get(P3, state.players).pla_tricks;
+        let team2Tricks =
+          GamePlayers.get(P2, state.players).pla_tricks 
+          @ GamePlayers.get(P4, state.players).pla_tricks;
+
+        let playersCards: list((Player.id, Card.t)) =
+          team1Tricks
+          @ team2Tricks
+          |> List.map(trickToPlayerCards)
+          |> List.concat;
+
+        /** Action requires that the game has a trump card kicked. #unsafe */
+        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard);
+
+        let playersTrumpAsc: list((Player.id, Card.t)) =
+          playersCards
+          |> List.filter(((_, {Card.suit})) => suit == trumpSuit)
+          |> List.sort(((_, {Card.rank: rank1}), (_, {rank: rank2})) =>
+               compare(rank1, rank2)
+             );
+
+        let playersTrumpDesc = List.rev(playersTrumpAsc);
+
+        let lowPlayerCard =
+          try (Some(List.hd(playersTrumpAsc))) {
+          | Failure("hd") => None
+          };
+
+        let highPlayerCard =
+          try (Some(List.hd(playersTrumpDesc))) {
+          | Failure("hd") => None
+          };
+
+        let jackPlayerCard =
+          try (
+            Some(
+              playersCards
+              |> List.filter(((_player, {Card.rank, suit})) =>
+                   rank == Card.Rank.Jack && suit == trumpSuit
+                 )
+              |> List.hd,
+            )
+          ) {
+          | Failure("hd") => None
+          };
+
+        let isPlayerJackHangedTest: ((Player.id, Card.t)) => bool = (
+          playerJack => {
+            let (player, jack) = playerJack;
+            let playerTeam = teamOfPlayer(player);
+            let team1TrickedJack =
+              List.exists(trickContainsCard(jack), team1Tricks);
+            switch (playerTeam) {
+            | T1 => team1TrickedJack ? false : true
+            | T2 => team1TrickedJack ? true : false
+            };
+          }
+        );
+
+        let state =
+          switch (jackPlayerCard) {
+          | None => {...state, maybeTeamJack: None}
+          | Some(playerJack) =>
+            let (player, _jack) = playerJack;
+            let isJackHanged = isPlayerJackHangedTest(playerJack);
+            switch (teamOfPlayer(player)) {
+            | T1 =>
+              isJackHanged
+                ? {...state, maybeTeamJack: Some((T2, HangJackAward))}
+                : {...state, maybeTeamJack: Some((T1, RunJackAward))}
+            | T2 =>
+              isJackHanged
+                ? {...state, maybeTeamJack: Some((T1, HangJackAward))}
+                : {...state, maybeTeamJack: Some((T2, RunJackAward))}
+            };
+          };
+
+        let state =
+          switch (lowPlayerCard) {
+          | None => {...state, maybeTeamLow: None}
+          | Some((player, _card)) => {
+              ...state,
+              maybeTeamLow: Some(teamOfPlayer(player)),
+            }
+          };
+
+        let state =
+          switch (highPlayerCard) {
+          | None => {...state, maybeTeamHigh: None}
+          | Some((player, _card)) => {
+              ...state,
+              maybeTeamHigh: Some(teamOfPlayer(player)),
+            }
+          };
+
+        let calcPoints = tricks =>
+          tricks
+          |> List.map(Trick.cardsInTrick)
+          |> List.concat
+          |> List.fold_left(
+               (acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank),
+               0,
+             );
+        let team1Points = calcPoints(team1Tricks);
+        let team2Points = calcPoints(team2Tricks);
+        let maybeTeamGame =
+          team1Points == team2Points
+            ? None
+            : team1Points > team2Points ? Some(Team.T1) : Some(Team.T2);
+        // {...state, maybeTeamGame};
+        /* what used to be EndRound end */
+
         let maybeAddPoints = (maybeTeam, points, state) =>
           switch (maybeTeam) {
           | None => state
@@ -23,7 +138,7 @@ let rec reducer = (action, state) =>
               teams:
                 GameTeams.update(
                   team,
-                  x => {...x, team_score: x.team_score + valueOfAward(award)},
+                  x => {...x, team_score: x.team_score + GameAward.value(award)},
                   state.teams,
                 ),
             }
@@ -32,20 +147,28 @@ let rec reducer = (action, state) =>
         let updateScore = state =>
           Util.updateUntil(
             [
-              maybeAddPoints(state.maybeTeamHigh, valueOfAward(HighAward)),
-              maybeAddPoints(state.maybeTeamLow, valueOfAward(LowAward)),
+              maybeAddPoints(state.maybeTeamHigh, GameAward.value(HighAward)),
+              maybeAddPoints(state.maybeTeamLow, GameAward.value(LowAward)),
               maybeAddJackPoints(state.maybeTeamJack),
-              maybeAddPoints(state.maybeTeamGame, valueOfAward(GameAward)),
+              maybeAddPoints(state.maybeTeamGame, GameAward.value(GameAward)),
             ],
             isGameOverTest,
             state,
           );
 
-        let updateBoard = state => {
-          ...state,
+
+        let nextDealer = Player.nextPlayer(state.dealer);
+        let nextLeader = Player.nextPlayer(nextDealer);
+
+        let state = updateScore(state);
+
+        {...state, 
+          phase: isGameOverTest(state) ? GameOverPhase : DealPhase,
           deck: Deck.make() |> Deck.shuffle,
           players: Quad.map(x => {...x, pla_tricks: []}, state.players),
           teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
+          dealer: nextDealer,
+          leader: nextLeader,
           maybeTrumpCard: None,
           maybeLeadCard: None,
           maybePlayerTurn: None,
@@ -53,20 +176,14 @@ let rec reducer = (action, state) =>
           maybeTeamLow: None,
           maybeTeamJack: None,
           maybeTeamGame: None,
-        };
-
-        let updatePlayers = state => {
-          let nextDealer = Player.nextPlayer(state.dealer);
-          let nextLeader = Player.nextPlayer(nextDealer);
-          {...state, dealer: nextDealer, leader: nextLeader};
-        };
-
-        let updatePhase = state => 
-          {...state, phase: isGameOverTest(state) ? GameOverPhase : DealPhase};
-
-        state |> updateScore |> updateBoard |> updatePlayers 
-              |> updatePhase
-
+          notis: Noti.(broadcast(~msg=RoundSummary({
+            noti_maybeTeamHigh: state.maybeTeamHigh,
+            noti_maybeTeamLow: state.maybeTeamLow,
+            noti_maybeTeamJack: state.maybeTeamJack,
+            noti_maybeTeamGame: maybeTeamGame
+          } ), ~kind=Confirm, ()))
+        }
+              
       | PlayCard(player, c) =>
         let hand = GamePlayers.select(player, x => x.pla_hand, state.players);
         let hand' = List.filter(c' => c != c', hand);
@@ -109,10 +226,10 @@ let rec reducer = (action, state) =>
         };
       | Deal =>
         let dealCards = state => {
-          let (p1Hand, deck) = Deck.deal(6, state.deck);
-          let (p2Hand, deck) = Deck.deal(6, deck);
-          let (p3Hand, deck) = Deck.deal(6, deck);
-          let (p4Hand, deck) = Deck.deal(6, deck);
+          let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, state.deck);
+          let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+          let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+          let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
           {
             ...state,
             deck,
@@ -194,128 +311,11 @@ let rec reducer = (action, state) =>
 
         /* Any player whose hand is empty at this points indicates all players' hands are empty */
         List.length(GamePlayers.get(P1, state.players).pla_hand) == 0
-          ? reducer(EndRound, state) : state;
-      | EndRound =>
-        /* @endround start */
-        Js.log("@EndRound");
-
-        let team1Tricks =
-          GamePlayers.get(P1, state.players).pla_tricks 
-          @ GamePlayers.get(P3, state.players).pla_tricks;
-        let team2Tricks =
-          GamePlayers.get(P2, state.players).pla_tricks 
-          @ GamePlayers.get(P4, state.players).pla_tricks;
-
-        let playersCards: list((Player.id, Card.t)) =
-          team1Tricks
-          @ team2Tricks
-          |> List.map(trickToPlayerCards)
-          |> List.concat;
-
-        /** Action requires that the game has a trump card kicked. #unsafe */
-        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard);
-
-        let playersTrumpAsc: list((Player.id, Card.t)) =
-          playersCards
-          |> List.filter(((_, {Card.suit})) => suit == trumpSuit)
-          |> List.sort(((_, {Card.rank: rank1}), (_, {rank: rank2})) =>
-               compare(rank1, rank2)
-             );
-
-        let playersTrumDesc = List.rev(playersTrumpAsc);
-
-        let lowPlayerCard =
-          try (Some(List.hd(playersTrumpAsc))) {
-          | Failure("hd") => None
-          };
-
-        let highPlayerCard =
-          try (Some(List.hd(playersTrumDesc))) {
-          | Failure("hd") => None
-          };
-
-        let jackPlayerCard =
-          try (
-            Some(
-              playersCards
-              |> List.filter(((_player, {Card.rank, suit})) =>
-                   rank == Card.Rank.Jack && suit == trumpSuit
-                 )
-              |> List.hd,
-            )
-          ) {
-          | Failure("hd") => None
-          };
-
-        let isPlayerJackHangedTest: ((Player.id, Card.t)) => bool = (
-          playerJack => {
-            let (player, jack) = playerJack;
-            let playerTeam = teamOfPlayer(player);
-            let team1TrickedJack =
-              List.exists(trickContainsCard(jack), team1Tricks);
-            switch (playerTeam) {
-            | T1 => team1TrickedJack ? false : true
-            | T2 => team1TrickedJack ? true : false
-            };
-          }
-        );
-
-        let state =
-          switch (jackPlayerCard) {
-          | None => {...state, maybeTeamJack: None}
-          | Some(playerJack) =>
-            let (player, _jack) = playerJack;
-            let isJackHanged = isPlayerJackHangedTest(playerJack);
-            switch (teamOfPlayer(player)) {
-            | T1 =>
-              isJackHanged
-                ? {...state, maybeTeamJack: Some((T2, HangJackAward))}
-                : {...state, maybeTeamJack: Some((T1, RunJackAward))}
-            | T2 =>
-              isJackHanged
-                ? {...state, maybeTeamJack: Some((T1, HangJackAward))}
-                : {...state, maybeTeamJack: Some((T2, RunJackAward))}
-            };
-          };
-
-        let state =
-          switch (lowPlayerCard) {
-          | None => {...state, maybeTeamLow: None}
-          | Some((player, _card)) => {
-              ...state,
-              maybeTeamLow: Some(teamOfPlayer(player)),
-            }
-          };
-
-        let state =
-          switch (highPlayerCard) {
-          | None => {...state, maybeTeamHigh: None}
-          | Some((player, _card)) => {
-              ...state,
-              maybeTeamHigh: Some(teamOfPlayer(player)),
-            }
-          };
-
-        let calcPoints = tricks =>
-          tricks
-          |> List.map(Trick.cardsInTrick)
-          |> List.concat
-          |> List.fold_left(
-               (acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank),
-               0,
-             );
-        let team1Points = calcPoints(team1Tricks);
-        let team2Points = calcPoints(team2Tricks);
-        let maybeTeamGame =
-          team1Points == team2Points
-            ? None
-            : team1Points > team2Points ? Some(Team.T1) : Some(Team.T2);
-        {...state, maybeTeamGame, phase: RoundSummaryPhase};
-        /* @endround end */
+          ? reducer(NewRound, state) : state;
       | Beg =>
         let beggerId = Player.nextPlayer(state.dealer);
         let pla_name = GamePlayers.get(beggerId, state.players).pla_name;
-        let notis = Noti.forBroadcast(~from=beggerId, ~msg=pla_name ++ " begs", ());
+        let notis = Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(pla_name ++ " begs"), ());
 
         {...state, phase: GiveOnePhase, notis};
       | Stand =>
@@ -348,15 +348,15 @@ let rec reducer = (action, state) =>
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
           teams:
             GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
-          notis: state.notis @ Noti.forBroadcast(~from=state.dealer, ~msg=dealer.pla_name ++ " gives one.", ())
+          notis: state.notis @ Noti.playerBroadcast(~from=state.dealer, ~msg=Noti.Text(dealer.pla_name ++ " gives one."), ())
         };
 
       | RunPack =>
         Js.log("I beg too");
-        let (p1Hand, deck) = Deck.deal(3, state.deck);
-        let (p2Hand, deck) = Deck.deal(3, deck);
-        let (p3Hand, deck) = Deck.deal(3, deck);
-        let (p4Hand, deck) = Deck.deal(3, deck);
+        let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, state.deck);
+        let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+        let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+        let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
         let prevKick =
           switch (state.maybeTrumpCard) {
           | None =>
@@ -445,10 +445,10 @@ let rec reducer = (action, state) =>
              );
 
         let playerLeftNotis =
-          Noti.forBroadcast(
+          Noti.playerBroadcast(
             ~from=leavingPlayerId,
-            ~msg=leavingPlayer.pla_name ++ " has left game.",
-            ~kind=Warning,
+            ~msg=Noti.Text(leavingPlayer.pla_name ++ " has left game."),
+            ~level=Warning,
             (),
           );
 

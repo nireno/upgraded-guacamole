@@ -14,7 +14,7 @@ module NotiTransitionConf = {
 module NotiTransition = ReactSpring.MakeTransition(NotiTransitionConf);
 
 [@react.component]
-let make = (~id=?, ~appRect, ~notis=[]) => {
+let make = (~id=?, ~appRect, ~notis=[], ~teamId) => {
   let height = Webapi.Dom.DomRect.height(appRect);
   let fromTop = "-" ++ Js.Float.toString(height *. 0.1) ++ "px";
   let leaveTop = fromTop;
@@ -26,7 +26,7 @@ let make = (~id=?, ~appRect, ~notis=[]) => {
         ~from=NotiTransitionConf.props(~left="0px", ~top=fromTop, ~opacity="0", ()),
         ~enter=NotiTransitionConf.props(~left="0px", ~top="0px", ~opacity="1", ()),
         ~leave=NotiTransitionConf.props(~left="0px", ~top=leaveTop, ~opacity="0", ()),
-        ~config=ReactSpring.Common.Presets.wobbly,
+        ~config=ReactSpring.Common.Presets.stiff,
         ~trail=100,
         (),
       ),
@@ -73,7 +73,23 @@ let make = (~id=?, ~appRect, ~notis=[]) => {
                 d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"
               />
             </svg>
-            <div> <p className="font-bold"> {ReasonReact.string(noti.noti_message)} </p> </div>
+            {
+              switch(noti.noti_message){
+                | Text(message) =>
+                  <div>
+                    <p className="font-bold"> {ReasonReact.string(message)}</p> 
+                  </div>
+                | RoundSummary(summary) =>
+                  <RoundSummaryView
+                    weTeamId=teamId
+                    maybeTeamHigh={summary.noti_maybeTeamHigh}
+                    maybeTeamLow={summary.noti_maybeTeamLow}
+                    maybeTeamJack={summary.noti_maybeTeamJack}
+                    maybeTeamGame={summary.noti_maybeTeamGame}
+                  />
+              }
+              
+            }
           </div>
         </ReactSpring.AnimatedDiv>;
       },
@@ -81,7 +97,7 @@ let make = (~id=?, ~appRect, ~notis=[]) => {
     );
   
   <div
-    className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center justify-center z-20">
+    className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center z-20" style=ReactDOMRe.Style.make(~marginTop="10%", ())>
     {elements |> ReasonReact.array}
   </div>;
 };

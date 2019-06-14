@@ -11,7 +11,6 @@ type clientToServer =
   | IO_PlayCard(ioPlayerId, ioCard)
   | IO_EndTrick
   | IO_NewRound
-  | IO_EndRound
   | IO_Beg
   | IO_Stand
   | IO_GiveOne
@@ -24,4 +23,5 @@ type clientToServer =
 
 type serverToClient =
   | SetState(ioClientState)
-  | AddNotis(ioClientNotis);
+  | AddNotis(ioClientNotis)
+  | Reset;

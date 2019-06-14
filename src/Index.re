@@ -81,6 +81,9 @@ module App = {
           | Belt.Result.Ok(newNotis) =>
             setNotis(notis => notis @ newNotis);
           };
+        | Reset => 
+          dispatch(MatchServerState(ClientGame.initialState));
+          setNotis(_ => []);
         }
       );
       None
@@ -118,10 +121,14 @@ module App = {
       };
       
       let bgBoard = state.me == state.activePlayer ? " bg-green-500 " : " bg-orange-500 ";
-
+      let handleAppClick = _ => {
+        /* Clear notifications when user taps anywhere in the app. */
+        setNotis(_ => [])
+      };
       <div  
         ref={ReactDOMRe.Ref.domRef(appRef)} 
-        className="all-fours-game font-sans flex flex-col relative">
+        className="all-fours-game font-sans flex flex-col relative"
+        onClick=handleAppClick>
 
       {
         state.gameId == "" 
@@ -284,18 +291,6 @@ module App = {
 
             {
               switch (state.gamePhase) {
-              | RoundSummaryPhase =>
-                let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
-                <Modal visible=true>
-                  <RoundSummaryView
-                    weTeamId=teamOfPlayer(state.me)
-                    maybeTeamHigh
-                    maybeTeamLow
-                    maybeTeamJack
-                    maybeTeamGame
-                    continueClick={sendIO(IO_NewRound)}
-                  />
-                </Modal>;
               | GameOverPhase =>
                 <Modal visible=true>
                   <GameOverView
@@ -323,17 +318,15 @@ module App = {
         }
       }
       {
-        if (List.length(notis) > 0) {
-          Js.Global.setTimeout(
-            () =>
-              notis->Belt.List.forEach(notiToRemove =>
-                setNotis(List.filter(noti => noti != notiToRemove))
-              ),
-              3333
-          )
-          |> ignore;
-        };
-        <NotificationsView id="notifications_view" notis appRect />;
+        Belt.List.forEach(notis, notiToRemove => {
+          switch(notiToRemove.noti_kind){
+            | Duration(millis) => 
+              Js.Global.setTimeout(() => setNotis(List.filter(noti => noti != notiToRemove)), millis)
+              |> ignore
+            | _ => ()
+          }
+        });
+        <NotificationsView id="notifications_view" notis appRect teamId={teamOfPlayer(state.me)} />;
       }
       </div>;
   };
