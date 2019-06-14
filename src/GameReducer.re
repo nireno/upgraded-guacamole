@@ -319,10 +319,13 @@ let rec reducer = (action, state) =>
 
         {...state, phase: GiveOnePhase, notis};
       | Stand =>
+        let beggerId = Player.nextPlayer(state.dealer);
+        let begger = GamePlayers.get(beggerId, state.players);
         {
           ...state,
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
           phase: PlayerTurnPhase,
+          notis: Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.pla_name ++ " stands"), ())
         }
       | GiveOne
           when
