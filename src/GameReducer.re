@@ -280,7 +280,7 @@ let rec reducer = (action, state) =>
         let trick = 
           Trick.{
             p1Card: getPlayerCard(P1),
-            p2Card: getPlayerCard(P2),            
+            p2Card: getPlayerCard(P2),
             p3Card: getPlayerCard(P3),
             p4Card: getPlayerCard(P4),
           }; /* Action requires that the board has four cards. #unsafe*/
