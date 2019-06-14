@@ -22,7 +22,7 @@ let make = (~tags, ~className=?, ~style=?) => {
              <img
                key="player-tag__turner"
                className="player-tag__turner__img"
-               src="./static/img/emoji_diamond.svg"
+               src="./static/img/emoji_thinking.svg"
              />
            },
          tags,
