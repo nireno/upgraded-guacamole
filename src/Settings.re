@@ -21,3 +21,8 @@ let debugGameOver = {
   nCardsToRun: 1,
   winningScore: 1,
 };
+
+let fromString = fun
+| "debug" => debug
+| "debugGameOver" => debugGameOver
+| _ => default;

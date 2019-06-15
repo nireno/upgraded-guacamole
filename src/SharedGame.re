@@ -1,6 +1,11 @@
 open AppPrelude;
 
-let settings = Settings.debugGameOver;
+[@bs.val] external env_settings: Js.Nullable.t(string) = "process.env.SETTINGS";
+
+let settings = 
+  Settings.fromString(env_settings 
+  |> Js.Nullable.toOption 
+  |> Js.Option.getWithDefault("default"));
 
 [@decco] type notis = list(Noti.t);
 
