@@ -148,17 +148,6 @@ module App = {
           </button>
         </MenuView>
         :
-        switch(state.gamePhase){
-        | FindPlayersPhase(n) => 
-          <MenuView>
-            <Modal visible=true>
-              <FindPlayersView n />
-              <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
-                {ReasonReact.string("Cancel")}
-              </button>
-            </Modal>
-          </MenuView>
-        | _ => 
           <>
             <div className="trump-card self-center">
               <CardTransition.PlayCard
@@ -174,6 +163,17 @@ module App = {
 
             <div className="the-rest flex-grow flex flex-col">
               <div className={"game-board relative flex-grow flex-shrink-0 flex justify-between items-center " ++ bgBoard} >
+                {
+                  Belt.List.forEach(notis, notiToRemove =>
+                    switch (notiToRemove.noti_kind) {
+                    | Duration(millis) =>
+                      Js.Global.setTimeout(() => setNotis(List.filter(noti => noti != notiToRemove)), millis)
+                      |> ignore
+                    | _ => ()
+                    }
+                  );
+                  <NotificationsView id="notifications_view" notis appRect teamId={teamOfPlayer(state.me)} />;
+                }
                 <div className="game-board__player">
                   <PlayerTagsView className="player-tags player-tags__west flex flex-col justify-center h-full" tags=westTags />
                   <div
@@ -291,6 +291,17 @@ module App = {
 
             {
               switch (state.gamePhase) {
+              | FindPlayersPhase(n) =>
+                <Modal visible=true>
+                  <FindPlayersView n />
+                  <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
+                    {ReasonReact.string("Cancel")}
+                  </button>
+                </Modal>
+              | FindSubsPhase(n, _) => 
+                <Modal visible=true> 
+                  <FindSubsView n /> 
+                </Modal>
               | GameOverPhase =>
                 <Modal visible=true>
                   <GameOverView
@@ -299,10 +310,6 @@ module App = {
                     playAgainClick={sendIO(IO_PlayAgain)}
                     leaveClick={sendIO(IO_LeaveGame)}
                   />
-                </Modal>
-              | FindSubsPhase(n, _) => 
-                <Modal visible=true>
-                  <FindSubsView n />
                 </Modal>
               | _ => ReasonReact.null
               };
@@ -315,18 +322,6 @@ module App = {
               <div className="text-gray-500 text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
             </div>
           </>
-        }
-      }
-      {
-        Belt.List.forEach(notis, notiToRemove => {
-          switch(notiToRemove.noti_kind){
-            | Duration(millis) => 
-              Js.Global.setTimeout(() => setNotis(List.filter(noti => noti != notiToRemove)), millis)
-              |> ignore
-            | _ => ()
-          }
-        });
-        <NotificationsView id="notifications_view" notis appRect teamId={teamOfPlayer(state.me)} />;
       }
       </div>;
   };

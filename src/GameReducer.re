@@ -158,7 +158,6 @@ let rec reducer = (action, state) =>
 
 
         let nextDealer = Player.nextPlayer(state.dealer);
-        let nextLeader = Player.nextPlayer(nextDealer);
 
         let state = updateScore(state);
 
@@ -166,9 +165,7 @@ let rec reducer = (action, state) =>
           phase: isGameOverTest(state) ? GameOverPhase : DealPhase,
           deck: Deck.make() |> Deck.shuffle,
           players: Quad.map(x => {...x, pla_tricks: []}, state.players),
-          teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
           dealer: nextDealer,
-          leader: nextLeader,
           maybeTrumpCard: None,
           maybeLeadCard: None,
           maybePlayerTurn: None,
@@ -233,12 +230,14 @@ let rec reducer = (action, state) =>
           {
             ...state,
             deck,
+            leader: Player.nextPlayer(state.dealer),
             players:
               state.players
               |> GamePlayers.update(Player.P1, x => {...x, pla_hand: p1Hand})
               |> GamePlayers.update(Player.P2, x => {...x, pla_hand: p2Hand})
               |> GamePlayers.update(Player.P3, x => {...x, pla_hand: p3Hand})
               |> GamePlayers.update(Player.P4, x => {...x, pla_hand: p4Hand}),
+            teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
           };
         };
 
