@@ -5,200 +5,7 @@ let rec reducer = (action, state) =>
       switch (action) {
       | Noop => state
       | NewRound =>
-        let maybeAddPoints = (maybeTeam, points, state) =>
-          switch (maybeTeam) {
-          | None => state
-          | Some(teamId) => {
-              ...state,
-              teams:
-                GameTeams.update(teamId, x => {...x, team_score: x.team_score + points}, state.teams),
-            }
-          };
-
-        let maybeAddJackPoints = (maybeTeamJack, state) =>
-          switch (maybeTeamJack) {
-          | None => state
-          | Some((team, award)) => {
-              ...state,
-              teams:
-                GameTeams.update(
-                  team,
-                  x => {...x, team_score: x.team_score + valueOfAward(award)},
-                  state.teams,
-                ),
-            }
-          };
-
-        let updateScore = state =>
-          Util.updateUntil(
-            [
-              maybeAddPoints(state.maybeTeamHigh, valueOfAward(HighAward)),
-              maybeAddPoints(state.maybeTeamLow, valueOfAward(LowAward)),
-              maybeAddJackPoints(state.maybeTeamJack),
-              maybeAddPoints(state.maybeTeamGame, valueOfAward(GameAward)),
-            ],
-            isGameOverTest,
-            state,
-          );
-
-        let updateBoard = state => {
-          ...state,
-          deck: Deck.make() |> Deck.shuffle,
-          players: Quad.map(x => {...x, pla_tricks: []}, state.players),
-          teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
-          maybeTrumpCard: None,
-          maybeLeadCard: None,
-          maybePlayerTurn: None,
-          maybeTeamHigh: None,
-          maybeTeamLow: None,
-          maybeTeamJack: None,
-          maybeTeamGame: None,
-        };
-
-        let updatePlayers = state => {
-          let nextDealer = Player.nextPlayer(state.dealer);
-          let nextLeader = Player.nextPlayer(nextDealer);
-          {...state, dealer: nextDealer, leader: nextLeader};
-        };
-
-        let updatePhase = state => 
-          {...state, phase: isGameOverTest(state) ? GameOverPhase : DealPhase};
-
-        state |> updateScore |> updateBoard |> updatePlayers 
-              |> updatePhase
-
-      | PlayCard(player, c) =>
-        let hand = GamePlayers.select(player, x => x.pla_hand, state.players);
-        let hand' = List.filter(c' => c != c', hand);
-
-        let canPlayCard =
-          switch (state.maybePlayerTurn) {
-          | Some(playerTurn) 
-              when playerTurn == player 
-              // Card c was in player hand
-              &&   hand != hand'  
-              // and there is an empty slot on the board for the player
-              && GamePlayers.get(player, state.players).pla_card == None =>  
-            true
-          | _ => false
-          };
-
-        if (!canPlayCard) {
-          state;
-        } else {
-          let nextPlayer = Player.nextPlayer(player);
-          let state = {
-            ...state,
-            players:
-              GamePlayers.update(player, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players),
-            maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
-            maybePlayerTurn:
-              /*
-               When the current player is the last player in the trick (i.e. the next player
-               is the lead player), it means this current player will end the trick. There
-               is no need to advance the turn since The true next player will be determined
-               later by computing the trick winner. This test keeps the ui more consistent
-               if the player who wins the trick is the last player in the trick.
-               */
-              Some(nextPlayer == state.leader ? player : nextPlayer),
-          };
-
-          Player.nextPlayer(player) == state.leader 
-            ? reducer(EndTrick, state) 
-            : state;
-        };
-      | Deal =>
-        let dealCards = state => {
-          let (p1Hand, deck) = Deck.deal(6, state.deck);
-          let (p2Hand, deck) = Deck.deal(6, deck);
-          let (p3Hand, deck) = Deck.deal(6, deck);
-          let (p4Hand, deck) = Deck.deal(6, deck);
-          {
-            ...state,
-            deck,
-            players:
-              state.players
-              |> GamePlayers.update(Player.P1, x => {...x, pla_hand: p1Hand})
-              |> GamePlayers.update(Player.P2, x => {...x, pla_hand: p2Hand})
-              |> GamePlayers.update(Player.P3, x => {...x, pla_hand: p3Hand})
-              |> GamePlayers.update(Player.P4, x => {...x, pla_hand: p4Hand}),
-          };
-        };
-
-        let kickTrump = state => {
-          let dealerTeam = teamOfPlayer(state.dealer);
-          let (cards, deck) = Deck.deal(1, state.deck);
-          let trumpCard = List.hd(cards); /* Dealing expects enough cards to kick trump. #unsafe */
-          let points = kickPoints(trumpCard.rank);
-
-          {
-            ...state,
-            deck,
-            maybeTrumpCard: Some(trumpCard),
-            teams:
-              GameTeams.update(dealerTeam, x => {...x, team_score: x.team_score + points}, state.teams),
-          };
-        };
-
-        let state = state |> dealCards |> kickTrump;
-
-        {
-          ...state,
-          phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
-        };
-
-      | EndTrick => state
-        // TODO: Endtrick is practically a noop at this point. 
-        // It is probably unecessary and can be removed.
-        // let updatePlayers = state => {...state, maybePlayerTurn: None};
-        // state |> updatePlayers;
-
-      | AdvanceRound => 
-        let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadCard. #unsafe */
-        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCard. #unsafe */
-
-        let getPlayerCard = playerId =>
-          GamePlayers.select(playerId, x => Js.Option.getExn(x.pla_card), state.players); /* #unsafe */
-
-        let trick = 
-          Trick.{
-            p1Card: getPlayerCard(P1),
-            p2Card: getPlayerCard(P2),            
-            p3Card: getPlayerCard(P3),
-            p4Card: getPlayerCard(P4),
-          }; /* Action requires that the board has four cards. #unsafe*/
-
-        let trickWinner: Player.id =
-          Trick.playerTakesTrick(trumpSuit, leadSuit, trick);
-
-        let advanceRound = state => {
-          ...state,
-          players:
-            GamePlayers.update(
-              trickWinner,
-              x => {...x, pla_tricks: x.pla_tricks @ [trick]},
-              state.players,
-            ) |> Quad.map(x => {...x, pla_card: None}),
-          teams:
-            GameTeams.update(
-              teamOfPlayer(trickWinner),
-              x => {...x, team_points: x.team_points + Trick.getValue(trick)},
-              state.teams,
-            ),
-          leader: trickWinner,
-          maybePlayerTurn: Some(trickWinner),
-          maybeLeadCard: None,
-        };
-
-        let state = state  |> advanceRound;
-
-        /* Any player whose hand is empty at this points indicates all players' hands are empty */
-        List.length(GamePlayers.get(P1, state.players).pla_hand) == 0
-          ? reducer(EndRound, state) : state;
-      | EndRound =>
-        /* @endround start */
-        Js.log("@EndRound");
-
+        /* what used to be EndRound start */
         let team1Tricks =
           GamePlayers.get(P1, state.players).pla_tricks 
           @ GamePlayers.get(P3, state.players).pla_tricks;
@@ -222,7 +29,7 @@ let rec reducer = (action, state) =>
                compare(rank1, rank2)
              );
 
-        let playersTrumDesc = List.rev(playersTrumpAsc);
+        let playersTrumpDesc = List.rev(playersTrumpAsc);
 
         let lowPlayerCard =
           try (Some(List.hd(playersTrumpAsc))) {
@@ -230,7 +37,7 @@ let rec reducer = (action, state) =>
           };
 
         let highPlayerCard =
-          try (Some(List.hd(playersTrumDesc))) {
+          try (Some(List.hd(playersTrumpDesc))) {
           | Failure("hd") => None
           };
 
@@ -310,19 +117,214 @@ let rec reducer = (action, state) =>
           team1Points == team2Points
             ? None
             : team1Points > team2Points ? Some(Team.T1) : Some(Team.T2);
-        {...state, maybeTeamGame, phase: RoundSummaryPhase};
-        /* @endround end */
+        // {...state, maybeTeamGame};
+        /* what used to be EndRound end */
+
+        let maybeAddPoints = (maybeTeam, points, state) =>
+          switch (maybeTeam) {
+          | None => state
+          | Some(teamId) => {
+              ...state,
+              teams:
+                GameTeams.update(teamId, x => {...x, team_score: x.team_score + points}, state.teams),
+            }
+          };
+
+        let maybeAddJackPoints = (maybeTeamJack, state) =>
+          switch (maybeTeamJack) {
+          | None => state
+          | Some((team, award)) => {
+              ...state,
+              teams:
+                GameTeams.update(
+                  team,
+                  x => {...x, team_score: x.team_score + GameAward.value(award)},
+                  state.teams,
+                ),
+            }
+          };
+
+        let updateScore = state =>
+          Util.updateUntil(
+            [
+              maybeAddPoints(state.maybeTeamHigh, GameAward.value(HighAward)),
+              maybeAddPoints(state.maybeTeamLow, GameAward.value(LowAward)),
+              maybeAddJackPoints(state.maybeTeamJack),
+              maybeAddPoints(maybeTeamGame, GameAward.value(GameAward)),
+            ],
+            isGameOverTest,
+            state,
+          );
+
+
+        let nextDealer = Player.nextPlayer(state.dealer);
+
+        let state = updateScore(state);
+
+        {...state, 
+          phase: isGameOverTest(state) ? GameOverPhase : DealPhase,
+          deck: Deck.make() |> Deck.shuffle,
+          players: Quad.map(x => {...x, pla_tricks: []}, state.players),
+          dealer: nextDealer,
+          maybeTrumpCard: None,
+          maybeLeadCard: None,
+          maybePlayerTurn: None,
+          maybeTeamHigh: None,
+          maybeTeamLow: None,
+          maybeTeamJack: None,
+          maybeTeamGame: None,
+          notis: Noti.(broadcast(~msg=RoundSummary({
+            noti_maybeTeamHigh: state.maybeTeamHigh,
+            noti_maybeTeamLow: state.maybeTeamLow,
+            noti_maybeTeamJack: state.maybeTeamJack,
+            noti_maybeTeamGame: maybeTeamGame
+          } ), ~kind=Confirm, ()))
+        }
+              
+      | PlayCard(player, c) =>
+        let hand = GamePlayers.select(player, x => x.pla_hand, state.players);
+        let hand' = List.filter(c' => c != c', hand);
+
+        let canPlayCard =
+          switch (state.maybePlayerTurn) {
+          | Some(playerTurn) 
+              when playerTurn == player 
+              // Card c was in player hand
+              &&   hand != hand'  
+              // and there is an empty slot on the board for the player
+              && GamePlayers.get(player, state.players).pla_card == None =>  
+            true
+          | _ => false
+          };
+
+        if (!canPlayCard) {
+          state;
+        } else {
+          let nextPlayer = Player.nextPlayer(player);
+          let state = {
+            ...state,
+            players:
+              GamePlayers.update(player, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players),
+            maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
+            maybePlayerTurn:
+              /*
+               When the current player is the last player in the trick (i.e. the next player
+               is the lead player), it means this current player will end the trick. There
+               is no need to advance the turn since The true next player will be determined
+               later by computing the trick winner. This test keeps the ui more consistent
+               if the player who wins the trick is the last player in the trick.
+               */
+              Some(nextPlayer == state.leader ? player : nextPlayer),
+          };
+
+          Player.nextPlayer(player) == state.leader 
+            ? reducer(EndTrick, state) 
+            : state;
+        };
+      | Deal =>
+        let dealCards = state => {
+          let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, state.deck);
+          let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+          let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+          let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+          {
+            ...state,
+            deck,
+            leader: Player.nextPlayer(state.dealer),
+            players:
+              state.players
+              |> GamePlayers.update(Player.P1, x => {...x, pla_hand: p1Hand})
+              |> GamePlayers.update(Player.P2, x => {...x, pla_hand: p2Hand})
+              |> GamePlayers.update(Player.P3, x => {...x, pla_hand: p3Hand})
+              |> GamePlayers.update(Player.P4, x => {...x, pla_hand: p4Hand}),
+            teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
+          };
+        };
+
+        let kickTrump = state => {
+          let dealerTeam = teamOfPlayer(state.dealer);
+          let (cards, deck) = Deck.deal(1, state.deck);
+          let trumpCard = List.hd(cards); /* Dealing expects enough cards to kick trump. #unsafe */
+          let points = kickPoints(trumpCard.rank);
+
+          {
+            ...state,
+            deck,
+            maybeTrumpCard: Some(trumpCard),
+            teams:
+              GameTeams.update(dealerTeam, x => {...x, team_score: x.team_score + points}, state.teams),
+          };
+        };
+
+        let state = state |> dealCards |> kickTrump;
+
+        {
+          ...state,
+          phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
+        };
+
+      | EndTrick => state
+        // TODO: Endtrick is practically a noop at this point. 
+        // It is probably unecessary and can be removed.
+        // let updatePlayers = state => {...state, maybePlayerTurn: None};
+        // state |> updatePlayers;
+
+      | AdvanceRound => 
+        let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadCard. #unsafe */
+        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCard. #unsafe */
+
+        let getPlayerCard = playerId =>
+          GamePlayers.select(playerId, x => Js.Option.getExn(x.pla_card), state.players); /* #unsafe */
+
+        let trick = 
+          Trick.{
+            p1Card: getPlayerCard(P1),
+            p2Card: getPlayerCard(P2),
+            p3Card: getPlayerCard(P3),
+            p4Card: getPlayerCard(P4),
+          }; /* Action requires that the board has four cards. #unsafe*/
+
+        let trickWinner: Player.id =
+          Trick.playerTakesTrick(trumpSuit, leadSuit, trick);
+
+        let advanceRound = state => {
+          ...state,
+          players:
+            GamePlayers.update(
+              trickWinner,
+              x => {...x, pla_tricks: x.pla_tricks @ [trick]},
+              state.players,
+            ) |> Quad.map(x => {...x, pla_card: None}),
+          teams:
+            GameTeams.update(
+              teamOfPlayer(trickWinner),
+              x => {...x, team_points: x.team_points + Trick.getValue(trick)},
+              state.teams,
+            ),
+          leader: trickWinner,
+          maybePlayerTurn: Some(trickWinner),
+          maybeLeadCard: None,
+        };
+
+        let state = state  |> advanceRound;
+
+        /* Any player whose hand is empty at this points indicates all players' hands are empty */
+        List.length(GamePlayers.get(P1, state.players).pla_hand) == 0
+          ? reducer(NewRound, state) : state;
       | Beg =>
         let beggerId = Player.nextPlayer(state.dealer);
         let pla_name = GamePlayers.get(beggerId, state.players).pla_name;
-        let notis = Noti.forBroadcast(~from=beggerId, ~msg=pla_name ++ " begs", ());
+        let notis = Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(pla_name ++ " begs"), ());
 
         {...state, phase: GiveOnePhase, notis};
       | Stand =>
+        let beggerId = Player.nextPlayer(state.dealer);
+        let begger = GamePlayers.get(beggerId, state.players);
         {
           ...state,
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
           phase: PlayerTurnPhase,
+          notis: Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.pla_name ++ " stands"), ())
         }
       | GiveOne
           when
@@ -348,15 +350,15 @@ let rec reducer = (action, state) =>
           maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
           teams:
             GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
-          notis: state.notis @ Noti.forBroadcast(~from=state.dealer, ~msg=dealer.pla_name ++ " gives one.", ())
+          notis: state.notis @ Noti.playerBroadcast(~from=state.dealer, ~msg=Noti.Text(dealer.pla_name ++ " gives one."), ())
         };
 
       | RunPack =>
         Js.log("I beg too");
-        let (p1Hand, deck) = Deck.deal(3, state.deck);
-        let (p2Hand, deck) = Deck.deal(3, deck);
-        let (p3Hand, deck) = Deck.deal(3, deck);
-        let (p4Hand, deck) = Deck.deal(3, deck);
+        let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, state.deck);
+        let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+        let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+        let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
         let prevKick =
           switch (state.maybeTrumpCard) {
           | None =>
@@ -445,10 +447,10 @@ let rec reducer = (action, state) =>
              );
 
         let playerLeftNotis =
-          Noti.forBroadcast(
+          Noti.playerBroadcast(
             ~from=leavingPlayerId,
-            ~msg=leavingPlayer.pla_name ++ " has left game.",
-            ~kind=Warning,
+            ~msg=Noti.Text(leavingPlayer.pla_name ++ " has left game."),
+            ~level=Warning,
             (),
           );
 

@@ -17,6 +17,7 @@ let isPlayerTurn = (turn, playerId) => {
 };
 
 module App = {
+
   [@react.component]
   let make = () => {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
@@ -32,12 +33,20 @@ module App = {
       None
     });
 
-    let ((southCard, southZ), (eastCard, eastZ), (northCard, northZ), (westCard, westZ)) =
+    let ((southCard, southZ, southTags), (eastCard, eastZ, eastTags), (northCard, northZ, northTags), (westCard, westZ, westTags)) =
       Player.playersAsQuad(~startFrom=state.me, ())
       |> Quad.map(playerId =>
            GamePlayers.select(
              playerId,
-             x => (x.pla_card, Player.turnDistance(state.leader, playerId)),
+             x => {
+               let tags = [];
+               let tags = state.dealer == playerId ? tags @ [PlayerTagsView.Dealer] : tags;
+               let tags = switch(state.maybePlayerTurn){
+                 | None => tags
+                 | Some(turnerId) => playerId == turnerId ? tags @ [PlayerTagsView.Turner] : tags;
+               };
+               (x.pla_card, Player.turnDistance(state.leader, playerId), tags);
+             },
              state.players,
            )
          );
@@ -72,6 +81,9 @@ module App = {
           | Belt.Result.Ok(newNotis) =>
             setNotis(notis => notis @ newNotis);
           };
+        | Reset => 
+          dispatch(MatchServerState(ClientGame.initialState));
+          setNotis(_ => []);
         }
       );
       None
@@ -109,10 +121,14 @@ module App = {
       };
       
       let bgBoard = state.me == state.activePlayer ? " bg-green-500 " : " bg-orange-500 ";
-
+      let handleAppClick = _ => {
+        /* Clear notifications when user taps anywhere in the app. */
+        setNotis(_ => [])
+      };
       <div  
         ref={ReactDOMRe.Ref.domRef(appRef)} 
-        className="all-fours-game font-sans flex flex-col relative">
+        className="all-fours-game font-sans flex flex-col relative"
+        onClick=handleAppClick>
 
       {
         state.gameId == "" 
@@ -132,17 +148,6 @@ module App = {
           </button>
         </MenuView>
         :
-        switch(state.gamePhase){
-        | FindPlayersPhase(n) => 
-          <MenuView>
-            <Modal visible=true>
-              <FindPlayersView n />
-              <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
-                {ReasonReact.string("Cancel")}
-              </button>
-            </Modal>
-          </MenuView>
-        | _ => 
           <>
             <div className="trump-card self-center">
               <CardTransition.PlayCard
@@ -158,41 +163,75 @@ module App = {
 
             <div className="the-rest flex-grow flex flex-col">
               <div className={"game-board relative flex-grow flex-shrink-0 flex justify-between items-center " ++ bgBoard} >
-                <div
-                  className="board-card board-card-west flex-shrink-0"
-                  style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
-                  <CardTransition.PlayCard
-                    maybeCard=westCard
-                    enterFrom=CardTransition.West
-                    leaveTo=animationLeaveTo
-                  />
+                {
+                  Belt.List.forEach(notis, notiToRemove =>
+                    switch (notiToRemove.noti_kind) {
+                    | Duration(millis) =>
+                      Js.Global.setTimeout(() => setNotis(List.filter(noti => noti != notiToRemove)), millis)
+                      |> ignore
+                    | _ => ()
+                    }
+                  );
+                  <NotificationsView id="notifications_view" notis appRect teamId={teamOfPlayer(state.me)} />;
+                }
+                <div className="game-board__player">
+                  <PlayerTagsView className="player-tags player-tags__west flex flex-col justify-center h-full" tags=westTags />
+                  <div
+                    className="board-card board-card-west flex-shrink-0"
+                    style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
+                    <img className="card__placeholder relative" src="./static/img/card_transparent.svg" />
+                    <CardTransition.PlayCard
+                      maybeCard=westCard
+                      enterFrom=CardTransition.West
+                      leaveTo=animationLeaveTo
+                    />
+                  </div>
                 </div>
-                <div
-                  className="board-card board-card-north self-start flex-shrink-0"
-                  style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
-                  <CardTransition.PlayCard
-                    maybeCard=northCard
-                    enterFrom=CardTransition.North
-                    leaveTo=animationLeaveTo
-                  />
+                <div className="game-board__player game-board__player-north">
+                  <div className="game-board__player-offset">
+                    <PlayerTagsView className="player-tags player-tags__north flex flex-row justify-center" tags=northTags />
+                    <div
+                      className="board-card board-card-north self-start flex-shrink-0 mx-auto"
+                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
+                        <img className="card__placeholder block relative" src="./static/img/card_transparent.svg" />
+                        <CardTransition.PlayCard
+                          maybeCard=northCard
+                          enterFrom=CardTransition.North
+                          leaveTo=animationLeaveTo
+                        />
+                    </div>
+                  </div>
                 </div>
-                <div
-                  className="board-card board-card-south flex-shrink-0 self-end"
-                  style={ReactDOMRe.Style.make(~zIndex=string_of_int(southZ), ())}>
-                  <CardTransition.PlayCard
-                    maybeCard=southCard
-                    enterFrom=CardTransition.South
-                    leaveTo=animationLeaveTo
-                  />
+                <div className="game-board__player game-board__player-south">
+                  <div className="game-board__player-offset">
+                    <div
+                      className="board-card board-card-south flex-shrink-0 self-end mx-auto"
+                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(southZ), ())}>
+                      <img className="card__placeholder block relative" src="./static/img/card_transparent.svg" />
+                      <CardTransition.PlayCard
+                        maybeCard=southCard
+                        enterFrom=CardTransition.South
+                        leaveTo=animationLeaveTo
+                      />
+                    </div>
+                    <PlayerTagsView
+                      className="player-tags player-tags__south flex flex-row justify-center"
+                      tags=southTags
+                    />
+                  </div>
                 </div>
-                <div
-                  className="board-card board-card-east flex-shrink-0"
-                  style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
-                  <CardTransition.PlayCard
-                    maybeCard=eastCard
-                    enterFrom=CardTransition.East
-                    leaveTo=animationLeaveTo
-                  />
+                <div className="game-board__player game-board__player-east">
+                  <div
+                    className="board-card board-card-east flex-shrink-0"
+                    style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
+                    <img className="card relative" src="./static/img/card_transparent.svg" />
+                    <CardTransition.PlayCard
+                      maybeCard=eastCard
+                      enterFrom=CardTransition.East
+                      leaveTo=animationLeaveTo
+                    />
+                  </div>
+                  <PlayerTagsView className="player-tags player-tags__east flex flex-col justify-center h-full" tags=eastTags />
                 </div>
               </div>
 
@@ -252,18 +291,17 @@ module App = {
 
             {
               switch (state.gamePhase) {
-              | RoundSummaryPhase =>
-                let {maybeTeamHigh, maybeTeamLow, maybeTeamJack, maybeTeamGame} = state;
+              | FindPlayersPhase(n) =>
                 <Modal visible=true>
-                  <RoundSummaryView
-                    weTeamId=teamOfPlayer(state.me)
-                    maybeTeamHigh
-                    maybeTeamLow
-                    maybeTeamJack
-                    maybeTeamGame
-                    continueClick={sendIO(IO_NewRound)}
-                  />
-                </Modal>;
+                  <FindPlayersView n />
+                  <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
+                    {ReasonReact.string("Cancel")}
+                  </button>
+                </Modal>
+              | FindSubsPhase(n, _) => 
+                <Modal visible=true> 
+                  <FindSubsView n /> 
+                </Modal>
               | GameOverPhase =>
                 <Modal visible=true>
                   <GameOverView
@@ -272,10 +310,6 @@ module App = {
                     playAgainClick={sendIO(IO_PlayAgain)}
                     leaveClick={sendIO(IO_LeaveGame)}
                   />
-                </Modal>
-              | FindSubsPhase(n, _) => 
-                <Modal visible=true>
-                  <FindSubsView n />
                 </Modal>
               | _ => ReasonReact.null
               };
@@ -288,20 +322,6 @@ module App = {
               <div className="text-gray-500 text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
             </div>
           </>
-        }
-      }
-      {
-        if (List.length(notis) > 0) {
-          Js.Global.setTimeout(
-            () =>
-              notis->Belt.List.forEach(notiToRemove =>
-                setNotis(List.filter(noti => noti != notiToRemove))
-              ),
-              3333
-          )
-          |> ignore;
-        };
-        <NotificationsView id="notifications_view" notis appRect />;
       }
       </div>;
   };

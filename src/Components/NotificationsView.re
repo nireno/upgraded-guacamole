@@ -14,7 +14,7 @@ module NotiTransitionConf = {
 module NotiTransition = ReactSpring.MakeTransition(NotiTransitionConf);
 
 [@react.component]
-let make = (~id=?, ~appRect, ~notis=[]) => {
+let make = (~id=?, ~appRect, ~notis=[], ~teamId) => {
   let height = Webapi.Dom.DomRect.height(appRect);
   let fromTop = "-" ++ Js.Float.toString(height *. 0.1) ++ "px";
   let leaveTop = fromTop;
@@ -26,7 +26,7 @@ let make = (~id=?, ~appRect, ~notis=[]) => {
         ~from=NotiTransitionConf.props(~left="0px", ~top=fromTop, ~opacity="0", ()),
         ~enter=NotiTransitionConf.props(~left="0px", ~top="0px", ~opacity="1", ()),
         ~leave=NotiTransitionConf.props(~left="0px", ~top=leaveTop, ~opacity="0", ()),
-        ~config=ReactSpring.Common.Presets.wobbly,
+        ~config=ReactSpring.Common.Presets.stiff,
         ~trail=100,
         (),
       ),
@@ -62,26 +62,37 @@ let make = (~id=?, ~appRect, ~notis=[]) => {
         <ReactSpring.AnimatedDiv
           ?id
           key
-          className="notification relative bg-teal-100 border-t-4 border-teal-500 border-solid rounded-b text-teal-900 px-4 py-3 shadow-md"
+          className="notification relative bg-teal-100 border-0 border-t-2 border-solid border-teal-500 text-sm text-teal-900 px-4 py-3 shadow-md"
           style=springStyle>
-          <div className="flex items-center">
-            <svg
-              className="fill-current h-6 w-6 text-teal-500 mr-4"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20">
-              <path
-                d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"
-              />
-            </svg>
-            <div> <p className="font-bold"> {ReasonReact.string(noti.noti_message)} </p> </div>
-          </div>
+          {switch (noti.noti_message) {
+           | Text(message) =>
+             <div className="flex items-center justify-center">
+               <svg
+                 className="fill-current h-6 w-6 text-teal-500 mr-4"
+                 xmlns="http://www.w3.org/2000/svg"
+                 viewBox="0 0 20 20">
+                 <path
+                   d="M2.93 17.07A10 10 0 1 1 17.07 2.93 10 10 0 0 1 2.93 17.07zm12.73-1.41A8 8 0 1 0 4.34 4.34a8 8 0 0 0 11.32 11.32zM9 11V9h2v6H9v-4zm0-6h2v2H9V5z"
+                 />
+               </svg>
+               <div> {ReasonReact.string(message)} </div>
+             </div>
+           | RoundSummary(summary) =>
+             <RoundSummaryView
+               weTeamId=teamId
+               maybeTeamHigh={summary.noti_maybeTeamHigh}
+               maybeTeamLow={summary.noti_maybeTeamLow}
+               maybeTeamJack={summary.noti_maybeTeamJack}
+               maybeTeamGame={summary.noti_maybeTeamGame}
+             />
+           }}
         </ReactSpring.AnimatedDiv>;
       },
       notiTransitions,
     );
   
   <div
-    className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center justify-center z-20">
+    className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center z-30">
     {elements |> ReasonReact.array}
   </div>;
 };

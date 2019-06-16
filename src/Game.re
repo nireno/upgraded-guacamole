@@ -9,7 +9,6 @@ type action =
   | EndTrick
   | AdvanceRound
   | NewRound
-  | EndRound
   | Beg
   | Stand
   | GiveOne
@@ -49,7 +48,7 @@ type state = {
   maybePlayerTurn: option(Player.id),
   maybeTeamHigh: option(Team.id),
   maybeTeamLow: option(Team.id),
-  maybeTeamJack: option((Team.id, award)),
+  maybeTeamJack: option((Team.id, GameAward.award)),
   maybeTeamGame: option(Team.id),
   phase,
 };
@@ -138,8 +137,8 @@ let findEmptySeat = state => {
 
 
 let isGameOverTest = state => {
-  GameTeams.get(T1, state.teams).team_score >= winningScore
-  || GameTeams.get(T2, state.teams).team_score >= winningScore;
+  GameTeams.get(T1, state.teams).team_score >= SharedGame.settings.winningScore
+  || GameTeams.get(T2, state.teams).team_score >= SharedGame.settings.winningScore;
 };
 
 

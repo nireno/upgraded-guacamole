@@ -3,7 +3,7 @@ include SharedGame;
 
 [@decco] type maybePlayerId = option(Player.id);
 [@decco] type maybeTeamId = option(Team.id);
-[@decco] type maybeTeamJackAward = option( (Team.id, award) );
+[@decco] type maybeTeamJackAward = option( (Team.id, GameAward.award) );
 [@decco] type maybeCard = option(Card.t);
 
 [@decco]

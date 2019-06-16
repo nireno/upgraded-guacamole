@@ -1,0 +1,28 @@
+type t = {
+  nCardsToDeal: int,
+  nCardsToRun: int,
+  winningScore: int,
+}
+
+let default = {
+  nCardsToDeal: 6,
+  nCardsToRun: 3,
+  winningScore: 14,
+};
+
+let debug = {
+  nCardsToDeal: 2,
+  nCardsToRun: 1,
+  winningScore: 4,
+};
+
+let debugGameOver = {
+  nCardsToDeal: 1,
+  nCardsToRun: 1,
+  winningScore: 1,
+};
+
+let fromString = fun
+| "debug" => debug
+| "debugGameOver" => debugGameOver
+| _ => default;
