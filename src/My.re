@@ -10,3 +10,10 @@ module Nullable = {
     };
   };
 };
+
+module Global = {
+  let clearMaybeTimeout =
+    fun
+    | None => ()
+    | Some(timeoutId) => Js.Global.clearTimeout(timeoutId);
+};

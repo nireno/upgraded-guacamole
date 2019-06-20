@@ -68,7 +68,7 @@ let debugGameBySocket = socket => {
   };
 };
 
-let buildClientState = (activePlayer, activePlayerPhase, gameState, player, playerPhase) => {
+let buildClientState = (gameState, player, playerPhase) => {
   let playerHand = GamePlayers.get(player, gameState.Game.players).pla_hand;
   let handFacing =
     if (SharedGame.isFaceDownPhase(gameState.phase)) {
@@ -110,9 +110,6 @@ let buildClientState = (activePlayer, activePlayerPhase, gameState, player, play
     myTricks: GamePlayers.get(player, gameState.players).pla_tricks,
     dealer: gameState.dealer,
     leader: gameState.leader,
-    activePlayer,
-    activePlayerPhase,
-    maybePlayerTurn: gameState.maybePlayerTurn,
     handFacing,
     maybeTrumpCard: gameState.maybeTrumpCard,
     maybeLeadCard: gameState.maybeLeadCard,
@@ -127,21 +124,13 @@ let buildSocketStatePairs: Game.state => list((option(BsSocket.Server.socketT),C
   let decidePlayerPhase = 
     Game.decidePlayerPhase(
       gameState.phase,
-      gameState.dealer,
-      gameState.leader,
-      gameState.maybePlayerTurn)
+      gameState.dealer);
 
   let playerPhasePairs: list((Player.id, Player.phase)) = 
     [Player.P1, P2, P3, P4] 
       -> Belt.List.map(p => p->decidePlayerPhase)
 
-  let (activePlayer, activePlayerPhase) =
-    switch(playerPhasePairs->Belt.List.keep(((_player, playerPhase))=> playerPhase != Player.PlayerIdlePhase)){
-      | [pp] => pp
-      | _ => (P1, PlayerIdlePhase)
-    }
-
-  let buildClientState = buildClientState(activePlayer, activePlayerPhase, gameState);
+  let buildClientState = buildClientState(gameState);
   playerPhasePairs->Belt.List.map(
     ( (player, playerPhase) ) => 
     (GamePlayers.select(player, x => Game.(x.pla_socket), gameState.players), buildClientState(player, playerPhase)))
@@ -204,42 +193,7 @@ let debugSocket: (BsSocket.Server.socketT, ~ctx: string=?, ~n: int=?, unit) => u
   Js.log(socket |> socketToString |> leftPad(_, ~n, ()));
 };
 
-let onSocketDisconnect = socket =>
-  SockServ.Socket.onDisconnect(
-    socket,
-    () => {
-      /** Note: by this time socketio has already removed the socket from the room.
-        Also, during testing I noticed that refreshing the app in chrome rapidly multiple times
-        sometimes results in socketio not immediately detecting a disconnect. However it 
-        seems to triage after about a minute(?) so there is a delay between when you expect to 
-        see a disconnect and when socketio finally fires this disconnect handler.
-        
-        The result is that there may be open game rooms holding sockets that are effectively dead.*/
 
-      Js.log("Server:onSocketDisconnect");
-      debugSocket(socket, ~n=1, ());
-
-      StringMap.toArray(roomKey_gameState)
-      |> Belt.Array.forEach(_, ((key, game)) =>
-           switch (Game.maybeGetSocketPlayer(socket, game)) {
-           | None => ()
-           | Some(player) =>
-             let game = GameReducer.reducer(LeaveGame(player), game);
-             if (Game.isEmpty(game)) {
-               StringMap.remove(roomKey_gameState, key);
-             } else {
-               StringMap.set(roomKey_gameState, key, game);
-               updateClientStates(game);
-             };
-           }
-         );
-
-      debugGameBySocket(socket);
-
-      StringMap.remove(socketId_playerData, socket->SockServ.Socket.getId);
-      debugGameStates(~n=1, ());
-    },
-  );
 
 
 let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
@@ -273,6 +227,70 @@ let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
     
   };
 
+let leaveGame = socket => {
+  switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
+  | None => ()
+  | Some({maybeRoomKey}) =>
+    switch (maybeRoomKey) {
+    | None => ()
+    | Some(roomKey) =>
+      switch (StringMap.get(roomKey_gameState, roomKey)) {
+      | None => ()
+      | Some(gameState) =>
+        switch (Game.maybeGetSocketPlayer(socket, gameState)) {
+        | None => ()
+        | Some(playerId) =>
+          Js.log(Player.stringOfId(playerId) ++ " is leaving the game");
+          My.Global.clearMaybeTimeout(gameState.maybeKickTimeoutId);
+          let gameState' = {...gameState, maybeKickTimeoutId: None};
+          let gameState' = GameReducer.reducer(LeaveGame(playerId), gameState');
+          if (Game.playerCount(gameState') == 0) {
+            StringMap.remove(roomKey_gameState, roomKey);
+          } else {
+            StringMap.set(roomKey_gameState, roomKey, gameState');
+          };
+          updateClientStates(gameState');
+          
+          SockServ.Socket.emit(socket, SocketMessages.Reset);
+        }
+      }
+    }
+  };
+};
+
+let kickPlayer = (player) => {
+  switch(player.Game.pla_socket){
+    | None => ()
+    | Some(socket) => leaveGame(socket);
+  }
+};
+
+let reconcileKickTimeout = (prevGameState, nextGameState) => {
+  let prevMaybeActivePlayer = ActivePlayer.find(prevGameState.Game.phase, prevGameState.dealer);
+  let nextMaybeActivePlayer = ActivePlayer.find(nextGameState.Game.phase, nextGameState.dealer);
+  if (prevMaybeActivePlayer != nextMaybeActivePlayer) {
+    switch (nextMaybeActivePlayer) {
+    | None =>
+      //clear the previous timeout
+      My.Global.clearMaybeTimeout(prevGameState.maybeKickTimeoutId);
+      None;
+    | Some(nextActivePlayer) =>
+      // clear the prev timeout
+      My.Global.clearMaybeTimeout(prevGameState.maybeKickTimeoutId);
+      // and setup a new one for the new active player
+      let playerToKick = GamePlayers.get(nextActivePlayer.id, nextGameState.players);
+      Some(
+        Js.Global.setTimeout(
+          () => kickPlayer(playerToKick),
+          SharedGame.settings.kickPlayerMillis,
+        ),
+      );
+    };
+  } else {
+    nextGameState.maybeKickTimeoutId;
+  };
+};
+
 let joinGame = (socket, username) => {
   let socketId = SockServ.Socket.(socket->getId);
 
@@ -291,12 +309,13 @@ let joinGame = (socket, username) => {
     |> Belt.Array.keepMap(_, gameState => maybeUnfilledGame(gameState))
     |> Array.to_list;
 
-  let gameState =
+  let prevGameState =
     switch (unfilledGames) {
     | [] => {...Game.initialState(), roomKey: socketId}
     | [gameState, ..._rest] => gameState
     };
-
+  
+  let roomKey = prevGameState.roomKey;
   // let maybeRoom =
   //   ns
   //   |> Namespace.getAdapter
@@ -307,18 +326,18 @@ let joinGame = (socket, username) => {
   // | None => failwith("Expected Some AdapterRoom but got None.") // Improve error handling #unsafe #todo
   // };
 
-  let socket = SockServ.Socket.join(socket, gameState.roomKey);
+  let socket = SockServ.Socket.join(socket, roomKey);
   StringMap.set(
     socketId_playerData,
     socketId,
-    {username, maybeRoomKey: Some(gameState.roomKey)},
+    {username, maybeRoomKey: Some(roomKey)},
   );
 
-  let playerId = Game.findEmptySeat(gameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
+  let playerId = Game.findEmptySeat(prevGameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
   let pla_name = username == "" ? Player.stringOfId(playerId) : username;
-  let gameState =
+  let nextGameState =
     {
-      ...gameState,
+      ...prevGameState,
       players:
         GamePlayers.update(
           playerId,
@@ -328,15 +347,15 @@ let joinGame = (socket, username) => {
               pla_name: pla_name,
               pla_socket: Some(socket),
             },
-          gameState.players,
+          prevGameState.players,
         ),
     };
 
-  let playerCount = Game.playerCount(gameState);
+  let playerCount = Game.playerCount(nextGameState);
   let playersNeeded = 4 - playerCount;
 
   let phase' = 
-    switch (gameState.phase) {
+    switch (prevGameState.phase) {
     | FindSubsPhase(_n, subPhase) =>
       playersNeeded == 0
         ? subPhase
@@ -356,45 +375,46 @@ let joinGame = (socket, username) => {
       (),
     );
 
-  let gameState = {
-    ...gameState,
+  let nextGameState = {
+    ...nextGameState,
     phase: phase',
-    notis: gameState.notis @ playerJoinedNotis,
+    notis: prevGameState.notis @ playerJoinedNotis,
   };
 
-  Js.log(Game.stringOfState(gameState));
-  StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
-  updateClientStates(gameState);
+  let nextGameState = {
+    ...nextGameState,
+    maybeKickTimeoutId: reconcileKickTimeout(prevGameState, nextGameState),
+  }
+
+  Js.log(Game.stringOfState(nextGameState));
+  StringMap.set(roomKey_gameState, roomKey, nextGameState);
+  updateClientStates(nextGameState);
 };
 
-let leaveGame = socket => {
-  switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
-  | None => ()
-  | Some({maybeRoomKey}) =>
-    switch (maybeRoomKey) {
-    | None => ()
-    | Some(roomKey) =>
-      switch (StringMap.get(roomKey_gameState, roomKey)) {
-      | None => ()
-      | Some(gameState) =>
-        switch (Game.maybeGetSocketPlayer(socket, gameState)) {
-        | None => ()
-        | Some(playerId) =>
-          Js.log(Player.stringOfId(playerId) ++ " is leaving the game");
-          let gameState' = GameReducer.reducer(LeaveGame(playerId), gameState);
-          if (Game.playerCount(gameState') == 0) {
-            StringMap.remove(roomKey_gameState, roomKey);
-          } else {
-            StringMap.set(roomKey_gameState, roomKey, gameState');
-          };
-          updateClientStates(gameState');
-          
-          SockServ.Socket.emit(socket, SocketMessages.Reset);
-        }
-      }
-    }
-  };
-};
+
+let onSocketDisconnect = socket =>
+  SockServ.Socket.onDisconnect(
+    socket,
+    () => {
+      /** Note: by this time socketio has already removed the socket from the room.
+        Also, during testing I noticed that refreshing the app in chrome rapidly multiple times
+        sometimes results in socketio not immediately detecting a disconnect. However it 
+        seems to triage after about a minute(?) so there is a delay between when you expect to 
+        see a disconnect and when socketio finally fires this disconnect handler.
+        
+        The result is that there may be open game rooms holding sockets that are effectively dead.*/
+
+      Js.log("Server:onSocketDisconnect");
+      debugSocket(socket, ~n=1, ());
+
+      leaveGame(socket);
+
+      debugGameBySocket(socket);
+
+      StringMap.remove(socketId_playerData, socket->SockServ.Socket.getId);
+      debugGameStates(~n=1, ());
+    },
+  );
 
 SockServ.onConnect(
   io,
@@ -431,29 +451,43 @@ SockServ.onConnect(
           };
         switch (StringMap.get(roomKey_gameState, roomKey)) {
         | None => ()
-        | Some(gameState) =>
+        | Some(prevGameState) =>
+          let roomKey = prevGameState.roomKey;
           let action = ioAction |> actionOfIO_Action;
+          
+          let nextGameState = GameReducer.reducer(action, prevGameState);
+
+          let nextGameState = {
+            ...nextGameState,
+            maybeKickTimeoutId: reconcileKickTimeout(prevGameState, nextGameState),
+          };
 
           let isEndTrick =
-            switch (action) {
-            | PlayCard(player, _) => Player.nextPlayer(player) == gameState.leader
-            | _ => false
-            };
-
-          let gameState = GameReducer.reducer(action, gameState);
-
-          let advanceRound = () => {
-            let gameState = GameReducer.reducer(AdvanceRound, gameState);
-            StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
-            updateClientStates(gameState);
-          };
+            GamePlayers.map(
+              player => Js.Option.isSome(player.Game.pla_card) ? true : false,
+              nextGameState.players,
+            )
+            |> GamePlayers.foldLeftUntil(
+                 (iPlayed, wePlayed) => wePlayed && iPlayed,
+                 wePlayed => !wePlayed,
+                 true,
+               );
 
           if (isEndTrick) {
-            Js.Global.setTimeout(advanceRound, 2750) |> ignore;
+            let advanceRound = prevGameState => {
+              let nextGameState = GameReducer.reducer(AdvanceRound, prevGameState);
+              let maybeKickTimeoutId = reconcileKickTimeout(prevGameState, nextGameState);
+              let nextGameState = {...nextGameState, maybeKickTimeoutId};
+              StringMap.set(roomKey_gameState, roomKey, nextGameState);
+              updateClientStates(nextGameState);
+            };
+
+            Js.Global.setTimeout(() => advanceRound(nextGameState), 2750) |> ignore;
           };
 
-          StringMap.set(roomKey_gameState, gameState.roomKey, gameState);
-          updateClientStates(gameState);
+          StringMap.set(roomKey_gameState, roomKey, nextGameState);
+          Game.debugState(nextGameState, ~ctx="Server:ioAction", ());
+          updateClientStates(nextGameState);
         };
       }
     );

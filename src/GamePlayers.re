@@ -30,5 +30,18 @@ let update = (id, f, rs: playerData('a)) => {
   put(id, get(id, rs) |> f, rs);
 };
 
+let map = (f, (r1, r2, r3, r4)) => {
+  (f(r1), f(r2), f(r3), f(r4))
+};
+
+let foldLeft = (f, acc, (r1, r2, r3, r4)) => {
+  f(r1, acc) |> f(r2) |> f(r3) |> f(r4)
+};
+
+let foldLeftUntil = (f, test, acc, (r1, r2, r3, r4)) => {
+  let fns = [f(r1), f(r2), f(r3), f(r4)];
+  Util.updateUntil(fns, test, acc);
+}
+
 
 let toDict = ( (a, b, c, d) ) => [(Player.P1, a), (P2, b), (P3, c), (P4, d)];

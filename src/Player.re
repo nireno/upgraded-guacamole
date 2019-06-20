@@ -8,6 +8,16 @@ type id =
   | P3
   | P4;
 
+/** 
+  As opposed to the regular id_encode provided by [@decco]
+  I use this for my custom (recursive) game phase encoding
+*/
+let stringifyId = fun
+| P1 => "P1"
+| P2 => "P2"
+| P3 => "P3"
+| P4 => "P4";
+
 let nextPlayer =
   fun
   | P1 => P2
