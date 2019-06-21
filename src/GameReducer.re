@@ -18,7 +18,7 @@ type action =
   | ClearNotis
   | CheatPoints(Team.id, int);
 
-let rec reducer = (action, state) =>
+let rec reduce = (action, state) =>
       switch (action) {
       | Noop => state
       | NewRound =>
@@ -324,7 +324,7 @@ let rec reducer = (action, state) =>
 
         /* Any player whose hand is empty at this points indicates all players' hands are empty */
         List.length(GamePlayers.get(P1, state.players).pla_hand) == 0
-          ? reducer(NewRound, state) : state;
+          ? reduce(NewRound, state) : state;
       | Beg =>
         let beggerId = Player.nextPlayer(state.dealer);
         let pla_name = GamePlayers.get(beggerId, state.players).pla_name;

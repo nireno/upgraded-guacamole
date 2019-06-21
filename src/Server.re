@@ -172,7 +172,7 @@ let updateClientStates = gameState => {
     Clear notifications - All pending notifications for each client should have
     been delivered at this point. Go ahead and clear them.
   */
-  let gameState' = GameReducer.reducer(ClearNotis, gameState);
+  let gameState' = GameReducer.reduce(ClearNotis, gameState);
 
   StringMap.set(roomKey_gameState, gameState'.roomKey, gameState');
 };
@@ -243,7 +243,7 @@ let leaveGame = socket => {
           Js.log(Player.stringOfId(playerId) ++ " is leaving the game");
           My.Global.clearMaybeTimeout(gameState.maybeKickTimeoutId);
           let gameState' = {...gameState, maybeKickTimeoutId: None};
-          let gameState' = GameReducer.reducer(LeaveGame(playerId), gameState');
+          let gameState' = GameReducer.reduce(LeaveGame(playerId), gameState');
           if (Game.playerCount(gameState') == 0) {
             StringMap.remove(roomKey_gameState, roomKey);
           } else {
@@ -455,7 +455,7 @@ SockServ.onConnect(
           let roomKey = prevGameState.roomKey;
           let action = ioAction |> actionOfIO_Action;
           
-          let nextGameState = GameReducer.reducer(action, prevGameState);
+          let nextGameState = GameReducer.reduce(action, prevGameState);
 
           let nextGameState = {
             ...nextGameState,
@@ -475,7 +475,7 @@ SockServ.onConnect(
 
           if (isEndTrick) {
             let advanceRound = prevGameState => {
-              let nextGameState = GameReducer.reducer(AdvanceRound, prevGameState);
+              let nextGameState = GameReducer.reduce(AdvanceRound, prevGameState);
               let maybeKickTimeoutId = reconcileKickTimeout(prevGameState, nextGameState);
               let nextGameState = {...nextGameState, maybeKickTimeoutId};
               StringMap.set(roomKey_gameState, roomKey, nextGameState);
