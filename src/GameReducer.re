@@ -1,6 +1,23 @@
 open AppPrelude;
 open Game;
 
+type action =
+  | Noop
+  | PlayCard(Player.id, Card.t)
+  | BlockPlay(Player.id)
+  | EndTrick
+  | AdvanceRound
+  | NewRound
+  | Beg
+  | Stand
+  | GiveOne
+  | Deal
+  | RunPack
+  | DealAgain
+  | LeaveGame(Player.id)
+  | ClearNotis
+  | CheatPoints(Team.id, int);
+
 let rec reducer = (action, state) =>
       switch (action) {
       | Noop => state
@@ -451,7 +468,7 @@ let rec reducer = (action, state) =>
         {
           ...state,
           players: players,
-          phase: state.phase |> modPhase(4 - Game.countPlayers(players)),
+          phase: state.phase |> modPhase(4 - countPlayers(players)),
           notis: state.notis @ playerLeftNotis
         };
       | ClearNotis => 

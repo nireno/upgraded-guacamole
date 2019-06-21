@@ -196,7 +196,7 @@ let debugSocket: (BsSocket.Server.socketT, ~ctx: string=?, ~n: int=?, unit) => u
 
 
 
-let actionOfIO_Action: SocketMessages.clientToServer => Game.action =
+let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   fun
   | IO_JoinGame(_)
   | IO_LeaveGame
