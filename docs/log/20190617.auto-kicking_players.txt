@@ -1,0 +1,84 @@
+
+adjustKickTimeout
+correctKickTimeout
+
+When the game state changes, you have to do one of three things to the kick timer:
+- Reset it
+- Clear it
+- Don't touch it (Skip/disregard/Ignore it)
+
+Which of these three actions to take can be decided by observing the game phase.
+
+let the actions you take on a `timeout` be defined by:
+  type timeout_options = Reset | Clear | None
+
+Then we can define the actions on the kick timeout by:
+  type maybeTimeoutAction = option(timeoutAction)
+
+When an action is processed, the the game phase may be affected.
+
+let ActiveGamePhases be the set of phases AllGamePhases - InactiveGamePhases.
+
+atm the game phase may be affected 
+1. when an action is processed - 
+   ActiveGamePhase --->  ActiveGamePhase ?  (is no change possible ? can i recieve an action that does nothing? probably)
+   ActiveGamePhase_1 --->  ActiveGamePhase_2
+   ActiveGAmePhase ---> GameOverPhase
+2. when a player leaves - 
+   ActiveGamePhase ---> FindSubsPhase
+   InactiveGamePhase ---> InactiveGamePhase    (no change)
+3. when a player joins.
+   FindingPlayers  --->  DealPhase
+   FindingSubs ---> ActiveGamePhase
+
+
+#Problem 
+I'm ending up with a cycle:
+  updateKickTimeout 
+
+
+can I determine the activePlayer based on the state of the game.
+if i could then why have a maybeActivePlayerId field
+
+---
+
+
+
+In the FindSubsPhase: 
+  maybeActivePlayerId <should-be> None. 
+  Why: 
+    maybeKickTimeoutId is a function of  use the value of maybeActivePlayer to decide
+But when 
+
+
+---
+The game phases
+  | FindSubsPhase(int, phase)
+  | FindPlayersPhase(int)
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase
+  | PackDepletedPhase
+  | GameOverPhase;
+
+phases that need employ an active-player:
+  | DealPhase |
+    RunPackPhase |
+    PackDepletedPhase => active-player = dealer
+  | BegPhase |
+    GiveOnePhase => active-player = leader = nextPlayer(dealer)
+  | PlayerTurnPhase
+    depends on the dealer and number of cards on the board
+
+I can trivially select the active player for each phase except the player-turn-phase.
+
+PlayerTurnPhase is needlessly opaque wrt which player has the turn.
+
+Considering encoding the playerId in the PlayerTurnPhase variant. Then I can surmise
+
+---
+A client using `ActivePlayer.find` can deduce the details of the active player from
+the `gamePhase` and the current round's `dealer`.
+[] Remove all occurrences of `activePlayer[Id]` and `activePlayerPhase` from server code

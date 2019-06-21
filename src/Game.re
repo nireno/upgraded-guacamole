@@ -45,12 +45,12 @@ type state = {
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
   leader: Player.id,
-  maybePlayerTurn: option(Player.id),
   maybeTeamHigh: option(Team.id),
   maybeTeamLow: option(Team.id),
   maybeTeamJack: option((Team.id, GameAward.award)),
   maybeTeamGame: option(Team.id),
   phase,
+  maybeKickTimeoutId: option(Js.Global.timeoutId),
 };
 
 module SockServ = BsSocket.Server.Make(SocketMessages);
@@ -72,7 +72,6 @@ let stringOfState = (state) => {
     ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
     ++ str_tab ++ "dealer: " ++ Player.stringOfId(state.dealer) ++ str_crlf
     ++ str_tab ++ "leader: " ++ Player.stringOfId(state.leader) ++ str_crlf
-    ++ str_tab ++ "maybePlayerTurn: " ++ Player.stringOfMaybeId(state.maybePlayerTurn) ++ str_crlf
     ++ "}" ++ str_crlf
 };
 
@@ -88,7 +87,6 @@ let initialState = () => {
     ),
     teams: (initialTeamState, initialTeamState),
     notis: [],
-    maybePlayerTurn: None,
     maybeTrumpCard: None,
     maybeLeadCard: None,
     dealer: P1,
@@ -98,6 +96,7 @@ let initialState = () => {
     maybeTeamJack: None,
     maybeTeamGame: None,
     phase: FindPlayersPhase(4),
+    maybeKickTimeoutId: None,
   };
 };
 
@@ -206,22 +205,21 @@ let isEmpty = (state) => {
     |> Belt.List.every(_, Js.Option.isNone))
 };
 
-let decidePlayerPhase:
-  (phase, Player.id, Player.id, option(Player.id), Player.id) => (Player.id, Player.phase) =
-  (gamePhase, dealer, leader, maybePlayerTurn, player) => {
-    Player.maybeIdEqual(maybePlayerTurn, player)
-      ? (player, Player.PlayerTurnPhase(player))
-      : dealer == player && gamePhase == DealPhase
-          ? (player, PlayerDealPhase)
-          : dealer == player && gamePhase == GiveOnePhase
-              ? (player, PlayerGiveOnePhase)
-              : dealer == player && gamePhase == RunPackPhase
-                  ? (player, PlayerRunPackPhase)
-                  : dealer == player && gamePhase == PackDepletedPhase
-                      ? (player, PlayerRedealPhase)
-                      : leader == player && gamePhase == BegPhase
-                          ? (player, PlayerBegPhase) : (player, PlayerIdlePhase);
-  };
+let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase) =
+  (gamePhase, dealerId, playerId) => {
+
+      let playerPhase =
+        switch (gamePhase) {
+        | PlayerTurnPhase(playerId) => Player.PlayerTurnPhase(playerId)
+        | DealPhase when dealerId == playerId => PlayerDealPhase
+        | GiveOnePhase when dealerId == playerId => PlayerGiveOnePhase
+        | RunPackPhase when dealerId == playerId => PlayerRunPackPhase
+        | PackDepletedPhase when dealerId == playerId => PlayerRedealPhase
+        | BegPhase when Player.nextPlayer(dealerId) == playerId => PlayerBegPhase
+        | _ => PlayerIdlePhase
+        };
+      (playerId, playerPhase);
+    };
 
 
 let debugState = (state, ~ctx="", ~n=0, ()) => {

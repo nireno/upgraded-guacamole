@@ -53,3 +53,24 @@ let broadcast = (~msg, ~level=Info, ~kind=Duration(3375), ()) =>
          noti_kind: kind
        }
      );
+
+module State = {
+  let initial = [];
+
+  type action =
+    | Add(list(t))
+    | AddOne(t)
+    | Remove(t)
+    | RemoveKind(kind)
+    | Reset(list(t));
+
+  let reducer = (prevNotis, action) => {
+    switch (action) {
+    | Add(notis) => prevNotis @ notis
+    | AddOne(noti) => prevNotis @ [noti]
+    | Remove(notiToRemove) => List.filter(noti => noti != notiToRemove, prevNotis)
+    | RemoveKind(kind) => Belt.List.keep(prevNotis, noti => noti.noti_kind != kind)
+    | Reset(notis) => notis
+    };
+  };
+};

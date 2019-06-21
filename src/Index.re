@@ -22,7 +22,7 @@ module App = {
   let make = () => {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
-    let (notis, setNotis) = React.useState(() => []);
+    let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
     let (appRect, setAppRect) =
       React.useState(() => Webapi.Dom.DomRect.make(~x=0.0, ~y=0.0, ~width=0.0, ~height=0.0));
 
@@ -33,6 +33,12 @@ module App = {
       None
     });
 
+    let {ActivePlayer.id: activePlayerId, phase: activePlayerPhase} = 
+      switch(ActivePlayer.find(state.gamePhase, state.dealer)){
+      | None => {ActivePlayer.id: P1, phase: PlayerIdlePhase}
+      | Some(activePlayer) => activePlayer
+      };
+
     let ((southCard, southZ, southTags), (eastCard, eastZ, eastTags), (northCard, northZ, northTags), (westCard, westZ, westTags)) =
       Player.playersAsQuad(~startFrom=state.me, ())
       |> Quad.map(playerId =>
@@ -41,10 +47,8 @@ module App = {
              x => {
                let tags = [];
                let tags = state.dealer == playerId ? tags @ [PlayerTagsView.Dealer] : tags;
-               let tags = switch(state.maybePlayerTurn){
-                 | None => tags
-                 | Some(turnerId) => playerId == turnerId ? tags @ [PlayerTagsView.Turner] : tags;
-               };
+               let tags = 
+                 playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags;
                (x.pla_card, Player.turnDistance(state.leader, playerId), tags);
              },
              state.players,
@@ -70,20 +74,20 @@ module App = {
         switch (x) {
         | SetState(ioClientState) =>
           switch (ClientGame.state_decode(ioClientState |> Js.Json.parseExn)) {
-          | Belt.Result.Error(_) => ()
+          | Belt.Result.Error(err) => Js.log(err)
           | Belt.Result.Ok(state) =>
             debugState(state, ~ctx="ClientSocket.T.on SetState", ());
             dispatch(MatchServerState(state));
           };
         | AddNotis(ioNotis) => 
           switch (ClientGame.notis_decode(ioNotis |> Js.Json.parseExn)) {
-          | Belt.Result.Error(_) => ()
+          | Belt.Result.Error(err) => Js.log(err)
           | Belt.Result.Ok(newNotis) =>
-            setNotis(notis => notis @ newNotis);
+            updateNotis(Add(newNotis));
           };
         | Reset => 
           dispatch(MatchServerState(ClientGame.initialState));
-          setNotis(_ => []);
+          updateNotis(Reset(Noti.State.initial));
         }
       );
       None
@@ -119,12 +123,40 @@ module App = {
         | Team.T1 => (GameTeams.get(T1, state.teams), GameTeams.get(T2, state.teams))
         | Team.T2 => (GameTeams.get(T2, state.teams), GameTeams.get(T1, state.teams))
       };
-      
-      let bgBoard = state.me == state.activePlayer ? " bg-green-500 " : " bg-orange-500 ";
+
+      let bgBoard = state.me == activePlayerId ? " bg-green-500 " : " bg-orange-500 ";
       let handleAppClick = _ => {
         /* Clear notifications when user taps anywhere in the app. */
-        setNotis(_ => [])
+        updateNotis(RemoveKind(Noti.Confirm))
+
       };
+
+      let addUniqueTimoutNoti = msg => {
+        let isTimeoutNoti = noti =>
+          switch (noti.Noti.noti_kind) {
+          | Duration(_) => true
+          | _ => false
+          };
+
+        let similarMessages =
+          List.filter(noti => isTimeoutNoti(noti) && noti.noti_message == Text(msg), notis);
+        switch (similarMessages) {
+        | [] =>
+          updateNotis(
+            AddOne(
+              Noti.{
+                noti_id: Nanoid.nanoid(),
+                noti_recipient: state.me,
+                noti_level: Danger,
+                noti_kind: Duration(5000),
+                noti_message: Text(msg),
+              },
+            ),
+          )
+        | _ => ()
+        };
+      };
+
       <div  
         ref={ReactDOMRe.Ref.domRef(appRef)} 
         className="all-fours-game font-sans flex flex-col relative"
@@ -167,7 +199,7 @@ module App = {
                   Belt.List.forEach(notis, notiToRemove =>
                     switch (notiToRemove.noti_kind) {
                     | Duration(millis) =>
-                      Js.Global.setTimeout(() => setNotis(List.filter(noti => noti != notiToRemove)), millis)
+                      Js.Global.setTimeout(() => updateNotis(Remove(notiToRemove)), millis)
                       |> ignore
                     | _ => ()
                     }
@@ -236,10 +268,10 @@ module App = {
               </div>
 
               <WaitingMessage 
-                activePlayerName={GamePlayers.get(state.activePlayer, state.players).pla_name} 
+                activePlayerName={GamePlayers.get(activePlayerId, state.players).pla_name} 
                 player=state.me 
-                activePlayer=state.activePlayer 
-                activePlayerPhase=state.activePlayerPhase />
+                activePlayer=activePlayerId 
+                activePlayerPhase=activePlayerPhase />
 
               <Player
                 sendDeal={sendIO(SocketMessages.IO_Deal)}
@@ -266,7 +298,7 @@ module App = {
                   maybeLeadCard={state.maybeLeadCard}
                   maybeTrumpCard={state.maybeTrumpCard}
                   handPhase={
-                    Player.maybeIdEqual(state.maybePlayerTurn, state.me)
+                    activePlayerId == state.me
                       ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
                   }
                   sendPlayCard={card =>
@@ -284,6 +316,7 @@ module App = {
                       )
                     }
                   }
+                  onInvalidCardClick=addUniqueTimoutNoti
                 />
               </div>
             </div>

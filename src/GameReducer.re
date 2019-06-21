@@ -168,7 +168,6 @@ let rec reducer = (action, state) =>
           dealer: nextDealer,
           maybeTrumpCard: None,
           maybeLeadCard: None,
-          maybePlayerTurn: None,
           maybeTeamHigh: None,
           maybeTeamLow: None,
           maybeTeamJack: None,
@@ -181,45 +180,43 @@ let rec reducer = (action, state) =>
           } ), ~kind=Confirm, ()))
         }
               
-      | PlayCard(player, c) =>
-        let hand = GamePlayers.select(player, x => x.pla_hand, state.players);
-        let hand' = List.filter(c' => c != c', hand);
+      | PlayCard(playerId, c) =>
+        let player = GamePlayers.get(playerId, state.players);
+        let hand' = List.filter(c' => c != c', player.pla_hand);
 
         let canPlayCard =
-          switch (state.maybePlayerTurn) {
-          | Some(playerTurn) 
-              when playerTurn == player 
-              // Card c was in player hand
-              &&   hand != hand'  
-              // and there is an empty slot on the board for the player
-              && GamePlayers.get(player, state.players).pla_card == None =>  
-            true
-          | _ => false
-          };
+          // This player has the turn
+          state.phase == PlayerTurnPhase(playerId)
+          // and Card c was in player hand
+          && player.pla_hand != hand'
+          // and there is an empty slot on the board for the player
+          && player.pla_card == None
+            ? true : false;
 
         if (!canPlayCard) {
           state;
         } else {
-          let nextPlayer = Player.nextPlayer(player);
-          let state = {
+          /*
+           When the current player is the last player in the trick (i.e. the next player
+           is the lead player), it means this current player will end the trick. There
+           is no need to advance the turn since The true next player will be determined
+           later by computing the trick winner. This test keeps the ui more consistent
+           if the player who wins the trick is the last player in the trick.
+           */
+          let nextPlayer = Player.nextPlayer(playerId);
+          let phase' = nextPlayer == state.leader ? IdlePhase : PlayerTurnPhase(nextPlayer);
+
+          {
             ...state,
             players:
-              GamePlayers.update(player, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players),
+              GamePlayers.update(
+                playerId,
+                x => {...x, pla_hand: hand', pla_card: Some(c)},
+                state.players,
+              ),
             maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
-            maybePlayerTurn:
-              /*
-               When the current player is the last player in the trick (i.e. the next player
-               is the lead player), it means this current player will end the trick. There
-               is no need to advance the turn since The true next player will be determined
-               later by computing the trick winner. This test keeps the ui more consistent
-               if the player who wins the trick is the last player in the trick.
-               */
-              Some(nextPlayer == state.leader ? player : nextPlayer),
+            phase: phase',
           };
-
-          Player.nextPlayer(player) == state.leader 
-            ? reducer(EndTrick, state) 
-            : state;
         };
       | Deal =>
         let dealCards = state => {
@@ -302,8 +299,8 @@ let rec reducer = (action, state) =>
               state.teams,
             ),
           leader: trickWinner,
-          maybePlayerTurn: Some(trickWinner),
           maybeLeadCard: None,
+          phase: PlayerTurnPhase(trickWinner),
         };
 
         let state = state  |> advanceRound;
@@ -322,8 +319,7 @@ let rec reducer = (action, state) =>
         let begger = GamePlayers.get(beggerId, state.players);
         {
           ...state,
-          maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
-          phase: PlayerTurnPhase,
+          phase: PlayerTurnPhase(beggerId),
           notis: Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.pla_name ++ " stands"), ())
         }
       | GiveOne
@@ -346,8 +342,7 @@ let rec reducer = (action, state) =>
 
         {
           ...state,
-          phase: PlayerTurnPhase,
-          maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
+          phase: PlayerTurnPhase(state.leader),
           teams:
             GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
           notis: state.notis @ Noti.playerBroadcast(~from=state.dealer, ~msg=Noti.Text(dealer.pla_name ++ " gives one."), ())
@@ -385,8 +380,7 @@ let rec reducer = (action, state) =>
             }
             : {
               ...state,
-              phase: PlayerTurnPhase,
-              maybePlayerTurn: Some(Player.nextPlayer(state.dealer)),
+              phase: PlayerTurnPhase(state.leader),
             };
 
         let state = {
