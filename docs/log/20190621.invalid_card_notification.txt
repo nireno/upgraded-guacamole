@@ -1,0 +1,11 @@
+~~ consider words enclosed in double tilde to be 
+   strikethrough text, i.e. words that I now disagree with ~~
+
+# ancestor event bubbling
+
+~~ Some event handler props are passed to child components for the sole purpose 
+of bubbling information back to the parent. Perhaps a naming convention should
+be used for such events, eg: callback. ~~
+
+*All* event handler props are meant to have an effect on the parent context.
+Event handlers are typically prefixed with "on" so stick with that convention.

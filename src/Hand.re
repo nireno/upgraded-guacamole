@@ -191,6 +191,7 @@ module FaceUpHand = {
         ~maybeLeadCard: option(Card.t),
         ~maybeTrumpCard: option(Card.t),
         ~sendPlayCard: Card.t => unit,
+        ~onInvalidCardClick: string => unit,
       ) => {
     let keyedCards =
       List.fold_left((acc, card) => [{card, key: generateKey(acc, card)}, ...acc], [], cards);
@@ -207,39 +208,7 @@ module FaceUpHand = {
         ),
       );
 
-    let playerIsLeader =
-      switch (maybeLeadCard) {
-      | None => true
-      | Some(_) => false
-      };
-
-    let cardIsTrump = ({Card.suit}) =>
-      switch (maybeTrumpCard) {
-      | Some({suit: trumpSuit}) when suit == trumpSuit => true
-      | _ => false
-      };
-
-    let cardFollowsSuit = ({Card.suit}) =>
-      switch (maybeLeadCard) {
-      | Some({suit: leadSuit}) when leadSuit == suit => true
-      | _ => false
-      };
-
-    let handHasSuitTest: Card.Suit.t => bool =
-      testSuit => {
-        List.exists(({Card.suit}) => suit == testSuit, cards);
-      };
-
-    let cantFollowSuit =
-      switch (maybeLeadCard) {
-      | Some({suit: leadSuit}) => handHasSuitTest(leadSuit) ? false : true
-      | None => false
-      };
-
-    let checkIsCardPlayable = card =>
-      handPhase == HandPlayPhase
-      && (playerIsLeader || cardIsTrump(card) || cardFollowsSuit(card) || cantFollowSuit);
-    
+    let checkIsCardPlayable = checkIsCardPlayable(handPhase, maybeLeadCard, maybeTrumpCard, cards);
     let makeAnimatedCard = (transition: HandTransition.transition) => {
       let kCard = transition->HandTransition.itemGet;
       let props = transition->HandTransition.propsGet;
@@ -263,9 +232,25 @@ module FaceUpHand = {
           ReactDOMRe.(Style.combine(springStyle, Style.make(~opacity=opacity', ())))
         };
 
-      let isCardPlayable = checkIsCardPlayable(kCard.card);
+      let clickAction = card => {
+        let leadSuit =
+          Js.Option.getWithDefault(Card.{rank: Rank.Ace, suit: Suit.Spades}, maybeLeadCard).suit
+          |> Card.Suit.toString;
+
+        let trumpSuit =
+          Js.Option.getWithDefault(Card.{rank: Rank.Ace, suit: Suit.Spades}, maybeTrumpCard).suit
+          |> Card.Suit.toString;
+
+        let msg =
+          handPhase != HandPlayPhase
+            ? "Wait for your turn" : {j|You must follow suit ($leadSuit) or play trump ($trumpSuit)|j};
+
+        checkIsCardPlayable(kCard.card)
+          ? sendPlayCard(card) : onInvalidCardClick(msg);
+      };
+
       <ReactSpring.AnimatedDiv key={kCard.key} className="hand-card" style=springStyle>
-        <Card clickAction=?{isCardPlayable ? Some(sendPlayCard) : None} card={kCard.card} />
+        <Card clickAction card={kCard.card} />
       </ReactSpring.AnimatedDiv>;
     };
 
@@ -297,9 +282,10 @@ let make =
       ~maybeLeadCard: option(Card.t),
       ~maybeTrumpCard: option(Card.t),
       ~sendPlayCard: Card.t => unit,
+      ~onInvalidCardClick: string => unit,
     ) => {
   switch (handFacing) {
   | FaceDownHand(n) => <FaceDownHand nCards=n />
-  | FaceUpHand(cards) => <FaceUpHand cards handPhase maybeLeadCard maybeTrumpCard sendPlayCard />
+  | FaceUpHand(cards) => <FaceUpHand cards handPhase maybeLeadCard maybeTrumpCard sendPlayCard onInvalidCardClick />
   };
 };
