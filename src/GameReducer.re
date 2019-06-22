@@ -1,7 +1,24 @@
 open AppPrelude;
 open Game;
 
-let rec reducer = (action, state) =>
+type action =
+  | Noop
+  | PlayCard(Player.id, Card.t)
+  | BlockPlay(Player.id)
+  | EndTrick
+  | AdvanceRound
+  | NewRound
+  | Beg
+  | Stand
+  | GiveOne
+  | Deal
+  | RunPack
+  | DealAgain
+  | LeaveGame(Player.id)
+  | ClearNotis
+  | CheatPoints(Team.id, int);
+
+let rec reduce = (action, state) =>
       switch (action) {
       | Noop => state
       | NewRound =>
@@ -307,7 +324,7 @@ let rec reducer = (action, state) =>
 
         /* Any player whose hand is empty at this points indicates all players' hands are empty */
         List.length(GamePlayers.get(P1, state.players).pla_hand) == 0
-          ? reducer(NewRound, state) : state;
+          ? reduce(NewRound, state) : state;
       | Beg =>
         let beggerId = Player.nextPlayer(state.dealer);
         let pla_name = GamePlayers.get(beggerId, state.players).pla_name;
@@ -451,7 +468,7 @@ let rec reducer = (action, state) =>
         {
           ...state,
           players: players,
-          phase: state.phase |> modPhase(4 - Game.countPlayers(players)),
+          phase: state.phase |> modPhase(4 - countPlayers(players)),
           notis: state.notis @ playerLeftNotis
         };
       | ClearNotis => 

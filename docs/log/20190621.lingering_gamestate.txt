@@ -1,0 +1,30 @@
+# Repro:
+1. Have four players join game A.
+
+2. Deal the first round.
+
+3. Have all four players leave A.
+
+4. Have one player try to join a game again.
+
+## Expected 
+
+The player should join a new game, B say.
+
+## Actual
+
+The player joins game A again, even though game-A should have been removed.
+
+
+# My misconception
+
+I was afraid/beginning-to-think that nested callbacks somehow affected the
+state of variables in a closure. But there was no conceptual misconception. I
+can only be accused of:
+[x] not following the code path from beginning to end.
+
+If I did, I would have found that my global mutable state `roomKey_gameState`
+was being updated once more, such that the gameState that was removed in an
+earlier statement was being re-set in later `StringMap.set` statement. 
+
+The problem was solely due to a misplaced call to `updateClientStates`.

@@ -2,22 +2,6 @@ open AppPrelude;
 include SharedGame;
 
 
-type action =
-  | Noop
-  | PlayCard(Player.id, Card.t)
-  | BlockPlay(Player.id)
-  | EndTrick
-  | AdvanceRound
-  | NewRound
-  | Beg
-  | Stand
-  | GiveOne
-  | Deal
-  | RunPack
-  | DealAgain
-  | LeaveGame(Player.id)
-  | ClearNotis
-  | CheatPoints(Team.id, int);
 
 type playerState = {
   pla_socket: option(BsSocket.Server.socketT),
