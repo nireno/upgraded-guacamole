@@ -1,5 +1,11 @@
 open AppPrelude;
-[@bs.val] external node_env: string = "process.env.NODE_ENV";
+[@bs.val] external node_env: Js.Nullable.t(string) = "process.env.NODE_ENV";
+let node_env = 
+  node_env 
+  |> Js.Nullable.toOption 
+  |> Js.Option.getWithDefault("production");
+
+let isProduction = node_env == "production";
 
 [@bs.val] external username: Js.Nullable.t(string) = "g_display_name";
 let username = 
@@ -349,11 +355,20 @@ module App = {
             }
 
             // {createPlayerTricks(state.myTricks)}
-
-            <div className="debug-info" style={ReactDOMRe.Style.make(~position="fixed", ~bottom="0", ())}>
-              <div className="text-gray-500 text-xs"> {ReasonReact.string(Player.stringOfId(state.me))} </div>
-              <div className="text-gray-500 text-xs"> {ReasonReact.string("GameId: " ++ state.gameId ++ " ")} </div>
-            </div>
+            {
+              if (isProduction) {
+                ReasonReact.null
+              } else {
+                <div className="debug-info" style={ReactDOMRe.Style.make(~position="fixed", ~bottom="0", ())}>
+                  <div className="text-gray-500 text-xs">
+                    {ReasonReact.string(Player.stringOfId(state.me))}
+                  </div>
+                  <div className="text-gray-500 text-xs">
+                    {ReasonReact.string("GameId: " ++ state.gameId ++ " ")}
+                  </div>
+                </div>;
+              }
+            }
           </>
       }
       </div>;
