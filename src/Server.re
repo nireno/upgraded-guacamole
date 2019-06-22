@@ -240,7 +240,7 @@ let leaveGame = socket => {
         switch (Game.maybeGetSocketPlayer(socket, gameState)) {
         | None => ()
         | Some(playerId) =>
-          Js.log(Player.stringOfId(playerId) ++ " is leaving the game");
+          Js.log(Player.stringOfId(playerId) ++ " is leaving the game: " ++ roomKey);
           My.Global.clearMaybeTimeout(gameState.maybeKickTimeoutId);
           let gameState' = {...gameState, maybeKickTimeoutId: None};
           let gameState' = GameReducer.reduce(LeaveGame(playerId), gameState');
@@ -248,9 +248,9 @@ let leaveGame = socket => {
             StringMap.remove(roomKey_gameState, roomKey);
           } else {
             StringMap.set(roomKey_gameState, roomKey, gameState');
+            updateClientStates(gameState');
           };
-          updateClientStates(gameState');
-          
+
           SockServ.Socket.emit(socket, SocketMessages.Reset);
         }
       }
