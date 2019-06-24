@@ -3,6 +3,7 @@ type t = {
   phase: Player.phase
 };
 
+/** Game.phase and dealerId is sufficient for deducing if there is an active player */
 let find: (Game.phase, Player.id) => option(t) = (gamePhase, dealerId) => {
   switch(gamePhase){
   | DealPhase => Some({id: dealerId, phase: Player.PlayerDealPhase})

@@ -38,12 +38,12 @@ module App = {
       setAppRect(_ => Webapi.Dom.Element.getBoundingClientRect(el))
       None
     });
-
-    let {ActivePlayer.id: activePlayerId, phase: activePlayerPhase} = 
-      switch(ActivePlayer.find(state.gamePhase, state.dealer)){
-      | None => {ActivePlayer.id: P1, phase: PlayerIdlePhase}
-      | Some(activePlayer) => activePlayer
-      };
+    
+    let maybeActivePlayer = ActivePlayer.find(state.gamePhase, state.dealer);
+    let activePlayerName = maybeActivePlayer->Belt.Option.map(
+      activePlayer => {
+        GamePlayers.get(activePlayer.id, state.players).pla_name
+      })->Belt.Option.getWithDefault("");
 
     let ((southCard, southZ, southTags), (eastCard, eastZ, eastTags), (northCard, northZ, northTags), (westCard, westZ, westTags)) =
       Player.playersAsQuad(~startFrom=state.me, ())
@@ -53,8 +53,13 @@ module App = {
              x => {
                let tags = [];
                let tags = state.dealer == playerId ? tags @ [PlayerTagsView.Dealer] : tags;
-               let tags = 
-                 playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags;
+               let tags =
+                 switch (maybeActivePlayer) {
+                 | None => tags
+                 | Some({id: activePlayerId}) =>
+                   playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
+                 };
+
                (x.pla_card, Player.turnDistance(state.leader, playerId), tags);
              },
              state.players,
@@ -130,7 +135,13 @@ module App = {
         | Team.T2 => (GameTeams.get(T2, state.teams), GameTeams.get(T1, state.teams))
       };
 
-      let bgBoard = state.me == activePlayerId ? " bg-green-500 " : " bg-orange-500 ";
+      let bgBoard =
+        switch (maybeActivePlayer) {
+        | None => " bg-orange-500 "
+        | Some({id: activePlayerId}) =>
+          state.me == activePlayerId ? " bg-green-500 " : " bg-orange-500 "
+        };
+        
       let handleAppClick = _ => {
         /* Clear notifications when user taps anywhere in the app. */
         updateNotis(RemoveKind(Noti.Confirm))
@@ -273,11 +284,7 @@ module App = {
                 </div>
               </div>
 
-              <WaitingMessage 
-                activePlayerName={GamePlayers.get(activePlayerId, state.players).pla_name} 
-                player=state.me 
-                activePlayer=activePlayerId 
-                activePlayerPhase=activePlayerPhase />
+              <WaitingMessage activePlayerName myPlayerId=state.me maybeActivePlayer/>
 
               <Player
                 sendDeal={sendIO(SocketMessages.IO_Deal)}
@@ -304,8 +311,11 @@ module App = {
                   maybeLeadCard={state.maybeLeadCard}
                   maybeTrumpCard={state.maybeTrumpCard}
                   handPhase={
-                    activePlayerId == state.me
-                      ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
+                    switch (maybeActivePlayer) {
+                    | None => Hand.FaceUpHand.HandWaitPhase
+                    | Some(activePlayer) =>
+                      activePlayer.id == state.me ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
+                    }
                   }
                   sendPlayCard={card =>
                     switch (maybeSocket) {
