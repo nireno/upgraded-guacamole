@@ -10,6 +10,27 @@
   <link rel="stylesheet" href="./styles.css" />
   <link href="https://fonts.googleapis.com/css?family=Days+One&display=swap" rel="stylesheet">
   <script src="./socket.io/socket.io.js"></script>
+
+  <!-- The core Firebase JS SDK is always required and must be listed first -->
+  <script src="https://www.gstatic.com/firebasejs/6.2.2/firebase-app.js"></script>
+
+  <!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#config-web-app -->
+
+  <script>
+    // Your web app's Firebase configuration
+    var firebaseConfig = {
+      apiKey: "AIzaSyBIlrpZBGAEWWZTbyUsZJFBqJQPPSn1AJ8",
+      authDomain: "all-fours.firebaseapp.com",
+      databaseURL: "https://all-fours.firebaseio.com",
+      projectId: "all-fours",
+      storageBucket: "",
+      messagingSenderId: "522506321468",
+      appId: "1:522506321468:web:227b575c6e08a0e5"
+    };
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 
 <body>

@@ -1,8 +1,16 @@
 [%%debugger.chrome];
 open AppPrelude;
 
+Dotenv.config();
+
+let firebaseAdmin = FirebaseAdmin.admin;
+let firebaseApp = FirebaseAdmin.initializeApp(
+  firebaseAdmin,
+  FirebaseAdmin.options(~credential=FirebaseAdmin.applicationDefault(firebaseAdmin)));
+
 [@bs.val] external nodeEnv: string = "process.env.NODE_ENV";
 [@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.ALL_FOURS_PORT";
+
 
 [@bs.module] external nanoid: unit => string = "";
 

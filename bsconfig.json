@@ -23,6 +23,7 @@
     "reason-react",
     "@ryb73/decco",
     "@glennsl/bs-json",
+    "@ahrefs/bs-dotenv"
   ],
   "ppx-flags": ["ppx_decco"],
   "refmt": 3
