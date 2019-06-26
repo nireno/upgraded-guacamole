@@ -494,6 +494,24 @@ SockServ.onConnect(
   },
 );
 
+Express.App.get(
+  app,
+  ~path="/dashboard",
+  Express.Middleware.from((_next, _req) =>
+    {
+      <DashView>
+      {
+        roomKey_gameState
+        ->StringMap.valuesToArray
+        ->Belt.Array.map(gameState => <DashView.GameState gameState/>)
+        ->ReasonReact.array
+      }
+      </DashView>;
+    }
+    |> ReactDOMServerRe.renderToStaticMarkup
+    |> Express.Response.sendString
+  ),
+);
 
 let httpPort = Js.Nullable.toOption(httpPortEnv)
  |> Js.Option.getWithDefault("3000")
