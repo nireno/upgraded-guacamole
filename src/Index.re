@@ -1,5 +1,7 @@
 open AppPrelude;
 [@bs.val] external node_env: Js.Nullable.t(string) = "process.env.NODE_ENV";
+[@bs.val] external allfours_rules_url: Js.Nullable.t(string) = "process.env.allfours_rules_url";
+
 let node_env = 
   node_env 
   |> Js.Nullable.toOption 
@@ -195,6 +197,25 @@ module App = {
           <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username))}>
             {ReasonReact.string("Join Game")}
           </button>
+          {
+            switch (Js.Nullable.toOption(allfours_rules_url)) {
+            | None => ReasonReact.null
+            | Some(allfours_rules_url) =>
+              <div
+                className="help absolute w-full flex justify-center"
+                style={ReactDOMRe.Style.make(~bottom="5%", ())}>
+                <a className="text-blue-700 hover:text-blue-500" href=allfours_rules_url>
+                  <svg
+                    className="fill-current w-4 mr-4 text-blue-700"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20">
+                    <path d=Icon.question />
+                  </svg>
+                  {ReasonReact.string("All Fours Rules ")}
+                </a>
+              </div>
+            };
+          }
         </MenuView>
         :
           <>
