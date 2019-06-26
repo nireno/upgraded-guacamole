@@ -2,7 +2,8 @@
 open AppPrelude;
 
 [@bs.val] external nodeEnv: string = "process.env.NODE_ENV";
-[@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.ALL_FOURS_PORT";
+[@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.allfours_port";
+[@bs.val] external adminPasswordEnv: Js.Nullable.t(string) = "process.env.allfours_admin_password";
 
 [@bs.module] external nanoid: unit => string = "";
 
@@ -494,24 +495,32 @@ SockServ.onConnect(
   },
 );
 
-Express.App.get(
-  app,
-  ~path="/dashboard",
-  Express.Middleware.from((_next, _req) =>
-    {
-      <DashView>
+switch (Js.Nullable.toOption(adminPasswordEnv)) {
+| None =>
+  failwith(
+    "An environment variable 'allfours_admin_password' must be provided.\nThis defines the password for the admin dashboard.",
+  )
+| Some(adminPassword) =>
+  Express.App.get(app, ~path="/dashboard", Raw.authMiddleware("admin", adminPassword));
+  Express.App.get(
+    app,
+    ~path="/dashboard",
+    Express.Middleware.from((_next, _req) =>
       {
-        roomKey_gameState
-        ->StringMap.valuesToArray
-        ->Belt.Array.map(gameState => <DashView.GameState gameState/>)
-        ->ReasonReact.array
+        <DashView>
+        {
+          roomKey_gameState
+           ->StringMap.valuesToArray
+           ->Belt.Array.map(gameState => <DashView.GameState key={gameState.roomKey} gameState />)
+           ->ReasonReact.array
+        }
+        </DashView>;
       }
-      </DashView>;
-    }
-    |> ReactDOMServerRe.renderToStaticMarkup
-    |> Express.Response.sendString
-  ),
-);
+      |> ReactDOMServerRe.renderToStaticMarkup
+      |> Express.Response.sendString
+    ),
+  );
+};
 
 let httpPort = Js.Nullable.toOption(httpPortEnv)
  |> Js.Option.getWithDefault("3000")
