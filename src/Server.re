@@ -505,20 +505,18 @@ switch (Js.Nullable.toOption(adminPasswordEnv)) {
   Express.App.get(
     app,
     ~path="/dashboard",
-    Express.Middleware.from((_next, _req) =>
-      {
-        <DashView>
-        {
-          roomKey_gameState
-           ->StringMap.valuesToArray
-           ->Belt.Array.map(gameState => <DashView.GameState key={gameState.roomKey} gameState />)
-           ->ReasonReact.array
-        }
-        </DashView>;
-      }
+    Express.Middleware.from((_next, _req) => {
+      let gameStates = StringMap.valuesToArray(roomKey_gameState);
+      <div>
+        <div>
+          <span> {"Number of games: " |> ReasonReact.string} </span>
+          <span> {Array.length(gameStates) |> string_of_int |> ReasonReact.string} </span>
+        </div>
+        <DashView gameStates />
+      </div>
       |> ReactDOMServerRe.renderToStaticMarkup
-      |> Express.Response.sendString
-    ),
+      |> Express.Response.sendString;
+    }),
   );
 };
 

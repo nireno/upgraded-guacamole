@@ -36,6 +36,12 @@ module GameState = {
 };
 
 [@react.component]
-let make = (~children) => {
-  <div className="dash"> children </div>;
+let make = (~gameStates) => {
+  <div className="dash"> 
+  {
+    gameStates
+    ->Belt.Array.map(gameState => <GameState key={gameState.Game.roomKey} gameState />)
+    ->ReasonReact.array;
+  }
+  </div>;
 };
