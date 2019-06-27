@@ -22,3 +22,20 @@ let removeUnloadListener: eventListener => unit = [%raw
     window.removeEventListener("beforeunload", listener);
   |}
 ];
+
+let authMiddleware: (string, string) => Express.Middleware.t = [%raw
+  (user, pass) => {|
+    return (req, res, next) => {
+
+      // parse login and password from headers
+      const b64auth = (req.headers.authorization || '').split(' ')[1] || ''
+      const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
+      if(login == user && password == pass){
+        next();
+      } else {
+        res.set('WWW-Authenticate', 'Basic')
+        res.status(401).send('Authentication required.')
+      }
+    }
+  |}
+];
