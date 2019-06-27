@@ -59,20 +59,20 @@ let initialState = {
 type action =
   | MatchServerState(state)
 
-let reducer = (state, action) => {
+let reducer = (prevState, action) => {
   switch (action) {
-  | MatchServerState(state') => 
+  | MatchServerState(nextState) => 
 
     // Prevent user from navigating away from an in-progress game.
-    if(state.gameId == "" && state'.gameId != ""){
+    if(prevState.gameId == "" && nextState.gameId != ""){
       Raw.addUnloadListener(Raw.preventUnloadListener);
-    } else if(state.gameId != "" && state'.gameId == "") {
+    } else if(prevState.gameId != "" && nextState.gameId == "") {
       Raw.removeUnloadListener(Raw.preventUnloadListener);
     } else {
       ()
     };
 
-    state'
+    nextState
   };
 };
 
