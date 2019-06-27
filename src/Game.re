@@ -20,7 +20,7 @@ let initialPlayerState = playerId => {
 };
 
 type state = {
-  roomKey: string,
+  game_id: string,
   deck: Deck.t,
   players: (playerState, playerState, playerState, playerState),
   teams: (teamState, teamState),
@@ -52,7 +52,7 @@ let stringOfState = (state) => {
     ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P3, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
     ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P4, state.players).pla_socket |> stringOfMaybeSocket ) ++ str_crlf
     ++ str_tab ++ "]" ++ str_crlf
-    ++ str_tab ++ "roomKey: " ++ state.roomKey ++ str_crlf
+    ++ str_tab ++ "game_id: " ++ state.game_id ++ str_crlf
     ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
     ++ str_tab ++ "dealer: " ++ Player.stringOfId(state.dealer) ++ str_crlf
     ++ str_tab ++ "leader: " ++ Player.stringOfId(state.leader) ++ str_crlf
@@ -61,7 +61,7 @@ let stringOfState = (state) => {
 
 let initialState = () => {
   {
-    roomKey: "",
+    game_id: "",
     deck: Deck.make() |> Deck.shuffle,
     players: (
       initialPlayerState(P1),

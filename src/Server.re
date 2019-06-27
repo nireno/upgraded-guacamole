@@ -46,6 +46,13 @@ type playerData = {
 let socketId_playerData: StringMap.t(playerData) = 
   StringMap.make(~hintSize=(expectedGameCount*4));
 
+let nGamesCreated = ref(0);
+
+let nextGameId = () => {
+  nGamesCreated := nGamesCreated^ + 1;
+  nGamesCreated^
+};
+
 /** Map of room keys to respective game states */
 let roomKey_gameState: StringMap.t(Game.state) =
   StringMap.make(~hintSize=expectedGameCount);
@@ -85,7 +92,7 @@ let buildClientState = (gameState, player, playerPhase) => {
   let p3State = GamePlayers.get(P3, gameState.players);
   let p4State = GamePlayers.get(P4, gameState.players);
   ClientGame.{
-    gameId: gameState.roomKey,
+    gameId: gameState.game_id,
     phase: playerPhase,
     gamePhase: gameState.phase,
     players: (
@@ -175,7 +182,7 @@ let updateClientStates = gameState => {
   */
   let gameState' = GameReducer.reduce(ClearNotis, gameState);
 
-  StringMap.set(roomKey_gameState, gameState'.roomKey, gameState');
+  StringMap.set(roomKey_gameState, gameState'.game_id, gameState');
 };
 
 let debugSocket: (BsSocket.Server.socketT, ~ctx: string=?, ~n: int=?, unit) => unit = 
@@ -312,11 +319,11 @@ let joinGame = (socket, username) => {
 
   let prevGameState =
     switch (unfilledGames) {
-    | [] => {...Game.initialState(), roomKey: socketId}
+    | [] => {...Game.initialState(), game_id: nextGameId() |> string_of_int}
     | [gameState, ..._rest] => gameState
     };
   
-  let roomKey = prevGameState.roomKey;
+  let roomKey = prevGameState.game_id;
   // let maybeRoom =
   //   ns
   //   |> Namespace.getAdapter
@@ -453,7 +460,7 @@ SockServ.onConnect(
         switch (StringMap.get(roomKey_gameState, roomKey)) {
         | None => ()
         | Some(prevGameState) =>
-          let roomKey = prevGameState.roomKey;
+          let roomKey = prevGameState.game_id;
           let action = ioAction |> actionOfIO_Action;
           
           let nextGameState = GameReducer.reduce(action, prevGameState);

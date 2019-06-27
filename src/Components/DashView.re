@@ -20,7 +20,7 @@ module GameState = {
   [@react.component]
   let make = (~gameState) => {
     <div className="game-state">
-      <h6> {ReasonReact.string(gameState.Game.roomKey)} </h6>
+      <h6> {ReasonReact.string(gameState.Game.game_id)} </h6>
       <div> {gameState.phase |> Game.stringOfPhase |> ReasonReact.string} </div>
       <div className="player-states">
       {
@@ -40,7 +40,7 @@ let make = (~gameStates) => {
   <div className="dash"> 
   {
     gameStates
-    ->Belt.Array.map(gameState => <GameState key={gameState.Game.roomKey} gameState />)
+    ->Belt.Array.map(gameState => <GameState key={gameState.Game.game_id} gameState />)
     ->ReasonReact.array;
   }
   </div>;
