@@ -29,6 +29,7 @@ module App = {
   [@react.component]
   let make = () => {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
+    let (clientState, clientStateReduce) = React.useReducer(ClientState.reducer, ClientState.initial);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
     let (appRect, setAppRect) =
@@ -80,6 +81,7 @@ module App = {
       | _ => CardTransition.South
     };
 
+
     React.useEffect1(() => {
       let socket = ClientSocket.T.create();
       setMaybeSocket(_ => Some(socket));
@@ -105,6 +107,24 @@ module App = {
       );
       None
     }, [||])
+
+    React.useEffect1(
+      () => {
+        switch (maybeActivePlayer) {
+        | None => clientStateReduce(StopCountdown)
+        | Some(activePlayer) =>
+          if (activePlayer.phase == PlayerIdlePhase) {
+            clientStateReduce(StopCountdown);
+          } else {
+            clientStateReduce(
+              StartCountdown(Js.Global.setInterval(() => clientStateReduce(TickCountdown), 1000)),
+            );
+          }
+        };
+        None;
+      },
+      [|state.gamePhase|],
+    );
 
       let sendIO = (ioAction, _event) => {
         switch (maybeSocket) {
@@ -245,7 +265,10 @@ module App = {
                   <NotificationsView id="notifications_view" notis appRect teamId={teamOfPlayer(state.me)} />;
                 }
                 <div className="game-board__player">
-                  <PlayerTagsView className="player-tags player-tags__west flex flex-col justify-center h-full" tags=westTags />
+                  <PlayerTagsView 
+                    className="player-tags player-tags__west flex flex-col justify-center h-full" 
+                    tags=westTags 
+                    countdown=clientState.countdown />
                   <div
                     className="board-card board-card-west flex-shrink-0"
                     style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
@@ -259,7 +282,10 @@ module App = {
                 </div>
                 <div className="game-board__player game-board__player-north">
                   <div className="game-board__player-offset">
-                    <PlayerTagsView className="player-tags player-tags__north flex flex-row justify-center" tags=northTags />
+                    <PlayerTagsView 
+                      className="player-tags player-tags__north flex flex-row justify-center" 
+                      tags=northTags 
+                      countdown=clientState.countdown/>
                     <div
                       className="board-card board-card-north self-start flex-shrink-0 mx-auto"
                       style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
@@ -287,6 +313,7 @@ module App = {
                     <PlayerTagsView
                       className="player-tags player-tags__south flex flex-row justify-center"
                       tags=southTags
+                      countdown=clientState.countdown
                     />
                   </div>
                 </div>
@@ -301,7 +328,10 @@ module App = {
                       leaveTo=animationLeaveTo
                     />
                   </div>
-                  <PlayerTagsView className="player-tags player-tags__east flex flex-col justify-center h-full" tags=eastTags />
+                  <PlayerTagsView 
+                    className="player-tags player-tags__east flex flex-col justify-center h-full" 
+                    tags=eastTags 
+                    countdown=clientState.countdown/>
                 </div>
               </div>
 

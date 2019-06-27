@@ -124,11 +124,11 @@ img.card {
   right: 0;
 }
 
-.player-tags__south img {
+.player-tags__south .player-tags__item {
   width: 20%;
 }
 
-.player-tags__north img {
+.player-tags__north .player-tags__item {
   width: 20%;
 }
 

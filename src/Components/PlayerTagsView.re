@@ -1,7 +1,7 @@
 type playerTag = Dealer | Turner;
 
 [@react.component]
-let make = (~tags, ~className=?, ~style=?) => {
+let make = (~tags, ~countdown, ~className=?, ~style=?) => {
   <div ?className ?style>
     {switch (tags) {
      | [] =>
@@ -15,15 +15,19 @@ let make = (~tags, ~className=?, ~style=?) => {
            | Dealer =>
              <img
                key="player-tag__dealer"
-               className="player-tag__dealer__img"
+               className="player-tag__dealer__img player-tags__item"
                src="./static/img/emoji_pack.svg"
              />
            | Turner =>
-             <img
-               key="player-tag__turner"
-               className="player-tag__turner__img"
-               src="./static/img/emoji_thinking.svg"
-             />
+             <React.Fragment key="player-tag__turner">
+               <img
+                 className="player-tag__turner__img player-tags__item"
+                 src="./static/img/emoji_thinking.svg"
+               />
+               <span className="player-tags__item self-center text-center">
+                 {ReasonReact.string(countdown |> string_of_int)}
+               </span>
+             </React.Fragment>;
            },
          tags,
        )
