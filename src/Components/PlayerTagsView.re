@@ -1,7 +1,7 @@
 type playerTag = Dealer | Turner;
 
 [@react.component]
-let make = (~tags, ~countdown, ~className=?, ~style=?) => {
+let make = (~tags, ~className=?, ~style=?) => {
   <div ?className ?style>
     {switch (tags) {
      | [] =>
@@ -24,9 +24,7 @@ let make = (~tags, ~countdown, ~className=?, ~style=?) => {
                  className="player-tag__turner__img player-tags__item"
                  src="./static/img/emoji_thinking.svg"
                />
-               <span className="player-tags__item self-center text-center">
-                 {ReasonReact.string(countdown |> string_of_int)}
-               </span>
+               <CountdownView className="player-tags__item self-center text-center" from={SharedGame.settings.kickPlayerMillis / 1000} />
              </React.Fragment>;
            },
          tags,
