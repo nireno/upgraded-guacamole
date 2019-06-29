@@ -32,6 +32,13 @@ let prevPlayer =
   | P3 => P2
   | P4 => P1;
 
+let getPartner = 
+  fun
+  | P1 => P3
+  | P2 => P4
+  | P3 => P1
+  | P4 => P2;
+
 let playersAsQuad = (~startFrom=P1, ()) => {
   let a = startFrom;
   let b = nextPlayer(a);

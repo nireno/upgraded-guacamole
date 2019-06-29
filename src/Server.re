@@ -115,6 +115,10 @@ let buildClientState = (gameState, player, playerPhase) => {
     ),
     teams: gameState.teams,
     me: player,
+    partnerInfo: switch(gameState.phase){
+    | PlayerTurnPhase(_n) => Game.getPartnerInfo(gameState, player)
+    | _ => []
+    },
     myTricks: GamePlayers.get(player, gameState.players).pla_tricks,
     dealer: gameState.dealer,
     leader: gameState.leader,

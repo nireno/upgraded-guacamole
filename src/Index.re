@@ -275,7 +275,7 @@ module App = {
                        tags=northTags
                      />
                      <div
-                       className="board-card board-card-north self-start flex-shrink-0 mx-auto"
+                       className="board-card board-card-north relative self-start flex-shrink-0 mx-auto"
                        style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
                        <img
                          className="card__placeholder block relative"
@@ -288,6 +288,11 @@ module App = {
                        />
                      </div>
                    </div>
+                     <PlayerCardTagsView
+                       className="absolute w-full top-0 left-0"
+                       style={ReactDOMRe.Style.make(~transform="translate(50%)", ())}
+                       cards={state.partnerInfo}
+                     />
                  </div>
                  <div className="game-board__player game-board__player-south">
                    <div className="game-board__player-offset">
