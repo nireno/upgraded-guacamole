@@ -275,7 +275,7 @@ module App = {
                        tags=northTags
                      />
                      <div
-                       className="board-card board-card-north relative self-start flex-shrink-0 mx-auto"
+                       className="board-card board-card-north relative self-start flex-shrink-0"
                        style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
                        <img
                          className="card__placeholder block relative"
