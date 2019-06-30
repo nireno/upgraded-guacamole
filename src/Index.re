@@ -43,10 +43,10 @@ module App = {
       ->Belt.Option.getWithDefault("");
 
     let (
-      (southCard, southZ, southTags),
-      (eastCard, eastZ, eastTags),
-      (northCard, northZ, northTags),
-      (westCard, westZ, westTags),
+      (southName, southCard, southZ, southTags),
+      (eastName, eastCard, eastZ, eastTags),
+      (northName, northCard, northZ, northTags),
+      (westName, westCard, westZ, westTags),
     ) =
       Player.playersAsQuad(~startFrom=state.me, ())
       |> Quad.map(playerId =>
@@ -62,7 +62,7 @@ module App = {
                    playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
                  };
 
-               (x.pla_card, Player.turnDistance(state.leader, playerId), tags);
+               (x.pla_name, x.pla_card, Player.turnDistance(state.leader, playerId), tags);
              },
              state.players,
            )
@@ -257,6 +257,9 @@ module App = {
                    <div
                      className="board-card board-card-west flex-shrink-0"
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
+                     <div className="absolute w-full h-full overflow-hidden flex flex-col justify-center items-center">
+                       <div>{ReasonReact.string(westName)}</div>
+                     </div>
                      <img
                        className="card__placeholder relative"
                        src="./static/img/card_transparent.svg"
@@ -293,6 +296,11 @@ module App = {
                      <div
                        className="board-card board-card-north relative self-start flex-shrink-0"
                        style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
+                       <div 
+                         className="absolute w-full h-full overflow-hidden flex flex-col justify-center items-center"
+                         style=ReactDOMRe.Style.make(~transform="translateX(-50%)", ())>
+                         <div>{ReasonReact.string(northName)}</div>
+                       </div>
                        <img
                          className="card__placeholder block relative"
                          src="./static/img/card_transparent.svg"
@@ -321,6 +329,9 @@ module App = {
                      <div
                        className="board-card board-card-south flex-shrink-0 self-end mx-auto"
                        style={ReactDOMRe.Style.make(~zIndex=string_of_int(southZ), ())}>
+                       <div className="absolute w-full h-full overflow-hidden flex flex-col justify-center items-center">
+                         <div>{ReasonReact.string(southName)}</div>
+                       </div>
                        <img
                          className="card__placeholder block relative"
                          src="./static/img/card_transparent.svg"
@@ -341,6 +352,9 @@ module App = {
                    <div
                      className="board-card board-card-east flex-shrink-0"
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
+                     <div className="absolute w-full h-full overflow-hidden flex flex-col justify-center items-center">
+                       <div>{ReasonReact.string(eastName)}</div>
+                     </div>
                      <img className="card relative" src="./static/img/card_transparent.svg" />
                      <CardTransition.PlayCard
                        maybeCard=eastCard
