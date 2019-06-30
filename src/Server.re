@@ -76,6 +76,29 @@ let debugGameBySocket = socket => {
   };
 };
 
+let getPartnerInfo = (gameState, playerId) => {
+  let partnerId = Player.getPartner(playerId);
+  let partner = GamePlayers.get(partnerId, gameState.Game.players);
+  {
+    ClientGame.cardsToDisplay:
+      List.filter(
+        card =>
+          card.Card.rank == Card.Rank.Ace
+          || card.rank == Card.Rank.King
+          || card.rank == Card.Rank.Queen
+          || card.rank == Card.Rank.Jack
+          || card.rank == Card.Rank.Ten,
+        partner.pla_hand,
+      ),
+    trumpCount:
+      switch (gameState.maybeTrumpCard) {
+      | None => 0
+      | Some(trumpCard) =>
+        partner.pla_hand |> List.filter(card => card.Card.suit == trumpCard.suit) |> List.length
+      },
+  };
+};
+
 let buildClientState = (gameState, player, playerPhase) => {
   let playerHand = GamePlayers.get(player, gameState.Game.players).pla_hand;
   let handFacing =
@@ -115,9 +138,9 @@ let buildClientState = (gameState, player, playerPhase) => {
     ),
     teams: gameState.teams,
     me: player,
-    partnerInfo: switch(gameState.phase){
-    | PlayerTurnPhase(_n) => Game.getPartnerInfo(gameState, player)
-    | _ => []
+    maybePartnerInfo: switch(gameState.phase){
+    | PlayerTurnPhase(_n) => Some(getPartnerInfo(gameState, player))
+    | _ => None
     },
     myTricks: GamePlayers.get(player, gameState.players).pla_tricks,
     dealer: gameState.dealer,

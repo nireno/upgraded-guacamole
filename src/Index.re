@@ -270,6 +270,22 @@ module App = {
                  </div>
                  <div className="game-board__player game-board__player-north">
                    <div className="game-board__player-offset">
+                     {
+                       switch (state.maybeTrumpCard) {
+                       | None => ReasonReact.null
+                       | Some(trumpCard) =>
+                         switch (state.maybePartnerInfo) {
+                         | None => ReasonReact.null
+                         | Some(partnerInfo) =>
+                           <PlayerTrumpsView
+                             suit={trumpCard.suit}
+                             n={partnerInfo.trumpCount}
+                             className="w-full absolute"
+                             style={ReactDOMRe.Style.make(~transform="translateX(-100%)", ())}
+                           />
+                         }
+                       };
+                     }
                      <PlayerTagsView
                        className="player-tags player-tags__north flex flex-row justify-center"
                        tags=northTags
@@ -288,11 +304,17 @@ module App = {
                        />
                      </div>
                    </div>
-                     <PlayerCardTagsView
-                       className="absolute w-full top-0 left-0"
-                       style={ReactDOMRe.Style.make(~transform="translate(50%)", ())}
-                       cards={state.partnerInfo}
-                     />
+                   {
+                     switch (state.maybePartnerInfo) {
+                     | None => ReasonReact.null
+                     | Some(partnerInfo) =>
+                       <PlayerCardTagsView
+                         className="absolute w-full top-0 left-0"
+                         style={ReactDOMRe.Style.make(~transform="translate(50%)", ())}
+                         cards={partnerInfo.cardsToDisplay}
+                       />
+                     };
+                   }
                  </div>
                  <div className="game-board__player game-board__player-south">
                    <div className="game-board__player-offset">

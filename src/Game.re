@@ -205,19 +205,6 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
       (playerId, playerPhase);
     };
 
-let getPartnerInfo = (gameState, playerId) => {
-  let partnerId = Player.getPartner(playerId);
-  let partner = GamePlayers.get(partnerId, gameState.players);
-  List.filter(
-    card =>
-      card.Card.rank == Card.Rank.Ace
-      || card.rank == Card.Rank.King
-      || card.rank == Card.Rank.Queen
-      || card.rank == Card.Rank.Jack
-      || card.rank == Card.Rank.Ten,
-    partner.pla_hand,
-  );
-};
 
 let debugState = (state, ~ctx="", ~n=0, ()) => {
   if(ctx != "") {
