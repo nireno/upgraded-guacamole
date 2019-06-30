@@ -23,7 +23,7 @@ let make = (~myPlayerId, ~maybeActivePlayer: option(ActivePlayer.t), ~activePlay
 
   <div
     className={
-      "waiting-message text-center text-white text-lg p-2 shadow-sm mb-2 rounded-b "
+      "waiting-message text-center text-white text-lg p-2 shadow-sm rounded-b "
       ++ (amIActive 
             ? "bg-green-600 text-shadow--play-msg" 
             : "bg-orange-600 text-shadow--wait-msg")

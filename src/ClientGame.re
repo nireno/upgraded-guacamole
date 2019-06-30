@@ -13,12 +13,19 @@ type playerState = {
 };
 
 [@decco]
+type partnerInfo = {
+  trumpCount: int,
+  cardsToDisplay: list(Card.t),
+};
+
+[@decco]
 type state = {
   gameId: string,
   phase: Player.phase,
   gamePhase: SharedGame.phase,
   players: (playerState, playerState, playerState, playerState),
   me: Player.id,
+  maybePartnerInfo: option(partnerInfo),
   myTricks: list(Trick.t),
   teams: (teamState, teamState),
   dealer: Player.id,
@@ -43,6 +50,7 @@ let initialState = {
     {pla_name: Player.stringOfId(P4), pla_card: None},
   ),
   me: P1,
+  maybePartnerInfo: None,
   myTricks: [],
   teams: (initialTeamState, initialTeamState),
   dealer: P1,
