@@ -259,10 +259,10 @@ module App = {
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
                      <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
                        style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                       <div>{ReasonReact.string(westName)}</div>
+                       <div className="text-sm h-4">{ReasonReact.string(westName)}</div>
                      </div>
                      <img
-                       className="card__placeholder relative"
+                       className="card__placeholder relative block"
                        src="./static/img/card_transparent.svg"
                      />
                      <CardTransition.PlayCard
@@ -300,7 +300,7 @@ module App = {
                        <div 
                          className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
                          style=ReactDOMRe.Style.make(~transform="translate(-50%, 1.5em)", ())>
-                         <div>{ReasonReact.string(northName)}</div>
+                         <div className="text-sm h-4">{ReasonReact.string(northName)}</div>
                        </div>
                        <img
                          className="card__placeholder block relative"
@@ -356,7 +356,7 @@ module App = {
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
                      <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
                        style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                       <div>{ReasonReact.string(eastName)}</div>
+                       <div className="text-sm h-4">{ReasonReact.string(eastName)}</div>
                      </div>
                      <img className="card relative" src="./static/img/card_transparent.svg" />
                      <CardTransition.PlayCard
