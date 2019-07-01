@@ -179,7 +179,7 @@ module App = {
 
     <div
       ref={ReactDOMRe.Ref.domRef(appRef)}
-      className="all-fours-game font-sans flex flex-col relative"
+      className="all-fours-game font-sans flex flex-col relative mx-auto"
       onClick=handleAppClick>
       {state.gameId == ""
          ? <MenuView>
