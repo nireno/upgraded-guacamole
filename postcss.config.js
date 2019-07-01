@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const purgecss = require('@fullhuman/postcss-purgecss')({
   // Specify the paths to all of the template files in your project purgecss
   // will scan the following "content" files to determine which styles need to
