@@ -28,7 +28,7 @@ module Namespace = BsSocket.Namespace.Make(SocketMessages);
 
 let http = Http.create(app);
 
-let io = SockServ.createWithHttp(http);
+let io = SockServ.createWithHttpAndOption(http, SockServ.makeOptions(~pingInterval=55000, ()));
 let ns = Namespace.of_(io, "/");
 
 let getKeysToRooms = () =>
