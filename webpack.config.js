@@ -23,7 +23,7 @@ module.exports = {
       template: 'src/index.html',
       inject: false
     }),
-    new webpack.EnvironmentPlugin(['NODE_ENV', 'allfours_rules_url', 'allfours_tutorial_url']),
+    new webpack.EnvironmentPlugin(['NODE_ENV', 'allfours_rules_url', 'allfours_help_url']),
   ],
   devServer: {
     compress: true,

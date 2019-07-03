@@ -1,7 +1,7 @@
 open AppPrelude;
 [@bs.val] external node_env: Js.Nullable.t(string) = "process.env.NODE_ENV";
 [@bs.val] external allfours_rules_url: Js.Nullable.t(string) = "process.env.allfours_rules_url";
-[@bs.val] external allfours_tutorial_url: Js.Nullable.t(string) = "process.env.allfours_tutorial_url";
+[@bs.val] external allfours_help_url: Js.Nullable.t(string) = "process.env.allfours_help_url";
 
 let node_env = node_env |> Js.Nullable.toOption |> Js.Option.getWithDefault("production");
 
@@ -212,10 +212,10 @@ module App = {
                       <path d=Icon.question />
                     </svg>
                   {switch (Js.Nullable.toOption(allfours_tutorial_url)) {
-                   | None => <div>{ReasonReact.string("help")}</div>
+                   | None => ReasonReact.null
                    | Some(allfours_tutorial_url) =>
                        <a className="w-1/3 text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_tutorial_url>
-                         {ReasonReact.string("Game Tutorial")}
+                         {ReasonReact.string("How to play")}
                        </a>
                   }}
                 </div>
