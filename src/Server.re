@@ -1,6 +1,7 @@
 [%%debugger.chrome];
 open AppPrelude;
 
+[%%raw "require('dotenv').config()"]
 [@bs.val] external nodeEnv: string = "process.env.NODE_ENV";
 [@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.allfours_port";
 [@bs.val] external adminPasswordEnv: Js.Nullable.t(string) = "process.env.allfours_admin_password";
