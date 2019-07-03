@@ -1,6 +1,7 @@
 open AppPrelude;
 [@bs.val] external node_env: Js.Nullable.t(string) = "process.env.NODE_ENV";
 [@bs.val] external allfours_rules_url: Js.Nullable.t(string) = "process.env.allfours_rules_url";
+[@bs.val] external allfours_tutorial_url: Js.Nullable.t(string) = "process.env.allfours_tutorial_url";
 
 let node_env = node_env |> Js.Nullable.toOption |> Js.Option.getWithDefault("production");
 
@@ -199,19 +200,27 @@ module App = {
               | None => ReasonReact.null
               | Some(allfours_rules_url) =>
                 <div
-                  className="help absolute w-full flex justify-center"
+                  className="help absolute w-full flex justify-around"
                   style={ReactDOMRe.Style.make(~bottom="5%", ())}>
-                  <a className="text-blue-700 hover:text-blue-500" href=allfours_rules_url>
+                  <a className="w-1/3 text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_rules_url>
+                    {ReasonReact.string("All Fours Rules ")}
+                  </a>
                     <svg
-                      className="fill-current w-4 mr-4 text-blue-700"
+                      className="fill-current w-4 text-blue-700"
                       xmlns="http://www.w3.org/2000/svg"
                       viewBox="0 0 20 20">
                       <path d=Icon.question />
                     </svg>
-                    {ReasonReact.string("All Fours Rules ")}
-                  </a>
+                  {switch (Js.Nullable.toOption(allfours_tutorial_url)) {
+                   | None => <div>{ReasonReact.string("help")}</div>
+                   | Some(allfours_tutorial_url) =>
+                       <a className="w-1/3 text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_tutorial_url>
+                         {ReasonReact.string("Game Tutorial")}
+                       </a>
+                  }}
                 </div>
               }}
+              
            </MenuView>
          : <>
              <div className="trump-card self-center">
