@@ -44,7 +44,7 @@ module App = {
       ->Belt.Option.getWithDefault("");
 
     let (
-      (southName, southCard, southZ, southTags),
+      (_southName, southCard, southZ, southTags),
       (eastName, eastCard, eastZ, eastTags),
       (northName, northCard, northZ, northTags),
       (westName, westCard, westZ, westTags),
