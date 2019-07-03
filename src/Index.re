@@ -211,7 +211,7 @@ module App = {
                       viewBox="0 0 20 20">
                       <path d=Icon.question />
                     </svg>
-                  {switch (Js.Nullable.toOption(allfours_tutorial_url)) {
+                  {switch (Js.Nullable.toOption(allfours_help_url)) {
                    | None => ReasonReact.null
                    | Some(allfours_tutorial_url) =>
                        <a className="w-1/3 text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_tutorial_url>
