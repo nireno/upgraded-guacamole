@@ -1,4 +1,14 @@
+const {green, yellow} = require('ansi-colors');
 require('dotenv').config();
+
+if (process.env.NODE_ENV === "production") {
+  console.log(green("Webpack is optimizing for production"));
+}
+else {
+  console.log(yellow("Webpack is building in development mode."));
+  console.log(yellow("Set NODE_ENV=production in .env to optimize the build."));
+};
+
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const TerserPlugin = require('terser-webpack-plugin');
