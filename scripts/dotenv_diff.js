@@ -1,4 +1,4 @@
-let {green, red, yellow} = require("ansi-colors");
+let {red, yellow} = require("ansi-colors");
 let path = require('path');
 let fs = require('fs');
 let dotenv = require('dotenv');
@@ -16,8 +16,6 @@ let missingKeys = envTemplateKeys.filter(key => !envKeys.some(envKey => envKey =
 // ensure all keys are defined
 if(envKeys.join() !== envTemplateKeys.join()){
   console.error(red(".env and .env.template are out of sync "));
-  // console.error(green("expected: "), envTemplateKeys)
-  // console.error(red("got: "), envKeys)
-  console.error("Add the following variables to your .env file: ", missingKeys);
+  console.error(yellow("Add the following variables to your .env file: "), missingKeys);
   process.exit(1);
 }
