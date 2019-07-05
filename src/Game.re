@@ -125,19 +125,9 @@ let isGameOverTest = state => {
 };
 
 
-let trickToPlayerCards: Trick.t => list((Player.id, Card.t)) =
-  trick => {
-    [
-      (N1, trick.p1Card),
-      (N2, trick.p2Card),
-      (N3, trick.p3Card),
-      (N4, trick.p4Card),
-    ];
-  };
-
 let trickContainsCard: (Card.t, Trick.t) => bool =
   (testCard, trick) => {
-    trickToPlayerCards(trick)
+    Quad.toDict(trick)
     |> List.exists(((_, card)) => card == testCard);
   };
 

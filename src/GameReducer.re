@@ -32,7 +32,7 @@ let rec reduce = (action, state) =>
         let playersCards: list((Player.id, Card.t)) =
           team1Tricks
           @ team2Tricks
-          |> List.map(trickToPlayerCards)
+          |> List.map(Quad.toDict)
           |> List.concat;
 
         /** Action requires that the game has a trump card kicked. #unsafe */
@@ -121,7 +121,7 @@ let rec reduce = (action, state) =>
 
         let calcPoints = tricks =>
           tricks
-          |> List.map(Trick.cardsInTrick)
+          |> List.map(Quad.toList)
           |> List.concat
           |> List.fold_left(
                (acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank),
@@ -289,13 +289,8 @@ let rec reduce = (action, state) =>
         let getPlayerCard = playerId =>
           Quad.select(playerId, x => Js.Option.getExn(x.pla_card), state.players); /* #unsafe */
 
-        let trick = 
-          Trick.{
-            p1Card: getPlayerCard(N1),
-            p2Card: getPlayerCard(N2),
-            p3Card: getPlayerCard(N3),
-            p4Card: getPlayerCard(N4),
-          }; /* Action requires that the board has four cards. #unsafe*/
+        /* This action requires that the board has four cards. #unsafe*/
+        let trick = (getPlayerCard(N1), getPlayerCard(N2), getPlayerCard(N3), getPlayerCard(N4));
 
         let trickWinner: Player.id =
           Trick.playerTakesTrick(trumpSuit, leadSuit, trick);

@@ -1,30 +1,13 @@
 /** One trick is completed when each player play's one card on the board */;
 
 [@decco]
-type t = {
-  p1Card: Card.t,
-  p2Card: Card.t,
-  p3Card: Card.t,
-  p4Card: Card.t,
-};
-
-let cardsInTrick = trick => {
-  [trick.p1Card, trick.p2Card, trick.p3Card, trick.p4Card]
-};
-
-let listOfTrick: t => list((Player.id, Card.t)) =
-  r => [
-    (N1, r.p1Card),
-    (N2, r.p2Card),
-    (N3, r.p3Card),
-    (N4, r.p4Card),
-  ];
+type t = (Card.t, Card.t, Card.t, Card.t);
 
 let stringOfTrick = r => {
   let stringOfPlayerCard = ((playerId, card)) =>
     Player.stringOfId(playerId) ++ ": " ++ Card.stringOfCard(card);
 
-  listOfTrick(r)
+  Quad.toDict(r)
   |> List.map(stringOfPlayerCard)
   |> List.fold_left((acc, s) => acc ++ " " ++ s, "");
 };
@@ -44,7 +27,7 @@ let winner: (Card.Suit.t, t) => option((Player.id, Card.t)) =
       };
     };
 
-    listOfTrick(trick)
+    Quad.toDict(trick)
     |> List.filter(((_player, {Card.suit})) => suit == testSuit)
     |> List.fold_left(accHighestRankedPlayer, None);
   };
@@ -65,14 +48,15 @@ let playerTakesTrick = (trumpSuit, leaderSuit, trick) => {
 
 [@react.component]
 let make = (~trick) => {
+  let (c1, c2, c3, c4) = trick;
   <ul>
-    <li> {ReasonReact.string("P1: " ++ Card.stringOfCard(trick.p1Card))} </li>
-    <li> {ReasonReact.string("P2: " ++ Card.stringOfCard(trick.p2Card))} </li>
-    <li> {ReasonReact.string("P3: " ++ Card.stringOfCard(trick.p3Card))} </li>
-    <li> {ReasonReact.string("P4: " ++ Card.stringOfCard(trick.p4Card))} </li>
+    <li> {ReasonReact.string("P1: " ++ Card.stringOfCard(c1))} </li>
+    <li> {ReasonReact.string("P2: " ++ Card.stringOfCard(c2))} </li>
+    <li> {ReasonReact.string("P3: " ++ Card.stringOfCard(c3))} </li>
+    <li> {ReasonReact.string("P4: " ++ Card.stringOfCard(c4))} </li>
   </ul>;
 };
 
 let getValue = trick =>
-  cardsInTrick(trick)
+  Quad.toList(trick)
   |> List.fold_left((acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank), 0);
