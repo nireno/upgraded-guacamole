@@ -2,48 +2,25 @@
 type hand = list(Card.t);
 
 [@decco]
-type id =
-  | P1
-  | P2
-  | P3
-  | P4;
+type id = Quad.id;
 
 /** 
   As opposed to the regular id_encode provided by [@decco]
   I use this for my custom (recursive) game phase encoding
 */
-let stringifyId = fun
-| P1 => "P1"
-| P2 => "P2"
-| P3 => "P3"
-| P4 => "P4";
 
-let nextPlayer =
+let getPartner: Quad.id => Quad.id = 
   fun
-  | P1 => P2
-  | P2 => P3
-  | P3 => P4
-  | P4 => P1;
+  | N1 => N3
+  | N2 => N4
+  | N3 => N1
+  | N4 => N2;
 
-let prevPlayer =
-  fun
-  | P1 => P4
-  | P2 => P1
-  | P3 => P2
-  | P4 => P1;
-
-let getPartner = 
-  fun
-  | P1 => P3
-  | P2 => P4
-  | P3 => P1
-  | P4 => P2;
-
-let playersAsQuad = (~startFrom=P1, ()) => {
+let playersAsQuad = (~startFrom=Quad.N1, ()) => {
   let a = startFrom;
-  let b = nextPlayer(a);
-  let c = nextPlayer(b);
-  let d = nextPlayer(c);
+  let b = Quad.nextId(a);
+  let c = Quad.nextId(b);
+  let d = Quad.nextId(c);
   (a, b, c, d)
 };
 
@@ -54,17 +31,17 @@ let playersAsQuad = (~startFrom=P1, ()) => {
 */
 let turnDistance = (playerA, playerB) => {
    let rec f = (n, a, b) => {
-     a == b ? n : f(n+1, nextPlayer(a), b);
+     a == b ? n : f(n+1, Quad.nextId(a), b);
    }
    f(0, playerA, playerB)
 };
 
 let stringOfId =
   fun
-  | P1 => "Player 1"
-  | P2 => "Player 2"
-  | P3 => "Player 3"
-  | P4 => "Player 4";
+  | Quad.N1 => "Player 1"
+  | N2 => "Player 2"
+  | N3 => "Player 3"
+  | N4 => "Player 4";
 
 let stringOfMaybeId = fun
   | None => "None"

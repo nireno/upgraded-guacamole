@@ -30,7 +30,7 @@ type t = {
   Helper for broadcasting information from one player to all other players.
 */
 let playerBroadcast = (~from: Player.id, ~msg, ~level=Info, ~kind=Duration(3375), ()) => {
-  List.filter(playerId => playerId != from, [Player.P1, P2, P3, P4])
+  List.filter(playerId => playerId != from, [Quad.N1, N2, N3, N4])
   |> List.map(playerId =>
        {
          noti_id: Nanoid.nanoid(), 
@@ -43,7 +43,7 @@ let playerBroadcast = (~from: Player.id, ~msg, ~level=Info, ~kind=Duration(3375)
 };
 
 let broadcast = (~msg, ~level=Info, ~kind=Duration(3375), ()) => 
-  [Player.P1, P2, P3, P4] 
+  [Quad.N1, N2, N3, N4] 
   |> List.map(playerId =>
        {
          noti_id: Nanoid.nanoid(), 

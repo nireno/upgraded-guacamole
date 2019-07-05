@@ -47,10 +47,10 @@ let stringOfState = (state) => {
   "Game.state."
     ++ "{" ++ str_crlf
     ++ str_tab ++ "socketIds: [" ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P1, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P2, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P3, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( GamePlayers.get(Player.P4, state.players).pla_socket |> stringOfMaybeSocket ) ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( Quad.get(N1, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( Quad.get(N2, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( Quad.get(N3, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
+    ++ str_tab ++ str_tab  ++ ( Quad.get(N4, state.players).pla_socket |> stringOfMaybeSocket ) ++ str_crlf
     ++ str_tab ++ "]" ++ str_crlf
     ++ str_tab ++ "game_id: " ++ state.game_id ++ str_crlf
     ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
@@ -64,17 +64,17 @@ let initialState = () => {
     game_id: "",
     deck: Deck.make() |> Deck.shuffle,
     players: (
-      initialPlayerState(P1),
-      initialPlayerState(P2),
-      initialPlayerState(P3),
-      initialPlayerState(P4),
+      initialPlayerState(N1),
+      initialPlayerState(N2),
+      initialPlayerState(N3),
+      initialPlayerState(N4),
     ),
     teams: (initialTeamState, initialTeamState),
     notis: [],
     maybeTrumpCard: None,
     maybeLeadCard: None,
-    dealer: P1,
-    leader: P2,
+    dealer: N1,
+    leader: N2,
     maybeTeamHigh: None,
     maybeTeamLow: None,
     maybeTeamJack: None,
@@ -90,13 +90,13 @@ let getAllPlayerSockets = state => {
     list((Player.id, BsSocket.Server.socketT)) =
     (player, playerSockets) => {
       let playerSockets =
-        switch (GamePlayers.get(player, state.players).pla_socket) {
+        switch (Quad.get(player, state.players).pla_socket) {
         | None => playerSockets
         | Some(socket) => [(player, socket), ...playerSockets]
         };
-      player == P4 ? playerSockets : f(Player.nextPlayer(player), playerSockets);
+      player == N4 ? playerSockets : f(Quad.nextId(player), playerSockets);
     };
-  f(P1, []);
+  f(N1, []);
 };
 
 let playerCount = state => {
@@ -112,7 +112,7 @@ let countPlayers = players => {
 };
 
 let findEmptySeat = state => {
-  switch(GamePlayers.toDict(state.players) |> List.filter(((_k:Player.id, v:playerState)) => Js.Option.isNone(v.pla_socket))){
+  switch(Quad.toDict(state.players) |> List.filter(((_k:Player.id, v:playerState)) => Js.Option.isNone(v.pla_socket))){
     | [] => None
     | [(pla_id, _v), ..._rest] => Some(pla_id)
   }
@@ -128,10 +128,10 @@ let isGameOverTest = state => {
 let trickToPlayerCards: Trick.t => list((Player.id, Card.t)) =
   trick => {
     [
-      (P1, trick.p1Card),
-      (P2, trick.p2Card),
-      (P3, trick.p3Card),
-      (P4, trick.p4Card),
+      (N1, trick.p1Card),
+      (N2, trick.p2Card),
+      (N3, trick.p3Card),
+      (N4, trick.p4Card),
     ];
   };
 
@@ -144,10 +144,10 @@ let trickContainsCard: (Card.t, Trick.t) => bool =
 
 let playerOfIntUnsafe =
   fun
-  | 1 => Player.P1
-  | 2 => P2
-  | 3 => P3
-  | 4 => P4
+  | 1 => Quad.N1
+  | 2 => N2
+  | 3 => N3
+  | 4 => N4
   | n =>
     failwith("Expected a number in [1, 4] but got: " ++ string_of_int(n));
 
@@ -172,7 +172,7 @@ let removePlayerBySocket = (socketId, state) => {
     | Some(playerId) => 
       {...state,
         players: 
-          GamePlayers.update( 
+          Quad.update( 
             playerId, 
             x => {...x, pla_name: Player.stringOfId(playerId), pla_socket: None}, 
             state.players)
@@ -199,7 +199,7 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
         | GiveOnePhase when dealerId == playerId => PlayerGiveOnePhase
         | RunPackPhase when dealerId == playerId => PlayerRunPackPhase
         | PackDepletedPhase when dealerId == playerId => PlayerRedealPhase
-        | BegPhase when Player.nextPlayer(dealerId) == playerId => PlayerBegPhase
+        | BegPhase when Quad.nextId(dealerId) == playerId => PlayerBegPhase
         | _ => PlayerIdlePhase
         };
       (playerId, playerPhase);

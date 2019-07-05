@@ -14,10 +14,10 @@ let cardsInTrick = trick => {
 
 let listOfTrick: t => list((Player.id, Card.t)) =
   r => [
-    (Player.P1, r.p1Card),
-    (Player.P2, r.p2Card),
-    (Player.P3, r.p3Card),
-    (Player.P4, r.p4Card),
+    (N1, r.p1Card),
+    (N2, r.p2Card),
+    (N3, r.p3Card),
+    (N4, r.p4Card),
   ];
 
 let stringOfTrick = r => {

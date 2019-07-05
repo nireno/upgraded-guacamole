@@ -79,7 +79,7 @@ let debugGameBySocket = socket => {
 
 let getPartnerInfo = (gameState, playerId) => {
   let partnerId = Player.getPartner(playerId);
-  let partner = GamePlayers.get(partnerId, gameState.Game.players);
+  let partner = Quad.get(partnerId, gameState.Game.players);
   {
     ClientGame.cardsToDisplay:
       List.filter(
@@ -101,7 +101,7 @@ let getPartnerInfo = (gameState, playerId) => {
 };
 
 let buildClientState = (gameState, player, playerPhase) => {
-  let playerHand = GamePlayers.get(player, gameState.Game.players).pla_hand;
+  let playerHand = Quad.get(player, gameState.Game.players).pla_hand;
   let handFacing =
     if (SharedGame.isFaceDownPhase(gameState.phase)) {
       player == gameState.dealer || player == gameState.leader 
@@ -111,10 +111,10 @@ let buildClientState = (gameState, player, playerPhase) => {
       Hand.FaceUpHand(playerHand);
     };
 
-  let p1State = GamePlayers.get(P1, gameState.players);
-  let p2State = GamePlayers.get(P2, gameState.players);
-  let p3State = GamePlayers.get(P3, gameState.players);
-  let p4State = GamePlayers.get(P4, gameState.players);
+  let p1State = Quad.get(N1, gameState.players);
+  let p2State = Quad.get(N2, gameState.players);
+  let p3State = Quad.get(N3, gameState.players);
+  let p4State = Quad.get(N4, gameState.players);
   ClientGame.{
     gameId: gameState.game_id,
     phase: playerPhase,
@@ -143,7 +143,7 @@ let buildClientState = (gameState, player, playerPhase) => {
     | PlayerTurnPhase(_n) => Some(getPartnerInfo(gameState, player))
     | _ => None
     },
-    myTricks: GamePlayers.get(player, gameState.players).pla_tricks,
+    myTricks: Quad.get(player, gameState.players).pla_tricks,
     dealer: gameState.dealer,
     leader: gameState.leader,
     handFacing,
@@ -163,13 +163,13 @@ let buildSocketStatePairs: Game.state => list((option(BsSocket.Server.socketT),C
       gameState.dealer);
 
   let playerPhasePairs: list((Player.id, Player.phase)) = 
-    [Player.P1, P2, P3, P4] 
+    [Quad.N1, N2, N3, N4] 
       -> Belt.List.map(p => p->decidePlayerPhase)
 
   let buildClientState = buildClientState(gameState);
   playerPhasePairs->Belt.List.map(
     ( (player, playerPhase) ) => 
-    (GamePlayers.select(player, x => Game.(x.pla_socket), gameState.players), buildClientState(player, playerPhase)))
+    (Quad.select(player, x => Game.(x.pla_socket), gameState.players), buildClientState(player, playerPhase)))
 }
 
 let updateClientState = (socket, clientState) => {
@@ -314,7 +314,7 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
       // clear the prev timeout
       My.Global.clearMaybeTimeout(prevGameState.maybeKickTimeoutId);
       // and setup a new one for the new active player
-      let playerToKick = GamePlayers.get(nextActivePlayer.id, nextGameState.players);
+      let playerToKick = Quad.get(nextActivePlayer.id, nextGameState.players);
       Some(
         Js.Global.setTimeout(
           () => kickPlayer(playerToKick),
@@ -375,7 +375,7 @@ let joinGame = (socket, username) => {
     {
       ...prevGameState,
       players:
-        GamePlayers.update(
+        Quad.update(
           playerId,
           x =>
             Game.{
@@ -499,11 +499,11 @@ SockServ.onConnect(
           };
 
           let isEndTrick =
-            GamePlayers.map(
+            Quad.map(
               player => Js.Option.isSome(player.Game.pla_card) ? true : false,
               nextGameState.players,
             )
-            |> GamePlayers.foldLeftUntil(
+            |> Quad.foldLeftUntil(
                  (iPlayed, wePlayed) => wePlayed && iPlayed,
                  wePlayed => !wePlayed,
                  true,
