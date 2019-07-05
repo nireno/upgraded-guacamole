@@ -12,38 +12,20 @@ let stringOfTrick = r => {
   |> List.fold_left((acc, s) => acc ++ " " ++ s, "");
 };
 
-let winner: (Card.Suit.t, t) => option((Player.id, Card.t)) =
-  (testSuit, trick) => {
-    let accHighestRankedPlayer =
-        (acc, (player', {Card.rank: rank', Card.suit: suit'})) => {
-      switch (acc) {
-      | None => Some((player', {Card.rank: rank', suit: suit'}))
-      | Some((player, {Card.rank, suit})) =>
-        if (Card.Rank.(intOfRank(rank') > intOfRank(rank))) {
-          Some((player', {Card.rank: rank', suit: suit'}));
-        } else {
-          Some((player, {rank, suit}));
-        }
-      };
-    };
+let getWinnerCard = (trumpCardSuit, leadCardSuit, trick) => {
+  let rulingSuit: Card.Suit.t =
+    Quad.exists(card => card.Card.suit == trumpCardSuit, trick)
+      ? trumpCardSuit : leadCardSuit;
 
-    Quad.toDict(trick)
-    |> List.filter(((_player, {Card.suit})) => suit == testSuit)
-    |> List.fold_left(accHighestRankedPlayer, None);
-  };
-
-let playerTakesTrick = (trumpSuit, leaderSuit, trick) => {
-  switch (winner(trumpSuit, trick)) {
-  | None =>
-    switch (winner(leaderSuit, trick)) {
-    | None =>
-      failwith(
-        "player-takes-trick: failed to determine the winner of the trick",
-      )
-    | Some((player, _)) => player
-    }
-  | Some((player, _)) => player
-  };
+  // which player has the highest card in the ruling suit
+  Quad.withId(trick)
+  |> Quad.foldLeft(
+       ((_playerId, card) as currPlayerCard, (_prevPlayerId, prevCard) as prevPlayerCard) =>
+         card.Card.suit == rulingSuit
+         && Card.Rank.intOfRank(card.rank) > Card.Rank.intOfRank(prevCard.Card.rank)
+           ? currPlayerCard : prevPlayerCard,
+       (Quad.N1, Quad.get(N1, trick)),
+     );
 };
 
 [@react.component]

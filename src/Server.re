@@ -510,15 +510,19 @@ SockServ.onConnect(
                );
 
           if (isEndTrick) {
-            let advanceRound = prevGameState => {
-              let nextGameState = GameReducer.reduce(AdvanceRound, prevGameState);
-              let maybeKickTimeoutId = reconcileKickTimeout(prevGameState, nextGameState);
-              let nextGameState = {...nextGameState, maybeKickTimeoutId};
-              StringMap.set(roomKey_gameState, roomKey, nextGameState);
-              updateClientStates(nextGameState);
+            let advanceRound = () => {
+              switch (StringMap.get(roomKey_gameState, roomKey)) {
+              | None => ()
+              | Some(prevGameState) =>
+                let nextGameState = GameReducer.reduce(AdvanceRound, prevGameState);
+                let maybeKickTimeoutId = reconcileKickTimeout(prevGameState, nextGameState);
+                let nextGameState = {...nextGameState, maybeKickTimeoutId};
+                StringMap.set(roomKey_gameState, roomKey, nextGameState);
+                updateClientStates(nextGameState);
+              };
             };
 
-            Js.Global.setTimeout(() => advanceRound(nextGameState), 2750) |> ignore;
+            Js.Global.setTimeout(advanceRound, 2750) |> ignore;
           };
 
           StringMap.set(roomKey_gameState, roomKey, nextGameState);

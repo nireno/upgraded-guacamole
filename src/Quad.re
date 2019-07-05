@@ -28,6 +28,8 @@ let stringifyId =
   | N3 => "N3"
   | N4 => "N4";
 
+let withId = ((a, b, c, d)) => ((N1, a), (N2, b), (N3, c), (N4, d));
+
 let get = (id, quad) => {
   let (r1, r2, r3, r4) = quad;
   switch (id) {
@@ -37,6 +39,11 @@ let get = (id, quad) => {
   | N4 => r4
   };
 };
+
+/** Get the first element that satisfies the predicate */
+let getWhere = (f, (r1, r2, r3, r4)) => {
+  f(r1) ? Some(r1) : f(r2) ? Some(r2) : f(r3) ? Some(r3) : f(r4) ? Some(r4) : None
+}
 
 let select = (id, f, quad) => {
   get(id, quad) |> f;
@@ -78,3 +85,7 @@ let rec rotateBy = (n, quad) => {
 let toList = ((a, b, c, d)) => [a, b, c, d];
 
 let toDict = ((a, b, c, d)) => [(N1, a), (N2, b), (N3, c), (N4, d)];
+
+let exists = (f, (a, b, c, d)) => {
+  f(a) || f(b) || f(c) || f(d)
+};

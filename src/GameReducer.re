@@ -57,50 +57,6 @@ let rec reduce = (action, state) =>
           | Failure("hd") => None
           };
 
-        let jackPlayerCard =
-          try (
-            Some(
-              playersCards
-              |> List.filter(((_player, {Card.rank, suit})) =>
-                   rank == Card.Rank.Jack && suit == trumpSuit
-                 )
-              |> List.hd,
-            )
-          ) {
-          | Failure("hd") => None
-          };
-
-        let isPlayerJackHangedTest: ((Player.id, Card.t)) => bool = (
-          playerJack => {
-            let (player, jack) = playerJack;
-            let playerTeam = teamOfPlayer(player);
-            let team1TrickedJack =
-              List.exists(trickContainsCard(jack), team1Tricks);
-            switch (playerTeam) {
-            | T1 => team1TrickedJack ? false : true
-            | T2 => team1TrickedJack ? true : false
-            };
-          }
-        );
-
-        let state =
-          switch (jackPlayerCard) {
-          | None => {...state, maybeTeamJack: None}
-          | Some(playerJack) =>
-            let (player, _jack) = playerJack;
-            let isJackHanged = isPlayerJackHangedTest(playerJack);
-            switch (teamOfPlayer(player)) {
-            | T1 =>
-              isJackHanged
-                ? {...state, maybeTeamJack: Some((T2, HangJackAward))}
-                : {...state, maybeTeamJack: Some((T1, RunJackAward))}
-            | T2 =>
-              isJackHanged
-                ? {...state, maybeTeamJack: Some((T1, HangJackAward))}
-                : {...state, maybeTeamJack: Some((T2, RunJackAward))}
-            };
-          };
-
         let state =
           switch (lowPlayerCard) {
           | None => {...state, maybeTeamLow: None}
@@ -221,17 +177,60 @@ let rec reduce = (action, state) =>
            */
           let nextPlayer = Quad.nextId(playerId);
           let phase' = nextPlayer == state.leader ? IdlePhase : PlayerTurnPhase(nextPlayer);
+          let nextPlayers =
+            Quad.update(playerId, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players);
+
+          let maybeGetTeamJackAward =
+              ((maybeCard1, maybeCard2, maybeCard3, maybeCard4), maybeTrumpCard, maybeLeadCard) => {
+            switch (
+              My.Option.all6(maybeCard1, maybeCard2, maybeCard3, maybeCard4, maybeTrumpCard, maybeLeadCard)
+            ) {
+            | None => None;
+            | Some((card1, card2, card3, card4, trumpCard, leadCard)) =>
+              let trick = (card1, card2, card3, card4);
+              let jackOfTrump = Card.{rank: Card.Rank.Jack, suit: trumpCard.suit};
+              let (trickWinnerId, _card) = Trick.getWinnerCard(trumpCard.Card.suit, leadCard.Card.suit, (card1, card2, card3, card4));
+              let trickWinnerTeamId = Game.teamOfPlayer(trickWinnerId);
+              switch (Quad.withId(trick) |> Quad.getWhere(((_playerId, card)) => card == jackOfTrump)) {
+              | None => None;
+              | Some((playerId, _card)) =>
+                let jackHolderTeamId = Game.teamOfPlayer(playerId);
+                jackHolderTeamId == trickWinnerTeamId
+                  ? Some((jackHolderTeamId, GameAward.RunJackAward))
+                  : Some((trickWinnerTeamId, HangJackAward));
+              };
+            };
+          };
+
+          let (maybeTeamJackAward, jackAwardNotis) =
+            switch (state.maybeTeamJack) {
+            | None =>
+              // name-all-the-things iffy for sets of maybe-items
+              let iffyTrick = Quad.map(player => player.pla_card, nextPlayers);
+              let maybeTeamJackAward =
+                maybeGetTeamJackAward(iffyTrick, state.maybeTrumpCard, state.maybeLeadCard);
+              let jackAwardNotis =
+                switch (maybeTeamJackAward) {
+                | None => []
+                | Some((_teamId, award)) =>
+                  switch (award) {
+                  | RunJackAward => Noti.broadcast(~msg=Text("Jack gets away!"), ())
+                  | HangJackAward => Noti.broadcast(~msg=Text("Jack gets hanged!"), ())
+                  | _ => []
+                  }
+                };
+              (maybeTeamJackAward, jackAwardNotis);
+            | Some(teamJackAward) => (Some(teamJackAward), [])
+            };
+
 
           {
             ...state,
-            players:
-              Quad.update(
-                playerId,
-                x => {...x, pla_hand: hand', pla_card: Some(c)},
-                state.players,
-              ),
+            players: nextPlayers,
             maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
+            maybeTeamJack: maybeTeamJackAward,
             phase: phase',
+            notis: jackAwardNotis,
           };
         };
       | Deal =>
@@ -292,8 +291,8 @@ let rec reduce = (action, state) =>
         /* This action requires that the board has four cards. #unsafe*/
         let trick = (getPlayerCard(N1), getPlayerCard(N2), getPlayerCard(N3), getPlayerCard(N4));
 
-        let trickWinner: Player.id =
-          Trick.playerTakesTrick(trumpSuit, leadSuit, trick);
+        let (trickWinner, _card) =
+          Trick.getWinnerCard(trumpSuit, leadSuit, trick);
 
         let advanceRound = state => {
           ...state,

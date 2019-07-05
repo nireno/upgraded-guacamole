@@ -62,3 +62,72 @@ module React = {
     )
   };
 };
+
+module Option = {
+  let all2 = (a, b) => {
+    switch (a) {
+    | None => 
+      Js.log("My.Option.all: a is none")
+      None
+    | Some(a) =>
+      switch (b) {
+      | None =>
+        Js.log("My.Option.all: b is none")
+        None
+      | Some(b) => Some((a, b))
+      }
+    };
+  };
+
+  let all3 = (a, b, c) => {
+    switch (all2(a, b)) {
+    | None => None
+    | Some((a, b)) =>
+      switch (c) {
+      | None => 
+        Js.log("My.Option.all: c is none")
+        None
+      | Some(c) => Some((a, b, c))
+      }
+    };
+  };
+
+  let all4 = (a, b, c, d) => {
+    switch (all3(a, b, c)) {
+    | None => None
+    | Some((a, b, c)) =>
+      switch (d) {
+      | None => 
+        Js.log("My.Option.all: d is none")
+        None
+      | Some(d) => Some((a, b, c, d))
+      }
+    };
+  };
+
+  let all5 = (a, b, c, d, e) => {
+    switch (all4(a, b, c, d)) {
+    | None => None
+    | Some((a, b, c, d)) =>
+      switch (e) {
+      | None => 
+        Js.log("My.Option.all: e is none")
+        None
+      | Some(e) => Some((a, b, c, d, e))
+      }
+    };
+  };
+
+  let all6 = (a, b, c, d, e, f) => {
+    switch(all5(a, b, c, d, e)){
+    | None => None
+    | Some((a, b, c, d, e)) =>
+      switch(f){ 
+      | None => 
+        Js.log("My.Option.all: f is none")
+        None
+      | Some(f) => Some((a, b, c, d, e, f))
+      }
+    }
+  }
+};
