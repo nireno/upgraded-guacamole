@@ -9,10 +9,10 @@ type partialTrick = {
 
 let listOfTrick: partialTrick => list((Player.id, option(Card.t))) =
   r => [
-    (Player.P1, r.p1CardSlot),
-    (Player.P2, r.p2CardSlot),
-    (Player.P3, r.p3CardSlot),
-    (Player.P4, r.p4CardSlot),
+    (Quad.N1, r.p1CardSlot),
+    (N2, r.p2CardSlot),
+    (N3, r.p3CardSlot),
+    (N4, r.p4CardSlot),
   ];
 
 let stringOfTrick = r => {

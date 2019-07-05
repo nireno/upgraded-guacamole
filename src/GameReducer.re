@@ -1,4 +1,3 @@
-open AppPrelude;
 open Game;
 
 type action =
@@ -24,16 +23,16 @@ let rec reduce = (action, state) =>
       | NewRound =>
         /* what used to be EndRound start */
         let team1Tricks =
-          GamePlayers.get(P1, state.players).pla_tricks 
-          @ GamePlayers.get(P3, state.players).pla_tricks;
+          Quad.get(N1, state.players).pla_tricks 
+          @ Quad.get(N3, state.players).pla_tricks;
         let team2Tricks =
-          GamePlayers.get(P2, state.players).pla_tricks 
-          @ GamePlayers.get(P4, state.players).pla_tricks;
+          Quad.get(N2, state.players).pla_tricks 
+          @ Quad.get(N4, state.players).pla_tricks;
 
         let playersCards: list((Player.id, Card.t)) =
           team1Tricks
           @ team2Tricks
-          |> List.map(trickToPlayerCards)
+          |> List.map(Quad.toDict)
           |> List.concat;
 
         /** Action requires that the game has a trump card kicked. #unsafe */
@@ -58,50 +57,6 @@ let rec reduce = (action, state) =>
           | Failure("hd") => None
           };
 
-        let jackPlayerCard =
-          try (
-            Some(
-              playersCards
-              |> List.filter(((_player, {Card.rank, suit})) =>
-                   rank == Card.Rank.Jack && suit == trumpSuit
-                 )
-              |> List.hd,
-            )
-          ) {
-          | Failure("hd") => None
-          };
-
-        let isPlayerJackHangedTest: ((Player.id, Card.t)) => bool = (
-          playerJack => {
-            let (player, jack) = playerJack;
-            let playerTeam = teamOfPlayer(player);
-            let team1TrickedJack =
-              List.exists(trickContainsCard(jack), team1Tricks);
-            switch (playerTeam) {
-            | T1 => team1TrickedJack ? false : true
-            | T2 => team1TrickedJack ? true : false
-            };
-          }
-        );
-
-        let state =
-          switch (jackPlayerCard) {
-          | None => {...state, maybeTeamJack: None}
-          | Some(playerJack) =>
-            let (player, _jack) = playerJack;
-            let isJackHanged = isPlayerJackHangedTest(playerJack);
-            switch (teamOfPlayer(player)) {
-            | T1 =>
-              isJackHanged
-                ? {...state, maybeTeamJack: Some((T2, HangJackAward))}
-                : {...state, maybeTeamJack: Some((T1, RunJackAward))}
-            | T2 =>
-              isJackHanged
-                ? {...state, maybeTeamJack: Some((T1, HangJackAward))}
-                : {...state, maybeTeamJack: Some((T2, RunJackAward))}
-            };
-          };
-
         let state =
           switch (lowPlayerCard) {
           | None => {...state, maybeTeamLow: None}
@@ -122,7 +77,7 @@ let rec reduce = (action, state) =>
 
         let calcPoints = tricks =>
           tricks
-          |> List.map(Trick.cardsInTrick)
+          |> List.map(Quad.toList)
           |> List.concat
           |> List.fold_left(
                (acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank),
@@ -174,7 +129,7 @@ let rec reduce = (action, state) =>
           );
 
 
-        let nextDealer = Player.nextPlayer(state.dealer);
+        let nextDealer = Quad.nextId(state.dealer);
 
         let state = updateScore(state);
 
@@ -196,9 +151,9 @@ let rec reduce = (action, state) =>
             noti_maybeTeamGame: maybeTeamGame
           } ), ~kind=Confirm, ()))
         }
-              
+
       | PlayCard(playerId, c) =>
-        let player = GamePlayers.get(playerId, state.players);
+        let player = Quad.get(playerId, state.players);
         let hand' = List.filter(c' => c != c', player.pla_hand);
 
         let canPlayCard =
@@ -220,19 +175,62 @@ let rec reduce = (action, state) =>
            later by computing the trick winner. This test keeps the ui more consistent
            if the player who wins the trick is the last player in the trick.
            */
-          let nextPlayer = Player.nextPlayer(playerId);
+          let nextPlayer = Quad.nextId(playerId);
           let phase' = nextPlayer == state.leader ? IdlePhase : PlayerTurnPhase(nextPlayer);
+          let nextPlayers =
+            Quad.update(playerId, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players);
+
+          let maybeGetTeamJackAward =
+              ((maybeCard1, maybeCard2, maybeCard3, maybeCard4), maybeTrumpCard, maybeLeadCard) => {
+            switch (
+              My.Option.all6(maybeCard1, maybeCard2, maybeCard3, maybeCard4, maybeTrumpCard, maybeLeadCard)
+            ) {
+            | None => None;
+            | Some((card1, card2, card3, card4, trumpCard, leadCard)) =>
+              let trick = (card1, card2, card3, card4);
+              let jackOfTrump = Card.{rank: Card.Rank.Jack, suit: trumpCard.suit};
+              let (trickWinnerId, _card) = Trick.getWinnerCard(trumpCard.Card.suit, leadCard.Card.suit, (card1, card2, card3, card4));
+              let trickWinnerTeamId = Game.teamOfPlayer(trickWinnerId);
+              switch (Quad.withId(trick) |> Quad.getWhere(((_playerId, card)) => card == jackOfTrump)) {
+              | None => None;
+              | Some((playerId, _card)) =>
+                let jackHolderTeamId = Game.teamOfPlayer(playerId);
+                jackHolderTeamId == trickWinnerTeamId
+                  ? Some((jackHolderTeamId, GameAward.RunJackAward))
+                  : Some((trickWinnerTeamId, HangJackAward));
+              };
+            };
+          };
+
+          let (maybeTeamJackAward, jackAwardNotis) =
+            switch (state.maybeTeamJack) {
+            | None =>
+              // name-all-the-things iffy for sets of maybe-items
+              let iffyTrick = Quad.map(player => player.pla_card, nextPlayers);
+              let maybeTeamJackAward =
+                maybeGetTeamJackAward(iffyTrick, state.maybeTrumpCard, state.maybeLeadCard);
+              let jackAwardNotis =
+                switch (maybeTeamJackAward) {
+                | None => []
+                | Some((_teamId, award)) =>
+                  switch (award) {
+                  | RunJackAward => Noti.broadcast(~msg=Text("Jack gets away!"), ())
+                  | HangJackAward => Noti.broadcast(~msg=Text("Jack gets hanged!"), ())
+                  | _ => []
+                  }
+                };
+              (maybeTeamJackAward, jackAwardNotis);
+            | Some(teamJackAward) => (Some(teamJackAward), [])
+            };
+
 
           {
             ...state,
-            players:
-              GamePlayers.update(
-                playerId,
-                x => {...x, pla_hand: hand', pla_card: Some(c)},
-                state.players,
-              ),
+            players: nextPlayers,
             maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
+            maybeTeamJack: maybeTeamJackAward,
             phase: phase',
+            notis: jackAwardNotis,
           };
         };
       | Deal =>
@@ -244,13 +242,13 @@ let rec reduce = (action, state) =>
           {
             ...state,
             deck,
-            leader: Player.nextPlayer(state.dealer),
+            leader: Quad.nextId(state.dealer),
             players:
               state.players
-              |> GamePlayers.update(Player.P1, x => {...x, pla_hand: p1Hand})
-              |> GamePlayers.update(Player.P2, x => {...x, pla_hand: p2Hand})
-              |> GamePlayers.update(Player.P3, x => {...x, pla_hand: p3Hand})
-              |> GamePlayers.update(Player.P4, x => {...x, pla_hand: p4Hand}),
+              |> Quad.update(N1, x => {...x, pla_hand: p1Hand})
+              |> Quad.update(N2, x => {...x, pla_hand: p2Hand})
+              |> Quad.update(N3, x => {...x, pla_hand: p3Hand})
+              |> Quad.update(N4, x => {...x, pla_hand: p4Hand}),
             teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
           };
         };
@@ -288,23 +286,18 @@ let rec reduce = (action, state) =>
         let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCard. #unsafe */
 
         let getPlayerCard = playerId =>
-          GamePlayers.select(playerId, x => Js.Option.getExn(x.pla_card), state.players); /* #unsafe */
+          Quad.select(playerId, x => Js.Option.getExn(x.pla_card), state.players); /* #unsafe */
 
-        let trick = 
-          Trick.{
-            p1Card: getPlayerCard(P1),
-            p2Card: getPlayerCard(P2),
-            p3Card: getPlayerCard(P3),
-            p4Card: getPlayerCard(P4),
-          }; /* Action requires that the board has four cards. #unsafe*/
+        /* This action requires that the board has four cards. #unsafe*/
+        let trick = (getPlayerCard(N1), getPlayerCard(N2), getPlayerCard(N3), getPlayerCard(N4));
 
-        let trickWinner: Player.id =
-          Trick.playerTakesTrick(trumpSuit, leadSuit, trick);
+        let (trickWinner, _card) =
+          Trick.getWinnerCard(trumpSuit, leadSuit, trick);
 
         let advanceRound = state => {
           ...state,
           players:
-            GamePlayers.update(
+            Quad.update(
               trickWinner,
               x => {...x, pla_tricks: x.pla_tricks @ [trick]},
               state.players,
@@ -323,17 +316,17 @@ let rec reduce = (action, state) =>
         let state = state  |> advanceRound;
 
         /* Any player whose hand is empty at this points indicates all players' hands are empty */
-        List.length(GamePlayers.get(P1, state.players).pla_hand) == 0
+        List.length(Quad.get(N1, state.players).pla_hand) == 0
           ? reduce(NewRound, state) : state;
       | Beg =>
-        let beggerId = Player.nextPlayer(state.dealer);
-        let pla_name = GamePlayers.get(beggerId, state.players).pla_name;
+        let beggerId = Quad.nextId(state.dealer);
+        let pla_name = Quad.get(beggerId, state.players).pla_name;
         let notis = Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(pla_name ++ " begs"), ());
 
         {...state, phase: GiveOnePhase, notis};
       | Stand =>
-        let beggerId = Player.nextPlayer(state.dealer);
-        let begger = GamePlayers.get(beggerId, state.players);
+        let beggerId = Quad.nextId(state.dealer);
+        let begger = Quad.get(beggerId, state.players);
         {
           ...state,
           phase: PlayerTurnPhase(beggerId),
@@ -341,21 +334,21 @@ let rec reduce = (action, state) =>
         }
       | GiveOne
           when
-            [Player.P1, P3]
+            [Quad.N1, N3]
             |> List.mem(state.dealer)
             && GameTeams.get(T2, state.teams).team_score == 13
-            || [Player.P2, P4]
+            || [Quad.N2, N4]
             |> List.mem(state.dealer)
             && GameTeams.get(T1, state.teams).team_score == 13 =>
         state;
       | GiveOne =>
         let receivingTeamId =
           switch (state.dealer) {
-          | P1 | P3 => Team.T2 
-          | P2 | P4 => T1
+          | N1 | N3 => Team.T2 
+          | N2 | N4 => T1
           };
-        
-        let dealer = GamePlayers.get(state.dealer, state.players);
+
+        let dealer = Quad.get(state.dealer, state.players);
 
         {
           ...state,
@@ -404,10 +397,10 @@ let rec reduce = (action, state) =>
           ...state,
           players:
             state.players
-            |> GamePlayers.update(P1, x => {...x, pla_hand: x.pla_hand @ p1Hand})
-            |> GamePlayers.update(P2, x => {...x, pla_hand: x.pla_hand @ p2Hand})
-            |> GamePlayers.update(P3, x => {...x, pla_hand: x.pla_hand @ p3Hand})
-            |> GamePlayers.update(P4, x => {...x, pla_hand: x.pla_hand @ p4Hand}),
+            |> Quad.update(N1, x => {...x, pla_hand: x.pla_hand @ p1Hand})
+            |> Quad.update(N2, x => {...x, pla_hand: x.pla_hand @ p2Hand})
+            |> Quad.update(N3, x => {...x, pla_hand: x.pla_hand @ p3Hand})
+            |> Quad.update(N4, x => {...x, pla_hand: x.pla_hand @ p4Hand}),
           deck: deck @ [prevKick],
           maybeTrumpCard: Some(kick'),
           teams:
@@ -432,10 +425,10 @@ let rec reduce = (action, state) =>
         }
       | BlockPlay(player) =>
         switch (player) {
-        | P1 => Js.log("Not your turn p1")
-        | P2 => Js.log("Not your turn p2")
-        | P3 => Js.log("Not your turn p3")
-        | P4 => Js.log("Not your turn p4")
+        | N1 => Js.log("Not your turn p1")
+        | N2 => Js.log("Not your turn p2")
+        | N3 => Js.log("Not your turn p3")
+        | N4 => Js.log("Not your turn p4")
         };
 
         state;
@@ -449,11 +442,11 @@ let rec reduce = (action, state) =>
           | phase => FindSubsPhase(nPlayers, phase)
           };
         
-        let leavingPlayer = GamePlayers.get(leavingPlayerId, state.players);
+        let leavingPlayer = Quad.get(leavingPlayerId, state.players);
 
         let players =
           state.players
-          |> GamePlayers.update(leavingPlayerId, x =>
+          |> Quad.update(leavingPlayerId, x =>
                {...x, pla_name: Player.stringOfId(leavingPlayerId), pla_socket: None}
              );
 

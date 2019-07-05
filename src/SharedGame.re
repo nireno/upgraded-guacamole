@@ -30,6 +30,13 @@ let initialTeamState = {
   team_points: 0,
 };
 
+let teamOfPlayer =
+  fun
+  | Quad.N1
+  | N3 => Team.T1
+  | N2
+  | N4 => Team.T2;
+
 /*[@decco] won't work. decco doesn'nt yet support recursive types
   Follow at:https://github.com/ryb73/ppx_decco/issues/6 
 */
@@ -61,7 +68,7 @@ let rec phase_encode =
   | BegPhase => Js.Json.string("beg-phase")
   | GiveOnePhase => Js.Json.string("give-one-phase")
   | RunPackPhase => Js.Json.string("run-pack-phase")
-  | PlayerTurnPhase(playerId) => Js.Json.string("player-turn-phase-" ++ Player.stringifyId(playerId))
+  | PlayerTurnPhase(playerId) => Js.Json.string("player-turn-phase-" ++ Quad.stringifyId(playerId))
   | PackDepletedPhase => Js.Json.string("pack-depleted-phase")
   | GameOverPhase => Js.Json.string("game-over-phase");
 
@@ -74,10 +81,10 @@ let rec phase_decode = json => {
         | "beg-phase" => Belt.Result.Ok(BegPhase)
         | "give-one-phase" => Belt.Result.Ok(GiveOnePhase)
         | "run-pack-phase" => Belt.Result.Ok(RunPackPhase)
-        | "player-turn-phase-P1" => Belt.Result.Ok(PlayerTurnPhase(P1))
-        | "player-turn-phase-P2" => Belt.Result.Ok(PlayerTurnPhase(P2))
-        | "player-turn-phase-P3" => Belt.Result.Ok(PlayerTurnPhase(P3))
-        | "player-turn-phase-P4" => Belt.Result.Ok(PlayerTurnPhase(P4))
+        | "player-turn-phase-N1" => Belt.Result.Ok(PlayerTurnPhase(N1))
+        | "player-turn-phase-N2" => Belt.Result.Ok(PlayerTurnPhase(N2))
+        | "player-turn-phase-N3" => Belt.Result.Ok(PlayerTurnPhase(N3))
+        | "player-turn-phase-N4" => Belt.Result.Ok(PlayerTurnPhase(N4))
         | "pack-depleted-phase" => Belt.Result.Ok(PackDepletedPhase)
         | "game-over-phase" => Belt.Result.Ok(GameOverPhase)
         | _ => Decco.error("Failed to decode phase classified as string: " ++ str_phase, json)
@@ -106,7 +113,7 @@ let rec stringOfPhase = fun
   | BegPhase => "BegPhase"
   | GiveOnePhase => "GiveOnePhase"
   | RunPackPhase => "RunPackPhase"
-  | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Player.stringifyId(playerId) ++ ")"
+  | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Quad.stringifyId(playerId) ++ ")"
   | PackDepletedPhase => "PackDepletedPhase"
   | GameOverPhase => "GameOverPhase";
 

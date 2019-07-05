@@ -1,4 +1,3 @@
-open AppPrelude;
 [@bs.val] external node_env: Js.Nullable.t(string) = "process.env.NODE_ENV";
 [@bs.val] external allfours_rules_url: Js.Nullable.t(string) = "process.env.allfours_rules_url";
 [@bs.val] external allfours_help_url: Js.Nullable.t(string) = "process.env.allfours_help_url";
@@ -40,7 +39,7 @@ module App = {
     let maybeActivePlayer = ActivePlayer.find(state.gamePhase, state.dealer);
     let activePlayerName =
       maybeActivePlayer
-      ->Belt.Option.map(activePlayer => GamePlayers.get(activePlayer.id, state.players).pla_name)
+      ->Belt.Option.map(activePlayer => Quad.get(activePlayer.id, state.players).pla_name)
       ->Belt.Option.getWithDefault("");
 
     let (
@@ -51,7 +50,7 @@ module App = {
     ) =
       Player.playersAsQuad(~startFrom=state.me, ())
       |> Quad.map(playerId =>
-           GamePlayers.select(
+           Quad.select(
              playerId,
              x => {
                let tags = [];

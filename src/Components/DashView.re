@@ -25,7 +25,7 @@ module GameState = {
       <div className="player-states">
       {
         gameState.players
-         |> GamePlayers.toDict
+         |> Quad.toDict
          |> List.map(((playerId, playerState)) => <PlayerState key=Player.stringOfId(playerId) playerId playerState />)
          |> Belt.List.toArray
          |> ReasonReact.array
