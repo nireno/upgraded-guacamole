@@ -25,7 +25,13 @@ module App = {
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
-    let (clientSettings, updateClientSettings) = React.useState(() => ClientSettings.defaults);
+    let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
+
+    let saveClientSettings = newClientSettings => {
+      LocalStorage.updateClientSettings(newClientSettings);
+      updateClientSettings(_ => newClientSettings);
+    };
+
     let (appRect, setAppRect) =
       React.useState(() => Webapi.Dom.DomRect.make(~x=0.0, ~y=0.0, ~width=0.0, ~height=0.0));
 
@@ -184,7 +190,7 @@ module App = {
       <div
         ref={ReactDOMRe.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
-        <SettingsView onSave={nextSettings => updateClientSettings(_ => nextSettings)} settings=clientSettings />
+        <SettingsView onSave=saveClientSettings settings=clientSettings />
       </div>;
     | _ => 
     <div
