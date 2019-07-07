@@ -13,13 +13,13 @@ let make = (~onSave, ~settings) => {
     <div className="mb-4 flex flex-row ">
       <input defaultChecked={allowSubbing ? true : false} type_="radio" name="substitute" id="substitute-yes" onClick={_ => updateAllowSubbing(_prev => true)}/>
       <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-yes">
-        {ReasonReact.string("Shorter wait times (occasionally join as a substitute player)")}
+        {ReasonReact.string("Shorter wait times (allow joining games already in progress)")}
       </label>
     </div>
     <div className="mb-4 flex flex-row ">
       <input type_="radio" name="substitute" id="substitute-no" defaultChecked={allowSubbing ? false : true} onClick={_ => updateAllowSubbing(_prev => false)}/>
       <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-no">
-        {ReasonReact.string("Normal wait times (never join as a substitute player)")}
+        {ReasonReact.string("Normal wait times (only join new games)")}
       </label>
     </div>
     <div className="flex items-center justify-around">
