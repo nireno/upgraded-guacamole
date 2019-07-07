@@ -364,7 +364,18 @@ let joinGame = (socket, username, clientSettings) => {
     roomKey_gameState
     |> StringMap.valuesToArray
     |> Belt.Array.keepMap(_, gameState => maybeUnfilledGame(gameState))
-    |> Array.to_list;
+    |> Array.to_list
+    /* Sort games in FindSubsPhase to the front */
+    |> List.sort((game1, game2) =>
+         switch (game1.Game.phase) {
+         | FindSubsPhase(_) => (-1)
+         | _ =>
+           switch (game2.phase) {
+           | FindSubsPhase(_) => 1
+           | _ => 0
+           }
+         }
+       );
 
   let prevGameState =
     switch (unfilledGames) {
