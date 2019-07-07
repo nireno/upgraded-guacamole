@@ -1,7 +1,8 @@
+[@decco]
 type t = {
-  substitution: bool,
+  allowSubbing: bool,
 };
 
 let defaults = {
-  substitution: false,
+  allowSubbing: false,
 };

@@ -1,22 +1,22 @@
 [@react.component]
 let make = (~onSave, ~settings) => {
-  let (substitution, updateSubstitution) = React.useState(() => settings.ClientSettings.substitution);
+  let (allowSubbing, updateAllowSubbing) = React.useState(() => settings.ClientSettings.allowSubbing);
 
   let onSaveClick = _event => {
-    onSave(ClientSettings.{substitution: substitution});
+    onSave(ClientSettings.{allowSubbing: allowSubbing});
     ReasonReactRouter.push("/");
   };
 
   <form className="bg-white shadow-md border border-solid border-gray-200 rounded px-8 pt-6 pb-8 mb-4">
     <div className="font-bold mb-4"> {ReasonReact.string("Joining a game")} </div>
     <div className="mb-4 flex flex-row ">
-      <input defaultChecked={substitution ? true : false} type_="radio" name="substitute" id="substitute-yes" onClick={_ => updateSubstitution(_prev => true)}/>
+      <input defaultChecked={allowSubbing ? true : false} type_="radio" name="substitute" id="substitute-yes" onClick={_ => updateAllowSubbing(_prev => true)}/>
       <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-yes">
         {ReasonReact.string("Shorter wait times (occasionally join as a substitute player)")}
       </label>
     </div>
     <div className="mb-4 flex flex-row ">
-      <input type_="radio" name="substitute" id="substitute-no" defaultChecked={substitution ? false : true} onClick={_ => updateSubstitution(_prev => false)}/>
+      <input type_="radio" name="substitute" id="substitute-no" defaultChecked={allowSubbing ? false : true} onClick={_ => updateAllowSubbing(_prev => false)}/>
       <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-no">
         {ReasonReact.string("Normal wait times (never join as a substitute player)")}
       </label>

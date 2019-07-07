@@ -8,15 +8,15 @@
  */
 [@bs.deriving jsConverter]
 type key = [
-  | `Substitution
+  | `AllowSubbing
   // | [@bs.as "miniCoconut"] `Kiwi
 ];
 
 let getClientSettings = () =>
   ClientSettings.{
-    substitution:
+    allowSubbing:
       switch (
-        getItem(keyToJs(`Substitution))
+        getItem(keyToJs(`AllowSubbing))
         |> Js.Nullable.toOption
         |> Js.Option.getWithDefault("yes")
       ) {
@@ -26,5 +26,5 @@ let getClientSettings = () =>
   };
 
 let updateClientSettings = (newSettings) => {
-  setItem(keyToJs(`Substitution), newSettings.ClientSettings.substitution ? "yes" : "no");
+  setItem(keyToJs(`AllowSubbing), newSettings.ClientSettings.allowSubbing ? "yes" : "no");
 }

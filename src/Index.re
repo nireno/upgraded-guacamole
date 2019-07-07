@@ -208,7 +208,7 @@ module App = {
                )}>
                {ReasonReact.string("All Fours")}
              </div>
-             <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username))}>
+             <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
                {ReasonReact.string("Join Game")}
              </button>
              <button className="btn btn-blue" onClick={_ => ReasonReactRouter.push("./settings")}>
@@ -461,7 +461,7 @@ module App = {
                   <GameOverView
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
-                    playAgainClick={sendIO(IO_PlayAgain)}
+                    playAgainClick={sendIO(IO_PlayAgain(clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
                     leaveClick={sendIO(IO_LeaveGame)}
                   />
                 </Modal>
