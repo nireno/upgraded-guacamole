@@ -19,7 +19,7 @@ type clientToServer =
   | IO_RunPack
   | IO_DealAgain
   | IO_LeaveGame
-  | IO_PlayAgain(ioClientSettings)
+  | IO_PlayAgain(ioUsername, ioClientSettings)
   | IO_CheatPoints(ioTeamId, int);
 
 type serverToClient =

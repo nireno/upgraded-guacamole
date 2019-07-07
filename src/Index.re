@@ -462,7 +462,7 @@ module App = {
                   <GameOverView
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
-                    playAgainClick={sendIO(IO_PlayAgain(clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
+                    playAgainClick={sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
                     leaveClick={sendIO(IO_LeaveGame)}
                   />
                 </Modal>

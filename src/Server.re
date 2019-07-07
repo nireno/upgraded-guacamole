@@ -52,7 +52,6 @@ let expectedGameCount = 50;
 module StringMap = Belt.HashMap.String;
 
 type playerData = {
-  username: string,
   maybeRoomKey: option(string),
 };
 
@@ -398,7 +397,7 @@ let joinGame = (socket, username, clientSettings) => {
   StringMap.set(
     socketId_playerData,
     socketId,
-    {username, maybeRoomKey: Some(roomKey)},
+    {maybeRoomKey: Some(roomKey)},
   );
 
   let playerId = Game.findEmptySeat(prevGameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
@@ -506,16 +505,12 @@ SockServ.onConnect(
       | IO_LeaveGame => 
         Js.log("Got IO_LeaveGame");
         leaveGame(socket);
-      | IO_PlayAgain(ioClientSettingsJson) =>
+      | IO_PlayAgain(username, ioClientSettingsJson) =>
         Js.log("Got IO_PlayAgain");
-        switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
-        | None => ()
-        | Some({username, maybeRoomKey: _}) =>
-            leaveGame(socket);
-            let clientSettings =
-              decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
-            joinGame(socket, username, clientSettings);
-        };
+        leaveGame(socket);
+        let clientSettings =
+          decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
+        joinGame(socket, username, clientSettings);
       | ioAction =>
         let roomKey =
           switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
