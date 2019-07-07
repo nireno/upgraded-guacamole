@@ -4,7 +4,7 @@ let make = (~onSave, ~settings) => {
 
   let onSaveClick = _event => {
     onSave(ClientSettings.{allowSubbing: allowSubbing});
-    ReasonReactRouter.push("/");
+    ReasonReactRouter.push("./");
   };
 
   <form className="bg-white shadow-md border border-solid border-gray-200 rounded px-8 pt-6 pb-8 mb-4">
@@ -23,7 +23,7 @@ let make = (~onSave, ~settings) => {
     </div>
     <div className="flex items-center justify-around">
       <div
-        onClick={_ => ReasonReactRouter.push("/")}
+        onClick={_ => ReasonReactRouter.push("./")}
         className="link link-blue"
         href="#">
         {ReasonReact.string("Cancel")}
