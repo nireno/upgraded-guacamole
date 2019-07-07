@@ -8,7 +8,8 @@ let make = (~onSave, ~settings) => {
   };
 
   <form className="bg-white shadow-md border border-solid border-gray-200 rounded px-8 pt-6 pb-8 mb-4">
-    <div className="font-bold mb-4"> {ReasonReact.string("Joining a game")} </div>
+    <div className="mb-4 text-xl text-center"> {ReasonReact.string("All Fours Settings")} </div>
+    <div className="mb-4"> {ReasonReact.string("Joining a game")} </div>
     <div className="mb-4 flex flex-row ">
       <input defaultChecked={allowSubbing ? true : false} type_="radio" name="substitute" id="substitute-yes" onClick={_ => updateAllowSubbing(_prev => true)}/>
       <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-yes">
