@@ -208,12 +208,13 @@ module App = {
                )}>
                {ReasonReact.string("All Fours")}
              </div>
-             <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
+             <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
                {ReasonReact.string("Join Game")}
              </button>
-             <button className="btn btn-blue" onClick={_ => ReasonReactRouter.push("./settings")}>
+             <div className="link link-white mt-4" 
+                  onClick={_ => ReasonReactRouter.push("./settings")}>
                {ReasonReact.string("Settings")}
-             </button>
+             </div>
              {switch (Js.Nullable.toOption(allfours_rules_url)) {
               | None => ReasonReact.null
               | Some(allfours_rules_url) =>

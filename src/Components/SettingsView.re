@@ -22,15 +22,15 @@ let make = (~onSave, ~settings) => {
       </label>
     </div>
     <div className="flex items-center justify-around">
-      <a
+      <div
         onClick={_ => ReasonReactRouter.push("/")}
-        className="inline-block align-baseline font-bold text-sm text-blue-500 hover:text-blue-800"
+        className="link link-blue"
         href="#">
         {ReasonReact.string("Cancel")}
-      </a>
+      </div>
       <button
         onClick=onSaveClick
-        className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
+        className="btn btn-blue"
         type_="button">
         {ReasonReact.string("Save")}
       </button>
