@@ -185,6 +185,11 @@ module App = {
       };
     };
 
+    /** 
+      Reading the url backwords allows the app to work when it isn't served from
+      the root url a website i.e. it will work whether the app is served from the
+      root url `http://localhost/` or some sub-path like `allfours` in `http://example.com/allfours`
+    */
     switch (List.rev(url.path)) {
     | ["settings", ..._rest] => 
       <div
