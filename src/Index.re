@@ -221,21 +221,35 @@ module App = {
                 <div
                   className="help absolute w-full flex justify-around"
                   style={ReactDOMRe.Style.make(~bottom="5%", ())}>
-                  <a className="w-1/3 text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_rules_url>
-                    {ReasonReact.string("All Fours Rules ")}
-                  </a>
-                    <svg
-                      className="fill-current w-4 text-blue-700"
-                      xmlns="http://www.w3.org/2000/svg"
-                      viewBox="0 0 20 20">
-                      <path d=Icon.question />
-                    </svg>
+                  <div className="w-1/2 flex flex-col items-center p-4">
+                    <a className="w-full text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_rules_url>
+                      <div className="w-full text-center">
+                        <svg
+                          className="fill-current w-4"
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 20 20">
+                          <path d=Icon.question />
+                        </svg>
+                      </div>
+                      <span>{ReasonReact.string("All Fours Rules ")}</span>
+                    </a>
+                  </div>
                   {switch (Js.Nullable.toOption(allfours_help_url)) {
-                   | None => ReasonReact.null
+                   | None => <div className="w-1/2"></div>
                    | Some(allfours_tutorial_url) =>
-                       <a className="w-1/3 text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_tutorial_url>
-                         {ReasonReact.string("How to play")}
+                     <div className="w-1/2 flex flex-col items-center p-4">
+                       <a className="w-full text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_tutorial_url>
+                         <div className="w-full text-center">
+                           <svg
+                             className="fill-current w-4"
+                             xmlns="http://www.w3.org/2000/svg"
+                             viewBox="0 0 20 20">
+                             <path d=Icon.question />
+                           </svg>
+                         </div>
+                         <span>{ReasonReact.string("How to play")}</span>
                        </a>
+                     </div>
                   }}
                 </div>
               }}
