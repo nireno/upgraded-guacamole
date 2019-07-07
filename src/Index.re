@@ -186,7 +186,7 @@ module App = {
     };
 
     switch (List.rev(url.path)) {
-    | ["settings", "allfours", ..._rest] => 
+    | ["settings", ..._rest] => 
       <div
         ref={ReactDOMRe.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
