@@ -21,9 +21,17 @@ let isPlayerTurn = (turn, playerId) => {
 module App = {
   [@react.component]
   let make = () => {
+    let url = ReasonReactRouter.useUrl();
     let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
+    let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
+
+    let saveClientSettings = newClientSettings => {
+      LocalStorage.updateClientSettings(newClientSettings);
+      updateClientSettings(_ => newClientSettings);
+    };
+
     let (appRect, setAppRect) =
       React.useState(() => Webapi.Dom.DomRect.make(~x=0.0, ~y=0.0, ~width=0.0, ~height=0.0));
 
@@ -177,6 +185,14 @@ module App = {
       };
     };
 
+    switch (url.path) {
+    | ["settings"] => 
+      <div
+        ref={ReactDOMRe.Ref.domRef(appRef)}
+        className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
+        <SettingsView onSave=saveClientSettings settings=clientSettings />
+      </div>;
+    | _ => 
     <div
       ref={ReactDOMRe.Ref.domRef(appRef)}
       className="all-fours-game font-sans flex flex-col relative mx-auto"
@@ -192,9 +208,13 @@ module App = {
                )}>
                {ReasonReact.string("All Fours")}
              </div>
-             <button className="btn btn-blue" onClick={sendIO(IO_JoinGame(username))}>
+             <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
                {ReasonReact.string("Join Game")}
              </button>
+             <div className="link link-white mt-4" 
+                  onClick={_ => ReasonReactRouter.push("./settings")}>
+               {ReasonReact.string("Settings")}
+             </div>
              {switch (Js.Nullable.toOption(allfours_rules_url)) {
               | None => ReasonReact.null
               | Some(allfours_rules_url) =>
@@ -219,7 +239,6 @@ module App = {
                   }}
                 </div>
               }}
-              
            </MenuView>
          : <>
              <div className="trump-card self-center">
@@ -443,7 +462,7 @@ module App = {
                   <GameOverView
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
-                    playAgainClick={sendIO(IO_PlayAgain)}
+                    playAgainClick={sendIO(IO_PlayAgain(clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
                     leaveClick={sendIO(IO_LeaveGame)}
                   />
                 </Modal>
@@ -466,6 +485,7 @@ module App = {
               }}
            </>}
     </div>;
+    }
   };
 };
 

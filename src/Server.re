@@ -23,6 +23,19 @@ Express.App.useOnPath(
   Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
 );
 
+/** 
+ "redirect" requests that should be handled by react's router
+ (ReasonReactRouter) on the client side
+ */
+Express.App.get(app, ~path="/settings") @@
+Express.Middleware.from((_next, _req, res) =>
+  Express.Response.sendFile(
+    Node.Process.cwd() ++ "/build/index.html",
+    Express.Static.defaultOptions,
+    res,
+  )
+);
+
 
 module SockServ = BsSocket.Server.Make(SocketMessages);
 module Namespace = BsSocket.Namespace.Make(SocketMessages);
@@ -236,7 +249,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   fun
   | IO_JoinGame(_)
   | IO_LeaveGame
-  | IO_PlayAgain => Noop
+  | IO_PlayAgain(_) => Noop
   | IO_PlayCard(ioPlayerId, ioCard) => {
       switch (Player.id_decode(ioPlayerId |> Js.Json.parseExn)) {
       | Belt.Result.Error(_) => Noop
@@ -327,23 +340,42 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
   };
 };
 
-let joinGame = (socket, username) => {
+let joinGame = (socket, username, clientSettings) => {
   let socketId = SockServ.Socket.(socket->getId);
-
   /** An unfilled game is one that is new/ongoing and has at least one player missing.
       A game in the GameOverPhase is not considered to be ongoing. */
-  let maybeUnfilledGame = gameState =>
+  let maybeUnfilledGame = gameState => {
+    let canJoinPhase = phase => {
+      switch (phase) {
+      | Game.GameOverPhase => false
+      | FindSubsPhase(_, _) => clientSettings.ClientSettings.allowSubbing ? true : false
+      | _ => true
+      };
+    };
+
     switch (gameState |> Game.findEmptySeat) {
     | None => None
-    | Some(_) when gameState.phase != GameOverPhase => Some(gameState)
+    | Some(_) when canJoinPhase(gameState.phase) => Some(gameState)
     | _ => None
     };
+  };
 
   let unfilledGames =
     roomKey_gameState
     |> StringMap.valuesToArray
     |> Belt.Array.keepMap(_, gameState => maybeUnfilledGame(gameState))
-    |> Array.to_list;
+    |> Array.to_list
+    /* Sort games in FindSubsPhase to the front */
+    |> List.sort((game1, game2) =>
+         switch (game1.Game.phase) {
+         | FindSubsPhase(_) => (-1)
+         | _ =>
+           switch (game2.phase) {
+           | FindSubsPhase(_) => 1
+           | _ => 0
+           }
+         }
+       );
 
   let prevGameState =
     switch (unfilledGames) {
@@ -463,21 +495,26 @@ SockServ.onConnect(
 
     SockServ.Socket.on(socket, io =>
       switch (io) {
-      | IO_JoinGame(username) =>
-        joinGame(socket, username);
+      | IO_JoinGame(username, ioClientSettingsJson) =>
+        let clientSettings =
+          decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
+
+        joinGame(socket, username, clientSettings);
 
         debugGameStates(~n=1, ());
       
       | IO_LeaveGame => 
         Js.log("Got IO_LeaveGame");
         leaveGame(socket);
-      | IO_PlayAgain =>
+      | IO_PlayAgain(ioClientSettingsJson) =>
         Js.log("Got IO_PlayAgain");
         switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
         | None => ()
         | Some({username, maybeRoomKey: _}) =>
             leaveGame(socket);
-            joinGame(socket, username);
+            let clientSettings =
+              decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
+            joinGame(socket, username, clientSettings);
         };
       | ioAction =>
         let roomKey =

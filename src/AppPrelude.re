@@ -18,3 +18,17 @@ let leftPad = (s, ~n=0, ~c="\t", ()) => {
 };
 
 let leftPad1 = s => leftPad(s, ~n=1, ());
+
+let decodeWithDefault = (decode, default, jsonString) => {
+  let parseAndDecode =
+    switch (decode(jsonString |> Js.Json.parseExn)) {
+    | Belt.Result.Error(e) =>
+      Js.log(e);
+      default;
+    | Belt.Result.Ok(result) => result
+    };
+
+  try (parseAndDecode) {
+  | _error => default
+  };
+};

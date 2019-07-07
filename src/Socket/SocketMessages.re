@@ -5,9 +5,10 @@ type ioCard = str_json
 type ioUsername = string
 type ioClientState = str_json
 type ioClientNotis = str_json
+type ioClientSettings = str_json
 
 type clientToServer =
-  | IO_JoinGame(ioUsername)
+  | IO_JoinGame(ioUsername, ioClientSettings)
   | IO_PlayCard(ioPlayerId, ioCard)
   | IO_EndTrick
   | IO_NewRound
@@ -18,7 +19,7 @@ type clientToServer =
   | IO_RunPack
   | IO_DealAgain
   | IO_LeaveGame
-  | IO_PlayAgain
+  | IO_PlayAgain(ioClientSettings)
   | IO_CheatPoints(ioTeamId, int);
 
 type serverToClient =
