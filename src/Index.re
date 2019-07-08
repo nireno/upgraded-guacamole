@@ -490,7 +490,7 @@ module App = {
               | FindPlayersPhase(n) =>
                 <Modal visible=true>
                   <FindPlayersView n />
-                  <button className="btn btn-blue" onClick={sendIO(IO_LeaveGame)}>
+                  <button className="btn btn-blue mt-4" onClick={sendIO(IO_LeaveGame)}>
                     {ReasonReact.string("Cancel")}
                   </button>
                 </Modal>
