@@ -23,20 +23,6 @@ Express.App.useOnPath(
   Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
 );
 
-/** 
- "redirect" requests that should be handled by react's router
- (ReasonReactRouter) on the client side
- */
-Express.App.get(app, ~path="/settings") @@
-Express.Middleware.from((_next, _req, res) =>
-  Express.Response.sendFile(
-    Node.Process.cwd() ++ "/build/index.html",
-    Express.Static.defaultOptions,
-    res,
-  )
-);
-
-
 module SockServ = BsSocket.Server.Make(SocketMessages);
 module Namespace = BsSocket.Namespace.Make(SocketMessages);
 
@@ -590,6 +576,19 @@ switch (Js.Nullable.toOption(adminPasswordEnv)) {
     }),
   );
 };
+
+/** 
+ Add catchall for requests that should be handled by react's router
+ (ReasonReactRouter) on the client side
+ */
+Express.App.get(app, ~path="/*") @@
+Express.Middleware.from((_next, _req, res) =>
+  Express.Response.sendFile(
+    Node.Process.cwd() ++ "/build/index.html",
+    Express.Static.defaultOptions,
+    res,
+  )
+);
 
 let httpPort = Js.Nullable.toOption(httpPortEnv)
  |> Js.Option.getWithDefault("3000")

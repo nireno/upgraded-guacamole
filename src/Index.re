@@ -191,11 +191,29 @@ module App = {
       root url `http://localhost/` or some sub-path like `allfours` in `http://example.com/allfours`
     */
     switch (List.rev(url.path)) {
+    | ["feedback", ..._rest] => 
+      <div
+        ref={ReactDOMRe.Ref.domRef(appRef)}
+        className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
+        <MenuView>
+          <ExperimentalView
+            onJoinClick={event => {
+              ReasonReactRouter.push("./");
+              sendIO(
+                IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+                event,
+              );
+            }}
+          />
+        </MenuView>
+      </div>;
     | ["settings", ..._rest] => 
       <div
         ref={ReactDOMRe.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
-        <SettingsView onSave=saveClientSettings settings=clientSettings />
+        <MenuView>
+          <SettingsView onSave=saveClientSettings settings=clientSettings />
+        </MenuView>
       </div>;
     | _ => 
     <div
@@ -213,7 +231,8 @@ module App = {
                )}>
                {ReasonReact.string("All Fours")}
              </div>
-             <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
+             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./feedback")}>
+            //  <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
                {ReasonReact.string("Join Game")}
              </button>
              <div className="link link-white mt-4" 
