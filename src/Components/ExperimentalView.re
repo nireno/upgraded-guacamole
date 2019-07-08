@@ -8,23 +8,23 @@ let make = (~onJoinClick) => {
     <div className="mb-4 text-xl text-center"> {ReasonReact.string("Here be dragons")} </div>
     <p className="mb-4">
       {ReasonReact.string(
-         "Please note that All Fours Online is still in an experimental stage. This means that we will be updating the game periodically which may cause the game to stop working.",
+         "Please note that All Fours Online is still in an experimental stage. This means that the game may go offline unexpectedly as we are making changes to the site.",
        )}
     </p>
+    <p> {ReasonReact.string("Thank you for still giving it a shot.")} </p>
     {switch (Js.Nullable.toOption(allfours_feedback_url)) {
      | None => ReasonReact.null
      | Some(href) =>
        <p>
          <span>
-           {ReasonReact.string("If you enjoy it, or have any comments or suggestions, ")}
+           {ReasonReact.string("If you enjoy it, or have any comments/suggestions, ")}
          </span>
          <a href> {ReasonReact.string("click here to send feedback.")} </a>
        </p>
      }}
-    <p> {ReasonReact.string("Thank you for still giving it a shot.")} </p>
     <div className="flex items-center justify-around">
       <div onClick={_ => ReasonReactRouter.push("./")} className="link link-blue" href="#">
-        {ReasonReact.string("Cancel")}
+        {ReasonReact.string("Leave Game")}
       </div>
       <button onClick=onJoinClick className="btn btn-blue" type_="button">
         {ReasonReact.string("Join Game")}
