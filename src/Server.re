@@ -327,121 +327,142 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
 
 let joinGame = (socket, username, clientSettings) => {
   let socketId = SockServ.Socket.(socket->getId);
-  /** An unfilled game is one that is new/ongoing and has at least one player missing.
-      A game in the GameOverPhase is not considered to be ongoing. */
-  let maybeUnfilledGame = gameState => {
-    let canJoinPhase = phase => {
-      switch (phase) {
-      | Game.GameOverPhase => false
-      | FindSubsPhase(_, _) => clientSettings.ClientSettings.allowSubbing ? true : false
-      | _ => true
-      };
-    };
+  let allGameStates = StringMap.valuesToArray(roomKey_gameState) |> Array.to_list;
 
-    switch (gameState |> Game.findEmptySeat) {
-    | None => None
-    | Some(_) when canJoinPhase(gameState.phase) => Some(gameState)
-    | _ => None
+  /** 
+    Lag on the client or other issues might cause the player to try joining multiple
+    times. When that happens just remind him which game he's in.
+  */
+  let maybeGetPlayerGame = (socket, gameStates) => {
+    switch (
+      List.filter(
+        gameState =>
+          Quad.exists(player => player.Game.pla_socket == Some(socket), gameState.Game.players),
+        gameStates,
+      )
+    ) {
+    | [] => None
+    | [gameState, ..._rest] => Some(gameState)
     };
   };
-
-  let unfilledGames =
-    roomKey_gameState
-    |> StringMap.valuesToArray
-    |> Belt.Array.keepMap(_, gameState => maybeUnfilledGame(gameState))
-    |> Array.to_list
-    /* Sort games in FindSubsPhase to the front */
-    |> List.sort((game1, game2) =>
-         switch (game1.Game.phase) {
-         | FindSubsPhase(_) => (-1)
-         | _ =>
-           switch (game2.phase) {
-           | FindSubsPhase(_) => 1
-           | _ => 0
-           }
-         }
-       );
-
-  let prevGameState =
-    switch (unfilledGames) {
-    | [] => {...Game.initialState(), game_id: nextGameId() |> string_of_int}
-    | [gameState, ..._rest] => gameState
-    };
   
-  let roomKey = prevGameState.game_id;
-  // let maybeRoom =
-  //   ns
-  //   |> Namespace.getAdapter
-  //   |> BsSocketExtra.Adapter.getRoom(gameRoom.roomKey);
-  // switch (maybeRoom) {
-  // | Some(ar) =>
-  // let playerCount = BsSocketExtra.AdapterRoom.length(ar);
-  // | None => failwith("Expected Some AdapterRoom but got None.") // Improve error handling #unsafe #todo
-  // };
+  switch(maybeGetPlayerGame(socket, allGameStates)){
+  | Some(gameState) => 
+    let maybePlayerIdAndData = 
+      Quad.getPairWhere(player => player.Game.pla_socket == Some(socket), gameState.Game.players);
+    switch(maybePlayerIdAndData){
+    | None => 
+      Js.log("joinGame Error: Found an existing game and expected Some Player having the joining socket but got None.")
+      Game.debugState(gameState, ());
+    | Some((playerId, _)) =>
+      let (playerId, playerPhase) = Game.decidePlayerPhase(gameState.phase, gameState.dealer, playerId)
+      let clientState = buildClientState(gameState, playerId, playerPhase);
+      updateClientState(socket, clientState)
+    }
+  | None => 
 
-  let socket = SockServ.Socket.join(socket, roomKey);
-  StringMap.set(
-    socketId_playerData,
-    socketId,
-    {maybeRoomKey: Some(roomKey)},
-  );
+    let isUnfilledGame = (gameState) =>
+      switch (gameState.Game.phase) {
+      | FindPlayersPhase(_) => true
+      | FindSubsPhase(_, _) when clientSettings.ClientSettings.allowSubbing => true
+      | _ => false
+      };
+  
+    let unfilledGamesPrioritized = allGameStates
+    |> List.filter(isUnfilledGame)
+    /* Prioritize games in the FindSubsPhase */
+    |> List.sort((game1, game2) =>
+          switch (game1.Game.phase) {
+          | FindSubsPhase(_) => (-1)
+          | _ =>
+            switch (game2.phase) {
+            | FindSubsPhase(_) => 1
+            | _ => 0
+            }
+          }
+        );
 
-  let playerId = Game.findEmptySeat(prevGameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
-  let pla_name = username == "" ? Player.stringOfId(playerId) : username;
-  let nextGameState =
-    {
-      ...prevGameState,
-      players:
-        Quad.update(
-          playerId,
-          x =>
-            Game.{
-              ...x,
-              pla_name: pla_name,
-              pla_socket: Some(socket),
-            },
-          prevGameState.players,
-        ),
-    };
+    let prevGameState =
+      switch (unfilledGamesPrioritized) {
+      | [] => {...Game.initialState(), game_id: nextGameId() |> string_of_int}
+      | [gameState, ..._rest] => gameState
+      };
+    
+    let roomKey = prevGameState.game_id;
+    // let maybeRoom =
+    //   ns
+    //   |> Namespace.getAdapter
+    //   |> BsSocketExtra.Adapter.getRoom(gameRoom.roomKey);
+    // switch (maybeRoom) {
+    // | Some(ar) =>
+    // let playerCount = BsSocketExtra.AdapterRoom.length(ar);
+    // | None => failwith("Expected Some AdapterRoom but got None.") // Improve error handling #unsafe #todo
+    // };
 
-  let playerCount = Game.playerCount(nextGameState);
-  let playersNeeded = 4 - playerCount;
-
-  let phase' = 
-    switch (prevGameState.phase) {
-    | FindSubsPhase(_n, subPhase) =>
-      playersNeeded == 0
-        ? subPhase
-        : FindSubsPhase(playersNeeded, subPhase)
-    | FindPlayersPhase(_n) =>
-      playersNeeded == 0
-        ? DealPhase
-        : FindPlayersPhase(playersNeeded);
-    | otherPhase => otherPhase
-  };
-
-  let playerJoinedNotis =
-    Noti.playerBroadcast(
-      ~from=playerId,
-      ~msg=Noti.Text(pla_name ++ " joined the game."),
-      ~level=Noti.Success,
-      (),
+    let socket = SockServ.Socket.join(socket, roomKey);
+    StringMap.set(
+      socketId_playerData,
+      socketId,
+      {maybeRoomKey: Some(roomKey)},
     );
 
-  let nextGameState = {
-    ...nextGameState,
-    phase: phase',
-    notis: prevGameState.notis @ playerJoinedNotis,
-  };
+    let playerId = Game.findEmptySeat(prevGameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
+    let pla_name = username == "" ? Player.stringOfId(playerId) : username;
+    let nextGameState =
+      {
+        ...prevGameState,
+        players:
+          Quad.update(
+            playerId,
+            x =>
+              Game.{
+                ...x,
+                pla_name: pla_name,
+                pla_socket: Some(socket),
+              },
+            prevGameState.players,
+          ),
+      };
 
-  let nextGameState = {
-    ...nextGameState,
-    maybeKickTimeoutId: reconcileKickTimeout(prevGameState, nextGameState),
+    let playerCount = Game.playerCount(nextGameState);
+    let playersNeeded = 4 - playerCount;
+
+    let phase' = 
+      switch (prevGameState.phase) {
+      | FindSubsPhase(_n, subPhase) =>
+        playersNeeded == 0
+          ? subPhase
+          : FindSubsPhase(playersNeeded, subPhase)
+      | FindPlayersPhase(_n) =>
+        playersNeeded == 0
+          ? DealPhase
+          : FindPlayersPhase(playersNeeded);
+      | otherPhase => otherPhase
+    };
+
+    let playerJoinedNotis =
+      Noti.playerBroadcast(
+        ~from=playerId,
+        ~msg=Noti.Text(pla_name ++ " joined the game."),
+        ~level=Noti.Success,
+        (),
+      );
+
+    let nextGameState = {
+      ...nextGameState,
+      phase: phase',
+      notis: prevGameState.notis @ playerJoinedNotis,
+    };
+
+    let nextGameState = {
+      ...nextGameState,
+      maybeKickTimeoutId: reconcileKickTimeout(prevGameState, nextGameState),
+    }
+
+    Js.log(Game.stringOfState(nextGameState));
+    StringMap.set(roomKey_gameState, roomKey, nextGameState);
+    updateClientStates(nextGameState);
   }
-
-  Js.log(Game.stringOfState(nextGameState));
-  StringMap.set(roomKey_gameState, roomKey, nextGameState);
-  updateClientStates(nextGameState);
 };
 
 

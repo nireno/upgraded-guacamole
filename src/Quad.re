@@ -45,6 +45,10 @@ let getWhere = (f, (r1, r2, r3, r4)) => {
   f(r1) ? Some(r1) : f(r2) ? Some(r2) : f(r3) ? Some(r3) : f(r4) ? Some(r4) : None
 }
 
+let getPairWhere = (f, (r1, r2, r3, r4)) => {
+  f(r1) ? Some((N1, r1 )) : f(r2) ? Some(( N2, r2 )) : f(r3) ? Some(( N3, r3 )) : f(r4) ? Some(( N4, r4 )) : None
+}
+
 let select = (id, f, quad) => {
   get(id, quad) |> f;
 };
