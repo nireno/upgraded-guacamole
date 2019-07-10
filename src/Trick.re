@@ -16,7 +16,6 @@ let getWinnerCard = (trumpCardSuit, leadCardSuit, trick) => {
   let rulingSuit: Card.Suit.t =
     Quad.exists(card => card.Card.suit == trumpCardSuit, trick)
       ? trumpCardSuit : leadCardSuit;
-  Js.log("Ruling suit: " ++ Card.Suit.toString(rulingSuit));
 
   // which player has the highest card in the ruling suit
   Quad.withId(trick)
