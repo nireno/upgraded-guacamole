@@ -190,6 +190,7 @@ let rec reduce = (action, state) =>
               let trick = (card1, card2, card3, card4);
               let jackOfTrump = Card.{rank: Card.Rank.Jack, suit: trumpCard.suit};
               let (trickWinnerId, _card) = Trick.getWinnerCard(trumpCard.Card.suit, leadCard.Card.suit, (card1, card2, card3, card4));
+              Js.log2("Trick winner: ", Player.stringOfId(trickWinnerId));
               let trickWinnerTeamId = Game.teamOfPlayer(trickWinnerId);
               switch (Quad.withId(trick) |> Quad.getWhere(((_playerId, card)) => card == jackOfTrump)) {
               | None => None;
