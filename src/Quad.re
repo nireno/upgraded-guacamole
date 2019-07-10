@@ -94,3 +94,10 @@ let toDict = ((a, b, c, d)) => [(N1, a), (N2, b), (N3, c), (N4, d)];
 let exists = (f, (a, b, c, d)) => {
   f(a) || f(b) || f(c) || f(d)
 };
+
+let forEach: (('a => unit), ('a, 'a, 'a, 'a)) => unit = (f, (r1, r2, r3, r4)) => {
+  f(r1);
+  f(r2);
+  f(r3);
+  f(r4);
+};
