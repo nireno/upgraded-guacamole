@@ -67,12 +67,10 @@ module Option = {
   let all2 = (a, b) => {
     switch (a) {
     | None => 
-      Js.log("My.Option.all: a is none")
       None
     | Some(a) =>
       switch (b) {
       | None =>
-        Js.log("My.Option.all: b is none")
         None
       | Some(b) => Some((a, b))
       }
@@ -85,7 +83,6 @@ module Option = {
     | Some((a, b)) =>
       switch (c) {
       | None => 
-        Js.log("My.Option.all: c is none")
         None
       | Some(c) => Some((a, b, c))
       }
@@ -98,7 +95,6 @@ module Option = {
     | Some((a, b, c)) =>
       switch (d) {
       | None => 
-        Js.log("My.Option.all: d is none")
         None
       | Some(d) => Some((a, b, c, d))
       }
@@ -111,7 +107,6 @@ module Option = {
     | Some((a, b, c, d)) =>
       switch (e) {
       | None => 
-        Js.log("My.Option.all: e is none")
         None
       | Some(e) => Some((a, b, c, d, e))
       }
@@ -124,7 +119,6 @@ module Option = {
     | Some((a, b, c, d, e)) =>
       switch(f){ 
       | None => 
-        Js.log("My.Option.all: f is none")
         None
       | Some(f) => Some((a, b, c, d, e, f))
       }
