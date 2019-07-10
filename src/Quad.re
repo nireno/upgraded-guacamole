@@ -71,8 +71,9 @@ let map = (f, (r1, r2, r3, r4)) => {
   (f(r1), f(r2), f(r3), f(r4));
 };
 
-let foldLeft = (f, acc, (r1, r2, r3, r4)) => {
-  f(r1, acc) |> f(r2) |> f(r3) |> f(r4);
+let foldLeft = (reduce, (r1, r2, r3, r4)) => {
+  let f = (acc, r) => reduce(acc, r);
+  f(r1, r2) |> f(r3) |> f(r4);
 };
 
 let foldLeftUntil = (f, test, acc, (r1, r2, r3, r4)) => {
