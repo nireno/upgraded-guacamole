@@ -20,7 +20,7 @@ let getWinnerCard = (trumpCardSuit, leadCardSuit, trick) => {
   // which player has the highest card in the ruling suit
   Quad.withId(trick)
   |> Quad.foldLeft(
-       ((_playerId, card) as currPlayerCard, (_prevPlayerId, prevCard) as prevPlayerCard) =>
+       ((_prevPlayerId, prevCard) as prevPlayerCard, (_playerId, card) as currPlayerCard ) =>
        card.Card.suit == rulingSuit
        && Card.Rank.intOfRank(card.rank) > Card.Rank.intOfRank(prevCard.Card.rank)
          ? currPlayerCard : prevPlayerCard
