@@ -16,14 +16,20 @@ let getWinnerCard = (trumpCardSuit, leadCardSuit, trick) => {
   let rulingSuit: Card.Suit.t =
     Quad.exists(card => card.Card.suit == trumpCardSuit, trick)
       ? trumpCardSuit : leadCardSuit;
+  Js.log("Ruling suit: " ++ Card.Suit.toString(rulingSuit));
 
   // which player has the highest card in the ruling suit
   Quad.withId(trick)
   |> Quad.foldLeft(
+       /** Compare cards in pairs */
        ((_prevPlayerId, prevCard) as prevPlayerCard, (_playerId, card) as currPlayerCard ) =>
-       card.Card.suit == rulingSuit
-       && Card.Rank.intOfRank(card.rank) > Card.Rank.intOfRank(prevCard.Card.rank)
-         ? currPlayerCard : prevPlayerCard
+       if(card.Card.suit == rulingSuit && prevCard.Card.suit == rulingSuit){
+        /** If both cards are in the ruling suit then compare by rank */
+         Card.Rank.intOfRank(card.rank) > Card.Rank.intOfRank(prevCard.Card.rank) ? currPlayerCard : prevPlayerCard;
+       }
+       else {
+         card.Card.suit == rulingSuit ? currPlayerCard : prevPlayerCard;
+       }
      );
 };
 
