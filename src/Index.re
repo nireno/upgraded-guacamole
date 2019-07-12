@@ -99,7 +99,6 @@ module App = {
             switch (ClientGame.state_decode(ioClientState |> Js.Json.parseExn)) {
             | Belt.Result.Error(err) => Js.log(err)
             | Belt.Result.Ok(state) =>
-              debugState(state, ~ctx="ClientSocket.T.on SetState", ());
               dispatch(MatchServerState(state));
             }
           | AddNotis(ioNotis) =>

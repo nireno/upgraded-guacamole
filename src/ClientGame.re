@@ -83,19 +83,3 @@ let reducer = (prevState, action) => {
     nextState
   };
 };
-
-
-let stringOfState = (state) => {
-  "ClientGame.state."
-    ++ "{" ++ str_crlf
-    ++ str_tab ++ "phase: " ++ Player.stringOfPhase(state.phase) ++ str_crlf
-    ++ str_tab ++ "gamePhase: " ++ SharedGame.stringOfPhase(state.gamePhase) ++ str_crlf
-    ++ "}" ++ str_crlf
-}
-
-let debugState = (state, ~ctx="", ~n=0, ()) => {
-  if(ctx != "") {
-    Js.log(ctx->leftPad(~n, ()))
-  }
-  Js.log(state->stringOfState->leftPad(~n=n+1, ()))
-}
