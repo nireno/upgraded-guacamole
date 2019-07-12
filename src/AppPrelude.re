@@ -1,10 +1,6 @@
+let appLogger = Pino.make({"messageKey": "_msg", "level": "debug", "_app": "allfours", "_module": "AppPrelude"});
+
 type str_json = string;
-let str_tab = "\t";
-let str_crlf = "\n";
-let debug = x => Js.log(x);
-let debugError = debug;
-let debuggin = (str, ~depth=0, ()) =>
-  print_endline(Js.String.repeat(depth, " ") ++ str);
 
 let teamIdtoName = (weTeamId, teamId) => {
   teamId == weTeamId ? "We" : "Dem"
@@ -23,7 +19,7 @@ let decodeWithDefault = (decode, default, jsonString) => {
   let parseAndDecode =
     switch (decode(jsonString |> Js.Json.parseExn)) {
     | Belt.Result.Error(e) =>
-      Js.log(e);
+      appLogger.error2("Failed to decode json string: %s", jsonString);
       default;
     | Belt.Result.Ok(result) => result
     };
