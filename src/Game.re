@@ -1,7 +1,4 @@
-open AppPrelude; 
 include SharedGame;
-
-
 
 type playerState = {
   pla_socket: option(BsSocket.Server.socketT),
@@ -39,24 +36,35 @@ type state = {
 
 module SockServ = BsSocket.Server.Make(SocketMessages);
 
-let stringOfMaybeSocket = fun
-  | None => "None"
-  | Some(socket) => SockServ.Socket.getId(socket);
+let debugOfState = (state) => {
+  let stringOfPlayer = player => {
+    let name = player.pla_name;
+    let socket = Belt.Option.mapWithDefault(player.pla_socket, "None", SockServ.Socket.getId);
+    let card = Card.codeOfMaybeCard(player.pla_card);
+    let tricks =
+      List.map(Trick.codeOfTrick, player.pla_tricks)
+      |> Belt.List.toArray
+      |> Js.Array.joinWith(", ");
 
-let stringOfState = (state) => {
-  "Game.state."
-    ++ "{" ++ str_crlf
-    ++ str_tab ++ "socketIds: [" ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( Quad.get(N1, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( Quad.get(N2, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( Quad.get(N3, state.players).pla_socket |> stringOfMaybeSocket ) ++ ", " ++ str_crlf
-    ++ str_tab ++ str_tab  ++ ( Quad.get(N4, state.players).pla_socket |> stringOfMaybeSocket ) ++ str_crlf
-    ++ str_tab ++ "]" ++ str_crlf
-    ++ str_tab ++ "game_id: " ++ state.game_id ++ str_crlf
-    ++ str_tab ++ "phase: " ++ stringOfPhase(state.phase) ++ str_crlf
-    ++ str_tab ++ "dealer: " ++ Player.stringOfId(state.dealer) ++ str_crlf
-    ++ str_tab ++ "leader: " ++ Player.stringOfId(state.leader) ++ str_crlf
-    ++ "}" ++ str_crlf
+    {j|{$name, $socket, $card, [$tricks] }|j};
+  };
+
+  let debugOfPlayers = {
+    "Player1": Quad.select(N1, stringOfPlayer, state.players),
+    "Player2": Quad.select(N2, stringOfPlayer, state.players),
+    "Player3": Quad.select(N3, stringOfPlayer, state.players),
+    "Player4": Quad.select(N4, stringOfPlayer, state.players),
+  };
+
+  {
+    "game_id": state.game_id,
+    "phase": stringOfPhase(state.phase),
+    "dealer": Player.stringOfId(state.dealer),
+    "leader": Player.stringOfId(state.leader),
+    "maybeTrumpCard": Card.codeOfMaybeCard(state.maybeTrumpCard),
+    "maybeLeadCard": Card.codeOfMaybeCard(state.maybeLeadCard),
+    "players": debugOfPlayers,
+  }
 };
 
 let initialState = () => {
@@ -194,11 +202,3 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
         };
       (playerId, playerPhase);
     };
-
-
-let debugState = (state, ~ctx="", ~n=0, ()) => {
-  if(ctx != "") {
-    Js.log(ctx->leftPad(~n, ()))
-  }
-  Js.log(state->stringOfState->leftPad(~n=n+1, ()))
-}

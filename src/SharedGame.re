@@ -1,5 +1,3 @@
-open AppPrelude;
-
 [@bs.val] external env_settings: Js.Nullable.t(string) = "process.env.SETTINGS";
 
 let settings = 
@@ -117,12 +115,6 @@ let rec stringOfPhase = fun
   | PackDepletedPhase => "PackDepletedPhase"
   | GameOverPhase => "GameOverPhase";
 
-
-let debugPhase = (phase, ~depth=0, ()) => {
-  debuggin("phase: ", ~depth, ());
-  let depth = depth + 1;
-  debuggin(stringOfPhase(phase), ~depth, ())
-};
 
 let isFaceDownPhase = fun
 | FindSubsPhase(_, BegPhase) | BegPhase 

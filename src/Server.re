@@ -8,6 +8,7 @@ open AppPrelude;
 
 [@bs.module] external nanoid: unit => string = "";
 
+let logger = appLogger.makeChild({"_module": "Server"});
 
 let app = Express.express();
 
@@ -56,22 +57,10 @@ let nextGameId = () => {
 let roomKey_gameState: StringMap.t(Game.state) =
   StringMap.make(~hintSize=expectedGameCount);
 
-let debugGameStates = (~n=0, ()) => {
-  let roomCount = StringMap.size(roomKey_gameState);
-  let strAre = Grammar.byNumber(roomCount, "is");
-  let strRooms = Grammar.byNumber(roomCount, "room");
-  let strRoomCount = string_of_int(roomCount);
-  Js.log({j|There $strAre $strRoomCount $strRooms.|j} |> leftPad(_, ~n=n, ()));
-};
-
-let debugGameBySocket = socket => {
-  switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
-  | None => ()
-  | Some({maybeRoomKey}) =>
-    switch (StringMap.get(roomKey_gameState, maybeRoomKey |> Js.Option.getWithDefault(""))) {
-    | None => ()
-    | Some(gameState) => Js.log(Game.stringOfState(gameState))
-    }
+let getGameStats = () => {
+  {
+    "games-active": StringMap.valuesToArray(roomKey_gameState) |> Array.length,
+    "games-since-epoch": nGamesCreated^,
   };
 };
 
@@ -211,25 +200,6 @@ let updateClientStates = gameState => {
   StringMap.set(roomKey_gameState, gameState'.game_id, gameState');
 };
 
-let debugSocket: (BsSocket.Server.socketT, ~ctx: string=?, ~n: int=?, unit) => unit = 
-  (socket, ~ctx="", ~n=0, ()) => {
-  let socketToString: BsSocket.Server.socketT => string = 
-    [%raw (socket) => {j|
-    return "socketT.{" + "\n" +
-        "\t" + "id: " + socket.id + "\n" +
-        "\t" + "connected: " + socket.connected + "\n" +
-        "\t" + "disconnected: " + socket.disconnected + "\n" + 
-      "}"|j}];
-
-  if(ctx != "") {
-    Js.log(ctx->leftPad(~n, ()))
-  }
-  Js.log(socket |> socketToString |> leftPad(_, ~n, ()));
-};
-
-
-
-
 let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   fun
   | IO_JoinGame(_)
@@ -262,6 +232,8 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   };
 
 let leaveGame = socket => {
+  let logger =
+    logger.makeChild({"_context": "leaveGame", "socketId": SockServ.Socket.getId(socket)});
   switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
   | None => ()
   | Some({maybeRoomKey}) =>
@@ -274,7 +246,17 @@ let leaveGame = socket => {
         switch (Game.maybeGetSocketPlayer(socket, gameState)) {
         | None => ()
         | Some(playerId) =>
-          Js.log(Player.stringOfId(playerId) ++ " is leaving the game: " ++ roomKey);
+          logger.debug2(
+            {
+              "player": {
+                "username": Quad.select(playerId, player => player.Game.pla_name, gameState.players),
+                "playerId": Player.stringOfId(playerId),
+              },
+
+              "game": Game.debugOfState(gameState),
+            },
+            "Removing player from game.",
+          );
           My.Global.clearMaybeTimeout(gameState.maybeKickTimeoutId);
           let gameState' = {...gameState, maybeKickTimeoutId: None};
           let gameState' = GameReducer.reduce(LeaveGame(playerId), gameState');
@@ -327,6 +309,7 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
 
 let joinGame = (socket, username, clientSettings) => {
   let socketId = SockServ.Socket.(socket->getId);
+  let logger = logger.makeChild({"_context": "joinGame", "socketId": socketId});
   let allGameStates = StringMap.valuesToArray(roomKey_gameState) |> Array.to_list;
 
   /** 
@@ -352,8 +335,10 @@ let joinGame = (socket, username, clientSettings) => {
       Quad.getPairWhere(player => player.Game.pla_socket == Some(socket), gameState.Game.players);
     switch(maybePlayerIdAndData){
     | None => 
-      Js.log("joinGame Error: Found an existing game and expected Some Player having the joining socket but got None.")
-      Game.debugState(gameState, ());
+      logger.warn2(
+        Game.debugOfState(gameState),
+        "Found an existing game and expected Some player to have this socketId but got None.",
+      );
     | Some((playerId, _)) =>
       let (playerId, playerPhase) = Game.decidePlayerPhase(gameState.phase, gameState.dealer, playerId)
       let clientState = buildClientState(gameState, playerId, playerPhase);
@@ -459,7 +444,8 @@ let joinGame = (socket, username, clientSettings) => {
       maybeKickTimeoutId: reconcileKickTimeout(prevGameState, nextGameState),
     }
 
-    Js.log(Game.stringOfState(nextGameState));
+    logger.info2(Game.debugOfState(nextGameState), "Saving game state." );
+
     StringMap.set(roomKey_gameState, roomKey, nextGameState);
     updateClientStates(nextGameState);
   }
@@ -478,46 +464,46 @@ let onSocketDisconnect = socket =>
         
         The result is that there may be open game rooms holding sockets that are effectively dead.*/
 
-      Js.log("Server:onSocketDisconnect");
-      debugSocket(socket, ~n=1, ());
+      let socketId = SockServ.Socket.getId(socket);
+      let logger = logger.makeChild({"_context": "socket-onDisconnect", "socketId": socketId});
 
+      logger.info("Socket disconnected.");
       leaveGame(socket);
-
-      debugGameBySocket(socket);
-
       StringMap.remove(socketId_playerData, socket->SockServ.Socket.getId);
-      debugGameStates(~n=1, ());
+      logger.info2(getGameStats(), "Game stats:");
     },
   );
 
 SockServ.onConnect(
   io,
   socket => {
-    Js.log("Server: onConnect");
-    debugSocket(socket, ~n=1, ());
+    let socketId = SockServ.Socket.getId(socket);
+    let logger = logger.makeChild({"_context": "socket-onconnect", "socketId": socketId});
 
+    logger.info("Socket connected");
     onSocketDisconnect(socket);
     SockServ.Socket.emit(socket, SocketMessages.Reset);
 
-    SockServ.Socket.on(socket, io =>
+    SockServ.Socket.on(socket, io => {
+      let stringOfEvent = SocketMessages.stringOfClientToServer(io);
+      let logger = logger.makeChild({"_context": "socket-onevent", "event": stringOfEvent});
+      logger.debug2("Handling `%s` event. ", stringOfEvent);
       switch (io) {
       | IO_JoinGame(username, ioClientSettingsJson) =>
         let clientSettings =
           decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
 
         joinGame(socket, username, clientSettings);
-
-        debugGameStates(~n=1, ());
-      
+        logger.info2(getGameStats(), "Game stats:");
       | IO_LeaveGame => 
-        Js.log("Got IO_LeaveGame");
         leaveGame(socket);
+        logger.info2(getGameStats(), "Game stats:");
       | IO_PlayAgain(username, ioClientSettingsJson) =>
-        Js.log("Got IO_PlayAgain");
         leaveGame(socket);
         let clientSettings =
           decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
         joinGame(socket, username, clientSettings);
+        logger.info2(getGameStats(), "Game stats:");
       | ioAction =>
         let roomKey =
           switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
@@ -564,12 +550,12 @@ SockServ.onConnect(
             Js.Global.setTimeout(advanceRound, 2750) |> ignore;
           };
 
+          logger.info2(Game.debugOfState(nextGameState), "Saving game state" );
           StringMap.set(roomKey_gameState, roomKey, nextGameState);
-          Game.debugState(nextGameState, ~ctx="Server:ioAction", ());
           updateClientStates(nextGameState);
         };
       }
-    );
+    });
   },
 );
 
