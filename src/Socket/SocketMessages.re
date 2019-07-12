@@ -22,6 +22,21 @@ type clientToServer =
   | IO_PlayAgain(ioUsername, ioClientSettings)
   | IO_CheatPoints(ioTeamId, int);
 
+let stringOfClientToServer = fun
+  | IO_JoinGame(ioUsername, _) => "JoinGame(" ++ (ioUsername == "" ? "--blank-username--" : ioUsername) ++ ")"
+  | IO_PlayCard(ioPlayerId, ioCard) => {j|PlayCard($ioPlayerId, $ioCard)|j}
+  | IO_EndTrick => "EndTrick"
+  | IO_NewRound => "NewRound"
+  | IO_Beg => "Beg"
+  | IO_Stand => "Stand"
+  | IO_GiveOne => "GiveOne"
+  | IO_Deal => "Deal"
+  | IO_RunPack => "RunPack"
+  | IO_DealAgain => "DealAgain"
+  | IO_LeaveGame => "LeaveGame"
+  | IO_PlayAgain(ioUsername, _ioClientSettings) => {j|PlayAgain($ioUsername)|j}
+  | IO_CheatPoints(_ioTeamId, _int) => "CheatPoints";
+
 type serverToClient =
   | SetState(ioClientState)
   | AddNotis(ioClientNotis)

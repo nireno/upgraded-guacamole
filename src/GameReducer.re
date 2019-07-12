@@ -3,7 +3,6 @@ open Game;
 type action =
   | Noop
   | PlayCard(Player.id, Card.t)
-  | BlockPlay(Player.id)
   | EndTrick
   | AdvanceRound
   | NewRound
@@ -190,7 +189,6 @@ let rec reduce = (action, state) =>
               let trick = (card1, card2, card3, card4);
               let jackOfTrump = Card.{rank: Card.Rank.Jack, suit: trumpCard.suit};
               let (trickWinnerId, _card) = Trick.getWinnerCard(trumpCard.Card.suit, leadCard.Card.suit, (card1, card2, card3, card4));
-              Js.log2("Trick winner: ", Player.stringOfId(trickWinnerId));
               let trickWinnerTeamId = Game.teamOfPlayer(trickWinnerId);
               switch (Quad.withId(trick) |> Quad.getWhere(((_playerId, card)) => card == jackOfTrump)) {
               | None => None;
@@ -360,7 +358,6 @@ let rec reduce = (action, state) =>
         };
 
       | RunPack =>
-        Js.log("I beg too");
         let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, state.deck);
         let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
         let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
@@ -424,15 +421,6 @@ let rec reduce = (action, state) =>
           deck: Deck.make() |> Deck.shuffle,
           phase: DealPhase,
         }
-      | BlockPlay(player) =>
-        switch (player) {
-        | N1 => Js.log("Not your turn p1")
-        | N2 => Js.log("Not your turn p2")
-        | N3 => Js.log("Not your turn p3")
-        | N4 => Js.log("Not your turn p4")
-        };
-
-        state;
 
       | LeaveGame(leavingPlayerId) => 
         let modPhase = (nPlayers, currentPhase) =>

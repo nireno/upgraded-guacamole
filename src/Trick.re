@@ -3,6 +3,12 @@
 [@decco]
 type t = (Card.t, Card.t, Card.t, Card.t);
 
+let codeOfTrick = trick => {
+  let (card1Code, card2Code, card3Code, card4Code) =
+    Quad.map(card => Card.codeOfCard(card), trick);
+  {j|($card1Code, $card2Code, $card3Code, $card4Code)|j};
+};
+
 let stringOfTrick = r => {
   let stringOfPlayerCard = ((playerId, card)) =>
     Player.stringOfId(playerId) ++ ": " ++ Card.stringOfCard(card);

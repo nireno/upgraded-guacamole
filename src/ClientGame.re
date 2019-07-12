@@ -1,4 +1,3 @@
-open AppPrelude;
 include SharedGame;
 
 [@decco] type maybePlayerId = option(Player.id);

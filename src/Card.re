@@ -206,6 +206,14 @@ let stringOfMaybeCard = maybeCard =>
   | Some(card) => stringOfCard(card)
   };
 
+let codeOfCard = card => {
+  Rank.codeOfRank(card.rank) ++ Suit.codeOfSuit(card.suit);
+};
+
+let codeOfMaybeCard = fun
+| None => "None"
+| Some(card) => codeOfCard(card);
+
 let stringOfSpriteOffset = ( {rank, suit} ) => {
   let xSpacing = 195; // image pixels between each rank in a suit
   let ySpacing = 285; // image pixels between each suit
