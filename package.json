@@ -22,6 +22,7 @@
   "license": "MIT",
   "dependencies": {
     "@glennsl/bs-json": "^3.0.0",
+    "@nireno/reasonably-typed": "github:nireno/reasonably-typed",
     "@ryb73/decco": "0.0.14",
     "ansi-colors": "^4.1.1",
     "bs-express": "^0.12.0",
