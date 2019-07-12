@@ -18,7 +18,7 @@ let leftPad1 = s => leftPad(s, ~n=1, ());
 let decodeWithDefault = (decode, default, jsonString) => {
   let parseAndDecode =
     switch (decode(jsonString |> Js.Json.parseExn)) {
-    | Belt.Result.Error(e) =>
+    | Belt.Result.Error(_error) =>
       appLogger.error2("Failed to decode json string: %s", jsonString);
       default;
     | Belt.Result.Ok(result) => result
