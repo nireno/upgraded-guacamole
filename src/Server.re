@@ -573,7 +573,11 @@ switch (Js.Nullable.toOption(adminPasswordEnv)) {
       let gameStates = StringMap.valuesToArray(roomKey_gameState);
       <div>
         <div>
-          <span> {"Number of games: " |> ReasonReact.string} </span>
+          <span> {"Games since server started: " |> ReasonReact.string} </span>
+          <span> {nGamesCreated^ |> string_of_int |> ReasonReact.string} </span>
+        </div>
+        <div>
+          <span> {"Currently Active games: " |> ReasonReact.string} </span>
           <span> {Array.length(gameStates) |> string_of_int |> ReasonReact.string} </span>
         </div>
         <DashView gameStates />

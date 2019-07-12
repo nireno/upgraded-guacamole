@@ -19,19 +19,11 @@ module PlayerState = {
 module GameState = {
   [@react.component]
   let make = (~gameState) => {
-    <div className="game-state">
-      <h6> {ReasonReact.string(gameState.Game.game_id)} </h6>
-      <div> {gameState.phase |> Game.stringOfPhase |> ReasonReact.string} </div>
-      <div className="player-states">
-      {
-        gameState.players
-         |> Quad.toDict
-         |> List.map(((playerId, playerState)) => <PlayerState key=Player.stringOfId(playerId) playerId playerState />)
-         |> Belt.List.toArray
-         |> ReasonReact.array
-      }
-      </div>
-    </div>;
+    <pre className="game-state">
+      {ReasonReact.string(
+         Game.debugOfState(gameState) |> Obj.magic |> Js.Json.stringifyWithSpace(_, 2),
+       )}
+    </pre>;
   };
 };
 
