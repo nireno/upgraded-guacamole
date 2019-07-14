@@ -1,5 +1,8 @@
 [@bs.deriving abstract]
-type options = {src: array(string)};
+type options = {
+  src: array(string),
+  volume: float,
+};
 
 type howl;
 

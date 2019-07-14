@@ -1,3 +1,4 @@
+open AppPrelude;
 [@bs.val] [@bs.scope "localStorage"] external getItem: string => Js.Nullable.t(string) = "";
 [@bs.val] [@bs.scope "localStorage"] external setItem: (string, string) => unit = "";
 
@@ -9,10 +10,26 @@
 [@bs.deriving jsConverter]
 type key = [
   | `AllowSubbing
+  | `Volume
+  | `Muted
   // | [@bs.as "miniCoconut"] `Kiwi
 ];
 
-let getClientSettings = () =>
+/** 
+  Local storage stores string values. This function takes: 
+  * a function to map the string value to a reason type 
+  * a default reasonml value in case the item does not exist in local storage
+  * and the item key
+*/
+let getItemWithDefault = (key, f, default) =>
+  keyToJs(key) |> getItem |> Js.Nullable.toOption |> Belt.Option.mapWithDefault(_, default, f);
+
+
+
+let getClientSettings = () => {
+  let decodeVolume = volumeJson =>
+    decodeWithDefault(ClientSettings.volume_decode, ClientSettings.defaults.volume, volumeJson);
+
   ClientSettings.{
     allowSubbing:
       switch (
@@ -23,8 +40,11 @@ let getClientSettings = () =>
       | "yes" => true
       | _ => false
       },
+    volume: getItemWithDefault(`Volume, decodeVolume, ClientSettings.defaults.volume),
   };
+};
 
 let updateClientSettings = (newSettings) => {
-  setItem(keyToJs(`AllowSubbing), newSettings.ClientSettings.allowSubbing ? "yes" : "no");
-}
+    setItem(keyToJs(`AllowSubbing), newSettings.ClientSettings.allowSubbing ? "yes" : "no");
+    setItem(keyToJs(`Volume), ClientSettings.volume_encode(newSettings.volume) |> Js.Json.stringify);
+};
