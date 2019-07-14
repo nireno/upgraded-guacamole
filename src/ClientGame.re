@@ -110,32 +110,32 @@ let reducer = (prevState, action) => {
     let howlOptions = Howler.options(~volume);
     /** "playing a card" sound effect */
     if (currNumCardsOnBoard > prevNumCardsOnBoard) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/play_card.mp3"|])));
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/play_card.mp3"|], ())));
       /** Sound needs to Match speed of card animation */ Howler.rate(sound, 0.8);
       Howler.play(sound);
     };
 
     /** "collecting the trick" sound effect */
     if (prevNumCardsOnBoard == 4 && currNumCardsOnBoard == 0) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/play_card.mp3"|])));
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/play_card.mp3"|], ())));
       Howler.play(sound);
     };
 
     /** "player left the game" sound effect */
     if (currHasEmptySeats && currNumEmptySeats > prevNumEmptySeats) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/player_left.mp3"|])));
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/player_left.mp3"|], ())));
       Howler.play(sound);
     };
 
     /** "player joined the game" sound effect */
     if (currHasEmptySeats && currNumEmptySeats < prevNumEmptySeats) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/player_joined.mp3"|])));
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/player_joined.mp3"|], ())));
       Howler.play(sound);
     };
 
     /** "Game in progress" sound effect */
     if (prevHasEmptySeats && currNumEmptySeats == 0) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|])));
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ())));
       Howler.play(sound);
     };
 
@@ -147,7 +147,7 @@ let reducer = (prevState, action) => {
 
     /** "player turn" sound effect.  This is only played if not already playing the "Game in progress" sound effect */
     if (!prevHasEmptySeats && isPlayerTurn) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/your_turn_subtle.mp3"|])));
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/your_turn_subtle.mp3"|], ())));
       Howler.play(sound);
     };
 

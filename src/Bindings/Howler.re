@@ -1,7 +1,7 @@
 [@bs.deriving abstract]
 type options = {
   src: array(string),
-  volume: float,
+  [@bs.optional] volume: float,
 };
 
 type howl;
@@ -10,3 +10,5 @@ type howl;
 
 [@bs.send] external play: howl => unit = "";
 [@bs.send] external rate: howl => float => unit = "";
+[@bs.send] external playing: howl => bool = "";
+[@bs.send] external volume: howl => float => unit = "";
