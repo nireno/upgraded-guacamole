@@ -30,6 +30,7 @@
     "bs-webapi": "^0.15.2",
     "dotenv": "^8.0.0",
     "fs-extra": "^8.1.0",
+    "howler": "^2.1.2",
     "nanoid": "^2.0.3",
     "postcss-loader": "^3.0.0",
     "precss": "^4.0.0",
