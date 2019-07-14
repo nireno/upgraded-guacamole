@@ -7,7 +7,7 @@ let make = (~onSave, ~settings) => {
 
   let volumeLevel: float =
     switch (volume) {
-    | Mute(v) => v
+    | Mute(v) => 0.0 
     | Level(v) => v
     };
   
