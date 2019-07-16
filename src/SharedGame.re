@@ -5,6 +5,16 @@ let settings =
   |> Js.Nullable.toOption 
   |> Js.Option.getWithDefault("default"));
 
+[@decco]
+type game_id =
+  | Public(string)
+  | Private(string);
+
+let stringOfGameId =
+  fun
+  | Public(str)
+  | Private(str) => str;
+
 [@decco] type notis = list(Noti.t);
 
 let kickPoints =

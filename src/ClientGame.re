@@ -19,7 +19,7 @@ type partnerInfo = {
 
 [@decco]
 type state = {
-  gameId: string,
+  gameId: game_id,
   phase: Player.phase,
   gamePhase: SharedGame.phase,
   players: (playerState, playerState, playerState, playerState),
@@ -39,7 +39,7 @@ type state = {
 };
 
 let initialState = {
-  gameId: "",
+  gameId: Public(""),
   phase: PlayerIdlePhase,
   gamePhase: FindPlayersPhase(3),
   players: (
@@ -69,14 +69,16 @@ type action =
 let reducer = (prevState, action) => {
   switch (action) {
   | MatchServerState(nextState) => 
+    let stringOfPrevGameId = stringOfGameId(prevState.gameId);
+    let stringOfNextGameId = stringOfGameId(nextState.gameId);
 
     // Prevent user from navigating away from an in-progress game.
-    if(prevState.gameId == "" && nextState.gameId != ""){
+    if (stringOfPrevGameId == "" && stringOfNextGameId != "") {
       Raw.addUnloadListener(Raw.preventUnloadListener);
-    } else if(prevState.gameId != "" && nextState.gameId == "") {
+    } else if (stringOfPrevGameId != "" && stringOfNextGameId == "") {
       Raw.removeUnloadListener(Raw.preventUnloadListener);
     } else {
-      ()
+      ();
     };
 
     let (prevHasEmptySeats, prevNumEmptySeats) =

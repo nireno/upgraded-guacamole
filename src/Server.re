@@ -197,12 +197,14 @@ let updateClientStates = gameState => {
   */
   let gameState' = GameReducer.reduce(ClearNotis, gameState);
 
-  StringMap.set(roomKey_gameState, gameState'.game_id, gameState');
+  StringMap.set(roomKey_gameState, Game.stringOfGameId(gameState'.game_id), gameState');
 };
 
 let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   fun
   | IO_JoinGame(_)
+  | IO_StartPrivateGame(_)
+  | IO_JoinPrivateGame(_)
   | IO_LeaveGame
   | IO_PlayAgain(_) => Noop
   | IO_PlayCard(ioPlayerId, ioCard) => {
@@ -310,7 +312,15 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
 let joinGame = (socket, username, clientSettings) => {
   let socketId = SockServ.Socket.(socket->getId);
   let logger = logger.makeChild({"_context": "joinGame", "socketId": socketId});
-  let allGameStates = StringMap.valuesToArray(roomKey_gameState) |> Array.to_list;
+
+  let isPublicGame = gameState =>
+    switch (gameState.Game.game_id) {
+    | Public(_) => true
+    | _ => false
+    };
+
+  let allGameStates =
+    StringMap.valuesToArray(roomKey_gameState) |> Belt.Array.keep(_, isPublicGame) |> Array.to_list;
 
   /** 
     Lag on the client or other issues might cause the player to try joining multiple
@@ -369,11 +379,11 @@ let joinGame = (socket, username, clientSettings) => {
 
     let prevGameState =
       switch (unfilledGamesPrioritized) {
-      | [] => {...Game.initialState(), game_id: nextGameId() |> string_of_int}
+      | [] => {...Game.initialState(), game_id: Public(nextGameId() |> string_of_int)}
       | [gameState, ..._rest] => gameState
       };
     
-    let roomKey = prevGameState.game_id;
+    let roomKey = Game.stringOfGameId(prevGameState.game_id);
     // let maybeRoom =
     //   ns
     //   |> Namespace.getAdapter
@@ -451,6 +461,65 @@ let joinGame = (socket, username, clientSettings) => {
   }
 };
 
+let rec makePrivateGame = (socket, username, clientSettings) => {
+  /* create a random ID made from the string of 4 cards picked from the deck */
+  let strId =
+    Deck.make()
+    |> Deck.shuffle
+    |> Belt.List.take(_, 4)
+    |> Js.Option.getExn
+    |> List.map(Card.codeOfCard)
+    |> Belt.List.toArray
+    |> Js.Array.joinWith(" ");
+
+  Js.log2("gameId = ", strId);
+
+  /* Ensure this id is unique in the list of all games */
+  /* If the id is a duplicate */
+  let gameIdExists = (searchId, gameState) =>
+    switch (gameState.Game.game_id) {
+    | Public(_) => false
+    | Private(id) => searchId == id
+    };
+
+  let gameStates = StringMap.valuesToArray(roomKey_gameState);
+  if (Belt.Array.some(gameStates, gameIdExists(strId))) {
+    makePrivateGame(socket, username, clientSettings);
+  } else {
+    Game.{...initialState(), game_id: Private(strId)};
+  };
+};
+
+let joinGame2 = (socket, username, gameState) => {
+  let socketId = SockServ.Socket.getId(socket);
+  let str_game_id = Game.(stringOfGameId(gameState.game_id));
+  switch (Game.findEmptySeat(gameState)) {
+  | None => Belt.Result.Error("The game is already full.")
+  | Some(playerId) =>
+    let pla_name = username == "" ? Player.stringOfId(playerId) : username;
+    let socket = SockServ.Socket.join(socket, str_game_id);
+    StringMap.set(socketId_playerData, socketId, {maybeRoomKey: Some(str_game_id)});
+
+    let players =
+      Quad.update(
+        playerId,
+        player => Game.{...player, pla_name, pla_socket: Some(socket)},
+        gameState.players,
+      );
+
+    let playersNeeded = 4 - Game.countPlayers(players);
+    let phase =
+      switch (gameState.phase) {
+      | FindSubsPhase(_n, subPhase) =>
+        playersNeeded == 0 ? subPhase : FindSubsPhase(playersNeeded, subPhase)
+      | FindPlayersPhase(_n) => playersNeeded == 0 ? DealPhase : FindPlayersPhase(playersNeeded)
+      | otherPhase => otherPhase
+      };
+
+    Belt.Result.Ok({...gameState, players, phase});
+  };
+};
+
 
 let onSocketDisconnect = socket =>
   SockServ.Socket.onDisconnect(
@@ -489,6 +558,21 @@ SockServ.onConnect(
       let logger = logger.makeChild({"_context": "socket-onevent", "event": stringOfEvent});
       logger.debug2("Handling `%s` event. ", stringOfEvent);
       switch (io) {
+      | IO_StartPrivateGame(username, ioClientSettingsJson) =>
+        let clientSettings =
+          decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
+        let gameState = makePrivateGame(socket, username, clientSettings);
+        let str_game_id = Game.(stringOfGameId(gameState.game_id));
+        switch (joinGame2(socket, username, gameState)) {
+        | Belt.Result.Error(e) => logger.error2({"error": e}, "Failed to join game")
+        | Belt.Result.Ok(gameState) =>
+          logger.info2(Game.debugOfState(gameState), "Saving game state and updating clients.");
+
+          StringMap.set(roomKey_gameState, str_game_id, gameState);
+          updateClientStates(gameState);
+          logger.info2(getGameStats(), "Game stats:");
+        };
+      | IO_JoinPrivateGame(_inviteCode, _username, _ioClientSettings) => ()
       | IO_JoinGame(username, ioClientSettingsJson) =>
         let clientSettings =
           decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
@@ -513,7 +597,7 @@ SockServ.onConnect(
         switch (StringMap.get(roomKey_gameState, roomKey)) {
         | None => ()
         | Some(prevGameState) =>
-          let roomKey = prevGameState.game_id;
+          let roomKey = Game.stringOfGameId(prevGameState.game_id);
           let action = ioAction |> actionOfIO_Action;
           
           let nextGameState = GameReducer.reduce(action, prevGameState);

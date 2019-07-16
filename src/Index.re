@@ -184,6 +184,25 @@ module App = {
       };
     };
 
+    let handleCreatePrivateGameClick = event => {
+      sendIO(
+        IO_StartPrivateGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        event,
+      );
+    };
+
+    let handleJoinPrivateGameClick = event => {
+      sendIO(
+        IO_JoinPrivateGame(
+          "todo-invite-code",
+          username,
+          ClientSettings.t_encode(clientSettings) |> Js.Json.stringify,
+        ),
+        event,
+      );
+    };
+    
+    let stringOfGameId = SharedGame.stringOfGameId(state.gameId);
     /** 
       Reading the url backwords allows the app to work when it isn't served from
       the root url a website i.e. it will work whether the app is served from the
@@ -219,7 +238,7 @@ module App = {
       ref={ReactDOMRe.Ref.domRef(appRef)}
       className="all-fours-game font-sans flex flex-col relative mx-auto"
       onClick=handleAppClick>
-      {state.gameId == ""
+      {stringOfGameId == ""
          ? <MenuView>
              <div
                className="app-name text-white text-5xl"
@@ -232,7 +251,13 @@ module App = {
              </div>
              <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./feedback")}>
             //  <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
-               {ReasonReact.string("Join Game")}
+               {ReasonReact.string("Join Public Game")}
+             </button>
+             <button className="btn btn-blue mt-1" onClick=handleJoinPrivateGameClick>
+               {ReasonReact.string("Join Private Game")}
+             </button>
+             <button className="btn btn-blue mt-1" onClick=handleCreatePrivateGameClick>
+               {ReasonReact.string("Create Private Game")}
              </button>
              <div className="link link-white mt-4" 
                   onClick={_ => ReasonReactRouter.push("./settings")}>
@@ -488,7 +513,12 @@ module App = {
              {switch (state.gamePhase) {
               | FindPlayersPhase(n) =>
                 <Modal visible=true>
-                  <FindPlayersView n />
+                  {
+                    switch (state.gameId) {
+                    | Public(_) => <FindPlayersView n />
+                    | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id />
+                    };
+                  }
                   <button className="btn btn-blue mt-4" onClick={sendIO(IO_LeaveGame)}>
                     {ReasonReact.string("Cancel")}
                   </button>
@@ -516,7 +546,7 @@ module App = {
                     {ReasonReact.string(Player.stringOfId(state.me))}
                   </div>
                   <div className="text-gray-500 text-xs">
-                    {ReasonReact.string("GameId: " ++ state.gameId ++ " ")}
+                    {ReasonReact.string("GameId: " ++ stringOfGameId ++ " ")}
                   </div>
                 </div>;
               }}

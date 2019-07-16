@@ -32,7 +32,9 @@ let make = (~gameStates) => {
   <div className="dash"> 
   {
     gameStates
-    ->Belt.Array.map(gameState => <GameState key={gameState.Game.game_id} gameState />)
+    ->Belt.Array.map(gameState =>
+        <GameState key={Game.stringOfGameId(gameState.Game.game_id)} gameState />
+      )
     ->ReasonReact.array;
   }
   </div>;

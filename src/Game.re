@@ -17,7 +17,7 @@ let initialPlayerState = playerId => {
 };
 
 type state = {
-  game_id: string,
+  game_id: game_id,
   deck: Deck.t,
   players: (playerState, playerState, playerState, playerState),
   teams: (teamState, teamState),
@@ -69,7 +69,7 @@ let debugOfState = (state) => {
 
 let initialState = () => {
   {
-    game_id: "",
+    game_id: Public(""),
     deck: Deck.make() |> Deck.shuffle,
     players: (
       initialPlayerState(N1),
