@@ -640,6 +640,52 @@ SockServ.onConnect(
         };
       }
     });
+    SockServ.Socket.onWithAck(
+      socket,
+      (io, ack) => {
+        let stringOfEvent = SocketMessages.stringOfClientToServer(io);
+        let logger =
+          logger.makeChild({"_context": "socket-onevent-with-ack", "event": stringOfEvent});
+        logger.debug2("Handling `%s` event. ", stringOfEvent);
+        switch (io) {
+        | IO_JoinPrivateGame(inviteCode, username, ioClientSettings) =>
+          logger.info("Invite code: " ++ inviteCode);
+          /** Find game having the provided invite code */
+          let gameMatchesCode = (inviteCode, gameState ) => {
+            switch(gameState.Game.game_id){
+            | Public(_) => false
+            | Private(code) => inviteCode == code
+            }
+          };
+
+          let matchingGames = StringMap.valuesToArray(roomKey_gameState)
+          |> Belt.Array.keep(_, gameMatchesCode(inviteCode) )
+          |> Belt.List.fromArray;
+
+          let result = switch(matchingGames){
+          | [gameState, ..._rest] => 
+            joinGame2(socket, username, gameState);
+          | _ => Belt.Result.Error("Game not found.");
+          };
+
+          switch(result){
+          | Belt.Result.Error(message) => 
+            ack(SocketMessages.AckError(message))
+          | Belt.Result.Ok(gameState) => 
+            switch(gameState.Game.game_id){
+            | Public(_) => 
+              ack(SocketMessages.AckError("Game not found."))
+            | Private(code) =>
+              StringMap.set(roomKey_gameState, code, gameState);
+              updateClientStates(gameState); 
+              ack(SocketMessages.AckOk)
+            }
+          };
+
+        | _ => logger.warn("Ignoring socket message")
+        };
+      },
+    );
   },
 );
 

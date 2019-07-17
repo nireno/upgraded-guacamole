@@ -109,16 +109,24 @@ module App = {
           | Reset =>
             dispatch(MatchServerState(ClientGame.initialState));
             updateNotis(Reset(Noti.State.initial));
+          | AckOk | AckError(_) => ()
           }
         );
         None;
       }
     );
 
-    let sendIO = (ioAction, _event) => {
+    let sendIO = (ioAction) => {
       switch (maybeSocket) {
       | None => ()
       | Some(socket) => ClientSocket.T.emit(socket, ioAction)
+      };
+    };
+
+    let sendIOWithAck = (ioAction, ack) => {
+      switch (maybeSocket) {
+      | None => ()
+      | Some(socket) => ClientSocket.T.emitWithAck(socket, ioAction, ack)
       };
     };
 
@@ -184,21 +192,16 @@ module App = {
       };
     };
 
-    let handleCreatePrivateGameClick = event => {
+    let handleCreatePrivateGameClick = _event => {
       sendIO(
         IO_StartPrivateGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
-        event,
       );
     };
 
-    let handleJoinPrivateGameClick = event => {
-      sendIO(
-        IO_JoinPrivateGame(
-          "todo-invite-code",
-          username,
-          ClientSettings.t_encode(clientSettings) |> Js.Json.stringify,
-        ),
-        event,
+    let sendIoJoinPrivateGame = (inviteCode, ack) => {
+      sendIOWithAck(
+        IO_JoinPrivateGame(inviteCode, username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        ack,
       );
     };
     
@@ -215,11 +218,10 @@ module App = {
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
         <MenuView>
           <ExperimentalView
-            onJoinClick={event => {
+            onJoinClick={_event => {
               ReasonReactRouter.push("./");
               sendIO(
                 IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
-                event,
               );
             }}
           />
@@ -232,6 +234,12 @@ module App = {
         <MenuView>
           <SettingsView onSave=saveClientSettings settings=clientSettings />
         </MenuView>
+      </div>;
+    | ["private-games", ..._rest] => 
+      <div
+        ref={ReactDOMRe.Ref.domRef(appRef)}
+        className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
+        <MenuView> <JoinPrivateGameView sendJoinGame=sendIoJoinPrivateGame /> </MenuView>
       </div>;
     | _ => 
     <div
@@ -253,7 +261,7 @@ module App = {
             //  <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
                {ReasonReact.string("Join Public Game")}
              </button>
-             <button className="btn btn-blue mt-1" onClick=handleJoinPrivateGameClick>
+             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./private-games/")}>
                {ReasonReact.string("Join Private Game")}
              </button>
              <button className="btn btn-blue mt-1" onClick=handleCreatePrivateGameClick>
@@ -462,12 +470,12 @@ module App = {
                </div>
                <WaitingMessage activePlayerName myPlayerId={state.me} maybeActivePlayer />
                <Player
-                 sendDeal={sendIO(SocketMessages.IO_Deal)}
-                 sendStandUp={sendIO(SocketMessages.IO_Stand)}
-                 sendBeg={sendIO(IO_Beg)}
-                 sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
-                 sendRunPack={sendIO(IO_RunPack)}
-                 sendReshuffle={sendIO(IO_DealAgain)}
+                 sendDeal={_event => sendIO(SocketMessages.IO_Deal)}
+                 sendStandUp={_event => sendIO(SocketMessages.IO_Stand)}
+                 sendBeg={_event => sendIO(IO_Beg)}
+                 sendGiveOne={_event => sendIO(SocketMessages.IO_GiveOne)}
+                 sendRunPack={_event => sendIO(IO_RunPack)}
+                 sendReshuffle={_event => sendIO(IO_DealAgain)}
                  playerPhase={state.phase}
                />
                <div className="player-hand flex flex-col">
@@ -519,7 +527,7 @@ module App = {
                     | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id />
                     };
                   }
-                  <button className="btn btn-blue mt-4" onClick={sendIO(IO_LeaveGame)}>
+                  <button className="btn btn-blue mt-4" onClick={_event => sendIO(IO_LeaveGame)}>
                     {ReasonReact.string("Cancel")}
                   </button>
                 </Modal>
@@ -529,8 +537,8 @@ module App = {
                   <GameOverView
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
-                    playAgainClick={sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
-                    leaveClick={sendIO(IO_LeaveGame)}
+                    playAgainClick={_event => sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
+                    leaveClick={_event => sendIO(IO_LeaveGame)}
                   />
                 </Modal>
               | _ => ReasonReact.null

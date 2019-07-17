@@ -45,4 +45,6 @@ let stringOfClientToServer = fun
 type serverToClient =
   | SetState(ioClientState)
   | AddNotis(ioClientNotis)
-  | Reset;
+  | Reset
+  | AckOk
+  | AckError(string);
