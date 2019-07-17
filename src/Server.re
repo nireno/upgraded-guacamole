@@ -678,11 +678,7 @@ switch (Js.Nullable.toOption(adminPasswordEnv)) {
  */
 Express.App.get(app, ~path="/*") @@
 Express.Middleware.from((_next, _req, res) =>
-  Express.Response.sendFile(
-    Node.Process.cwd() ++ "/build/index.html",
-    Express.Static.defaultOptions,
-    res,
-  )
+  Express.Response.redirect("/", res)
 );
 
 let httpPort = Js.Nullable.toOption(httpPortEnv)
