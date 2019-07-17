@@ -662,22 +662,37 @@ SockServ.onConnect(
           |> Belt.Array.keep(_, gameMatchesCode(inviteCode) )
           |> Belt.List.fromArray;
 
-          let result = switch(matchingGames){
-          | [gameState, ..._rest] => 
-            joinGame2(socket, username, gameState);
-          | _ => Belt.Result.Error("Game not found.");
-          };
+          let maybeGameState =
+            switch (matchingGames) {
+            | [gameState, ..._rest] => Some(gameState)
+            | _ => None
+            };
+
+          let result =
+            switch (maybeGameState) {
+            | None => Belt.Result.Error("Game not found.")
+            | Some(gameState) =>
+              switch (joinGame2(socket, username, gameState)) {
+              | Belt.Result.Ok(gameState2) => Belt.Result.Ok((gameState, gameState2))
+              | _ => Belt.Result.Error("Failed to join game")
+              }
+            };
+            
 
           switch(result){
           | Belt.Result.Error(message) => 
             ack(SocketMessages.AckError(message))
-          | Belt.Result.Ok(gameState) => 
-            switch(gameState.Game.game_id){
+          | Belt.Result.Ok((gameState, gameState2)) => 
+            switch(gameState2.game_id){
             | Public(_) => 
               ack(SocketMessages.AckError("Game not found."))
             | Private(code) =>
-              StringMap.set(roomKey_gameState, code, gameState);
-              updateClientStates(gameState); 
+              let gameState3 = {
+                ...gameState2,
+                Game.maybeKickTimeoutId: reconcileKickTimeout(gameState, gameState2),
+              };
+              StringMap.set(roomKey_gameState, code, gameState3);
+              updateClientStates(gameState3); 
               ack(SocketMessages.AckOk)
             }
           };
