@@ -38,6 +38,7 @@ let make = (~sendJoinGame) => {
              <input
                className="bg-white focus:outline-0 focus:shadow-outline border border-gray-300 rounded-lg py-2 px-4 block appearance-none leading-normal"
                type_="text"
+               autoFocus=true
                minLength=8
                maxLength=12
                placeholder="Enter your invite code"
