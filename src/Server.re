@@ -651,11 +651,14 @@ SockServ.onConnect(
         | IO_JoinPrivateGame(inviteCode, username, ioClientSettings) =>
           logger.info("Invite code: " ++ inviteCode);
           /** Find game having the provided invite code */
-          let gameMatchesCode = (inviteCode, gameState ) => {
-            switch(gameState.Game.game_id){
+          let gameMatchesCode = (inviteCode, gameState) => {
+            let normalizeCode = code =>
+              /** Lowercases all letters and removes spaces */ Js.String.toLowerCase(code)
+              |> Js.String.replaceByRe([%re "/ /g"], "");
+            switch (gameState.Game.game_id) {
             | Public(_) => false
-            | Private(code) => inviteCode == code
-            }
+            | Private(code) => normalizeCode(code) == normalizeCode(inviteCode)
+            };
           };
 
           let matchingGames = StringMap.valuesToArray(roomKey_gameState)
