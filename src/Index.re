@@ -257,10 +257,17 @@ module App = {
                )}>
                {ReasonReact.string("All Fours")}
              </div>
-             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./feedback")}>
-            //  <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
-               {ReasonReact.string("Join Public Game")}
-             </button>
+             {
+               let onClick = _event =>
+                 node_env == "production"
+                   ? ReasonReactRouter.push("./feedback")
+                   : sendIO(
+                       IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+                     );
+               <button className="btn btn-blue mt-1" onClick>
+                 {ReasonReact.string("Join Public Game")}
+               </button>
+             }
              <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./private-games/")}>
                {ReasonReact.string("Join Private Game")}
              </button>
