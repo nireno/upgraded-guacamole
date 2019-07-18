@@ -308,21 +308,25 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
     | None =>
       //clear the previous timeout
       My.Global.clearMaybeTimeout(prevGameState.maybeKickTimeoutId);
-      None;
+      nextGameState;
     | Some(nextActivePlayer) =>
       // clear the prev timeout
       My.Global.clearMaybeTimeout(prevGameState.maybeKickTimeoutId);
       // and setup a new one for the new active player
       let playerToKick = Quad.get(nextActivePlayer.id, nextGameState.players);
-      Some(
-        Js.Global.setTimeout(
-          () => kickPlayer(playerToKick),
-          SharedGame.settings.kickPlayerMillis,
-        ),
-      );
+
+      let maybeKickTimeoutId =
+        Some(
+          Js.Global.setTimeout(
+            () => kickPlayer(playerToKick),
+            SharedGame.settings.kickPlayerMillis,
+          ),
+        );
+
+      {...nextGameState, maybeKickTimeoutId};
     };
   } else {
-    nextGameState.maybeKickTimeoutId;
+    nextGameState;
   };
 };
 
@@ -453,10 +457,7 @@ let joinGame = (socket, username, clientSettings) => {
       notis: gameAftJoining.notis @ playerJoinedNotis,
     };
 
-    let gameAftKickReconciling = {
-      ...gameAftUpdating,
-      maybeKickTimeoutId: reconcileKickTimeout(gameForJoining, gameAftUpdating),
-    };
+    let gameAftKickReconciling = reconcileKickTimeout(gameForJoining, gameAftUpdating);
 
     logger.info2(Game.debugOfState(gameAftKickReconciling), "Saving game state." );
 
@@ -607,10 +608,7 @@ SockServ.onConnect(
           
           let nextGameState = GameReducer.reduce(action, prevGameState);
 
-          let nextGameState = {
-            ...nextGameState,
-            maybeKickTimeoutId: reconcileKickTimeout(prevGameState, nextGameState),
-          };
+          let nextGameState = reconcileKickTimeout(prevGameState, nextGameState);
 
           let isEndTrick =
             Quad.map(
@@ -629,8 +627,7 @@ SockServ.onConnect(
               | None => ()
               | Some(prevGameState) =>
                 let nextGameState = GameReducer.reduce(AdvanceRound, prevGameState);
-                let maybeKickTimeoutId = reconcileKickTimeout(prevGameState, nextGameState);
-                let nextGameState = {...nextGameState, maybeKickTimeoutId};
+                let nextGameState = reconcileKickTimeout(prevGameState, nextGameState);
                 StringMap.set(roomKey_gameState, roomKey, nextGameState);
                 updateClientStates(nextGameState);
               };
@@ -695,12 +692,9 @@ SockServ.onConnect(
             | Public(_) => 
               ack(SocketMessages.AckError("Game not found."))
             | Private(code) =>
-              let gameState3 = {
-                ...gameState2,
-                Game.maybeKickTimeoutId: reconcileKickTimeout(gameState, gameState2),
-              };
-              StringMap.set(roomKey_gameState, code, gameState3);
-              updateClientStates(gameState3); 
+              let gameStateAftReconcileKick = reconcileKickTimeout(gameState, gameState2);
+              StringMap.set(roomKey_gameState, code, gameStateAftReconcileKick);
+              updateClientStates(gameStateAftReconcileKick); 
               ack(SocketMessages.AckOk)
             }
           };
