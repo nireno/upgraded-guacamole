@@ -18,8 +18,9 @@
 }
 
 .btn-grey {
-  @apply bg-gray-200 text-gray-900;
+  @apply bg-gray-200 text-gray-900 py-2 px-4 border border-solid border-gray-300 shadow;
 }
+
 .btn-grey:hover {
   @apply bg-gray-400;
 }

@@ -23,6 +23,7 @@ type clientToServer =
   | IO_DealAgain
   | IO_LeaveGame
   | IO_PlayAgain(ioUsername, ioClientSettings)
+  | IO_Substitute(ioUsername)
   | IO_CheatPoints(ioTeamId, int);
 
 let stringOfClientToServer = fun
@@ -40,6 +41,7 @@ let stringOfClientToServer = fun
   | IO_DealAgain => "DealAgain"
   | IO_LeaveGame => "LeaveGame"
   | IO_PlayAgain(ioUsername, _ioClientSettings) => {j|PlayAgain($ioUsername)|j}
+  | IO_Substitute(ioUsername) => {j|Substitute($ioUsername)|j}
   | IO_CheatPoints(_ioTeamId, _int) => "CheatPoints";
 
 type serverToClient =

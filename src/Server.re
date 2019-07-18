@@ -495,11 +495,13 @@ let rec makePrivateGame = (socket, username, clientSettings) => {
   };
 };
 
+type gameReducerResult('state) = NoUpdate | Update('state);
+
 let joinGame2 = (socket, username, gameState) => {
   let socketId = SockServ.Socket.getId(socket);
   let str_game_id = Game.(stringOfGameId(gameState.game_id));
   switch (Game.findEmptySeat(gameState)) {
-  | None => Belt.Result.Error("The game is already full.")
+  | None => NoUpdate
   | Some(playerId) =>
     let pla_name = username == "" ? Player.stringOfId(playerId) : username;
     let socket = SockServ.Socket.join(socket, str_game_id);
@@ -522,7 +524,7 @@ let joinGame2 = (socket, username, gameState) => {
       | otherPhase => otherPhase
       };
 
-    Belt.Result.Ok({...gameState, players, phase});
+    Update({...gameState, players, phase});
   };
 };
 
@@ -570,8 +572,8 @@ SockServ.onConnect(
         let gameState = makePrivateGame(socket, username, clientSettings);
         let str_game_id = Game.(stringOfGameId(gameState.game_id));
         switch (joinGame2(socket, username, gameState)) {
-        | Belt.Result.Error(e) => logger.error2({"error": e}, "Failed to join game")
-        | Belt.Result.Ok(gameState) =>
+        | NoUpdate => logger.warn("Failed to join new private game")
+        | Update(gameState) =>
           logger.info2(Game.debugOfState(gameState), "Saving game state and updating clients.");
 
           StringMap.set(roomKey_gameState, str_game_id, gameState);
@@ -594,6 +596,35 @@ SockServ.onConnect(
           decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
         joinGame(socket, username, clientSettings);
         logger.info2(getGameStats(), "Game stats:");
+      | IO_Substitute(username) => 
+        let publicGames =
+          StringMap.valuesToArray(roomKey_gameState) |> Belt.Array.keep(_, Game.isPublic);
+        switch (
+          publicGames |> Belt.Array.keep(_, game => game.phase->Game.isFindSubsPhase) |> Array.to_list
+        ) {
+        | [] => ()
+        | [gameForJoining, ..._rest] =>
+          leaveGame(socket);
+          switch (joinGame2(socket, username, gameForJoining)) {
+          | NoUpdate => logger.warn("Removed player from game but then failed to join as substitute.")
+          | Update(gameAftJoining) =>
+            let gameAftKickReconciling = reconcileKickTimeout(gameForJoining, gameAftJoining);
+            mutateAndPublish(GameReducer.Noop, roomKey_gameState, gameAftKickReconciling);
+            /* 
+              If no game is left in the FindSubsPhase after this, 
+              disable subbing for any players in the FindPlayersPhase.
+            */
+            StringMap.valuesToArray(roomKey_gameState)
+            |> Belt.Array.some(_, game => game->Game.isPublic && game.phase->Game.isFindSubsPhase)
+              ? ()
+              : StringMap.valuesToArray(roomKey_gameState)
+                |> Belt.Array.keep(_, game => game->Game.isPublic && game.phase->Game.isFindPlayersPhase)
+                |> Belt.Array.forEach(
+                     _,
+                     mutateAndPublish(GameReducer.UpdateSubbing(false), roomKey_gameState),
+                   );
+          };
+        };
       | ioAction =>
         let roomKey =
           switch (StringMap.get(socketId_playerData, socket->SockServ.Socket.getId)) {
@@ -676,10 +707,10 @@ SockServ.onConnect(
           let result =
             switch (maybeGameState) {
             | None => Belt.Result.Error("Game not found.")
-            | Some(gameState) =>
-              switch (joinGame2(socket, username, gameState)) {
-              | Belt.Result.Ok(gameState2) => Belt.Result.Ok((gameState, gameState2))
-              | _ => Belt.Result.Error("Failed to join game")
+            | Some(gameForJoin) =>
+              switch (joinGame2(socket, username, gameForJoin)) {
+              | Update(gameAftJoin) => Belt.Result.Ok((gameForJoin, gameAftJoin))
+              | NoUpdate => Belt.Result.Error("Failed to join game")
               }
             };
             

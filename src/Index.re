@@ -530,13 +530,16 @@ module App = {
                 <Modal visible=true>
                   {
                     switch (state.gameId) {
-                    | Public(_) => <FindPlayersView n canSub />
+                    | Public(_) =>
+                      <FindPlayersView
+                        n
+                        canSub
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        onSubClick={_event => sendIO(IO_Substitute(username))}
+                      />
                     | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id />
                     };
                   }
-                  <button className="btn btn-blue mt-4" onClick={_event => sendIO(IO_LeaveGame)}>
-                    {ReasonReact.string("Cancel")}
-                  </button>
                 </Modal>
               | FindSubsPhase(n, _) => <Modal visible=true> <FindSubsView n /> </Modal>
               | GameOverPhase =>
