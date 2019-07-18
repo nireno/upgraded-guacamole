@@ -28,3 +28,5 @@ let decodeWithDefault = (decode, default, jsonString) => {
   | _error => default
   };
 };
+
+let not = b => !b
