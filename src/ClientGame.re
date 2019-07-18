@@ -41,7 +41,7 @@ type state = {
 let initialState = {
   gameId: Public(""),
   phase: PlayerIdlePhase,
-  gamePhase: FindPlayersPhase(3),
+  gamePhase: FindPlayersPhase(3, false),
   players: (
     {pla_name: Player.stringOfId(N1), pla_card: None},
     {pla_name: Player.stringOfId(N2), pla_card: None},
@@ -83,14 +83,14 @@ let reducer = (prevState, action) => {
 
     let (prevHasEmptySeats, prevNumEmptySeats) =
       switch (prevState.gamePhase) {
-      | FindPlayersPhase(n)
+      | FindPlayersPhase(n, _)
       | FindSubsPhase(n, _) => (true, n)
       | _ => (false, 0)
       };
 
     let (currHasEmptySeats, currNumEmptySeats) =
       switch (nextState.gamePhase) {
-      | FindPlayersPhase(n)
+      | FindPlayersPhase(n, _)
       | FindSubsPhase(n, _) => (true, n)
       | _ => (false, 0)
       };

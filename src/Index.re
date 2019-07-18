@@ -519,11 +519,11 @@ module App = {
                </div>
              </div>
              {switch (state.gamePhase) {
-              | FindPlayersPhase(n) =>
+              | FindPlayersPhase(n, canSub) =>
                 <Modal visible=true>
                   {
                     switch (state.gameId) {
-                    | Public(_) => <FindPlayersView n />
+                    | Public(_) => <FindPlayersView n canSub />
                     | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id />
                     };
                   }

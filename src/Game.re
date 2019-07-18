@@ -87,7 +87,7 @@ let initialState = () => {
     maybeTeamLow: None,
     maybeTeamJack: None,
     maybeTeamGame: None,
-    phase: FindPlayersPhase(4),
+    phase: FindPlayersPhase(4, false),
     maybeKickTimeoutId: None,
   };
 };
@@ -186,6 +186,29 @@ let isEmpty = (state) => {
     |> toList
     |> Belt.List.every(_, Js.Option.isNone))
 };
+
+let isPublic = (state) => {
+  switch(state.game_id){
+  | Public(_) => true
+  | Private(_) => false
+  }
+};
+
+let isPrivate = (state) => {
+  switch(state.game_id){
+  | Public(_) => false
+  | Private(_) => true
+  }
+};
+
+let isFindPlayersPhase = fun
+| FindPlayersPhase(_, _) => true
+| _ => false;
+
+let isFindSubsPhase = fun
+| FindSubsPhase(_, _) => true
+| _ => false;
+
 
 let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase) =
   (gamePhase, dealerId, playerId) => {

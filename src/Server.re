@@ -233,6 +233,15 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
     
   };
 
+/* Apply the reducer action, save the updated game (in memory) and emit io
+   that should cause clients to update. */
+let mutateAndPublish = (action, roomKey_gameState, stateForAction:Game.state ) => {
+  let stateAftAction = GameReducer.reduce(action, stateForAction);
+  let key = SharedGame.stringOfGameId(stateAftAction.Game.game_id);
+  StringMap.set(roomKey_gameState, key, stateAftAction);
+  updateClientStates(stateAftAction);
+};
+
 let leaveGame = socket => {
   let logger =
     logger.makeChild({"_context": "leaveGame", "socketId": SockServ.Socket.getId(socket)});
@@ -244,29 +253,37 @@ let leaveGame = socket => {
     | Some(roomKey) =>
       switch (StringMap.get(roomKey_gameState, roomKey)) {
       | None => ()
-      | Some(gameState) =>
-        switch (Game.maybeGetSocketPlayer(socket, gameState)) {
+      | Some(gameForLeaving) =>
+        switch (Game.maybeGetSocketPlayer(socket, gameForLeaving)) {
         | None => ()
         | Some(playerId) =>
           logger.debug2(
             {
               "player": {
-                "username": Quad.select(playerId, player => player.Game.pla_name, gameState.players),
+                "username": Quad.select(playerId, player => player.Game.pla_name, gameForLeaving.players),
                 "playerId": Player.stringOfId(playerId),
               },
 
-              "game": Game.debugOfState(gameState),
+              "game": Game.debugOfState(gameForLeaving),
             },
             "Removing player from game.",
           );
-          My.Global.clearMaybeTimeout(gameState.maybeKickTimeoutId);
-          let gameState' = {...gameState, maybeKickTimeoutId: None};
-          let gameState' = GameReducer.reduce(LeaveGame(playerId), gameState');
-          if (Game.playerCount(gameState') == 0) {
+          My.Global.clearMaybeTimeout(gameForLeaving.maybeKickTimeoutId);
+          let gameAftLeaving = GameReducer.reduce(LeaveGame(playerId), gameForLeaving)
+          if (Game.playerCount(gameAftLeaving) == 0) {
             StringMap.remove(roomKey_gameState, roomKey);
           } else {
-            StringMap.set(roomKey_gameState, roomKey, gameState');
-            updateClientStates(gameState');
+            StringMap.set(roomKey_gameState, roomKey, gameAftLeaving);
+            updateClientStates(gameAftLeaving);
+
+            if (gameAftLeaving->Game.isPublic && gameAftLeaving.phase->Game.isFindSubsPhase) {
+              /* forall public games in FindPlayersPhase, inform the players that they can
+                 choose to become a substitute player in an existing public game */
+              StringMap.valuesToArray(roomKey_gameState)
+              |> Belt.Array.keep(_, game => game->Game.isPublic && game.phase->Game.isFindPlayersPhase)
+              |> Belt.Array.forEach( _, mutateAndPublish(GameReducer.UpdateSubbing(true), roomKey_gameState),
+                 );
+            };
           };
 
           SockServ.Socket.emit(socket, SocketMessages.Reset);
@@ -319,8 +336,10 @@ let joinGame = (socket, username, clientSettings) => {
     | _ => false
     };
 
-  let allGameStates =
-    StringMap.valuesToArray(roomKey_gameState) |> Belt.Array.keep(_, isPublicGame) |> Array.to_list;
+  let publicGames = StringMap.valuesToArray(roomKey_gameState)
+    |> Belt.Array.keep(_, Game.isPublic);
+  let publicGamesFindingPlayers = Belt.Array.keep(publicGames, game => game.phase->Game.isFindPlayersPhase);
+  let publicGamesFindingSubs  = Belt.Array.keep(publicGames, game => game.phase->Game.isFindSubsPhase);
 
   /** 
     Lag on the client or other issues might cause the player to try joining multiple
@@ -328,18 +347,17 @@ let joinGame = (socket, username, clientSettings) => {
   */
   let maybeGetPlayerGame = (socket, gameStates) => {
     switch (
-      List.filter(
-        gameState =>
-          Quad.exists(player => player.Game.pla_socket == Some(socket), gameState.Game.players),
-        gameStates,
+      Belt.Array.keep(gameStates, gameState =>
+        Quad.exists(player => player.Game.pla_socket == Some(socket), gameState.Game.players)
       )
+      |> Array.to_list
     ) {
     | [] => None
     | [gameState, ..._rest] => Some(gameState)
     };
   };
   
-  switch(maybeGetPlayerGame(socket, allGameStates)){
+  switch(maybeGetPlayerGame(socket, publicGames)){
   | Some(gameState) => 
     let maybePlayerIdAndData = 
       Quad.getPairWhere(player => player.Game.pla_socket == Some(socket), gameState.Game.players);
@@ -356,43 +374,17 @@ let joinGame = (socket, username, clientSettings) => {
     }
   | None => 
 
-    let isUnfilledGame = (gameState) =>
-      switch (gameState.Game.phase) {
-      | FindPlayersPhase(_) => true
-      | FindSubsPhase(_, _) when clientSettings.ClientSettings.allowSubbing => true
-      | _ => false
-      };
-  
-    let unfilledGamesPrioritized = allGameStates
-    |> List.filter(isUnfilledGame)
-    /* Prioritize games in the FindSubsPhase */
-    |> List.sort((game1, game2) =>
-          switch (game1.Game.phase) {
-          | FindSubsPhase(_) => (-1)
-          | _ =>
-            switch (game2.phase) {
-            | FindSubsPhase(_) => 1
-            | _ => 0
-            }
-          }
-        );
-
-    let prevGameState =
-      switch (unfilledGamesPrioritized) {
-      | [] => {...Game.initialState(), game_id: Public(nextGameId() |> string_of_int)}
+    let gameForJoining =
+      switch (publicGamesFindingPlayers |> Array.to_list) {
+      | [] => {
+          ...Game.initialState(),
+          game_id: Public(nextGameId() |> string_of_int),
+          phase: FindPlayersPhase(3, Array.length(publicGamesFindingSubs) == 0 ? false : true),
+        }
       | [gameState, ..._rest] => gameState
       };
     
-    let roomKey = Game.stringOfGameId(prevGameState.game_id);
-    // let maybeRoom =
-    //   ns
-    //   |> Namespace.getAdapter
-    //   |> BsSocketExtra.Adapter.getRoom(gameRoom.roomKey);
-    // switch (maybeRoom) {
-    // | Some(ar) =>
-    // let playerCount = BsSocketExtra.AdapterRoom.length(ar);
-    // | None => failwith("Expected Some AdapterRoom but got None.") // Improve error handling #unsafe #todo
-    // };
+    let roomKey = Game.stringOfGameId(gameForJoining.game_id);
 
     let socket = SockServ.Socket.join(socket, roomKey);
     StringMap.set(
@@ -401,38 +393,50 @@ let joinGame = (socket, username, clientSettings) => {
       {maybeRoomKey: Some(roomKey)},
     );
 
-    let playerId = Game.findEmptySeat(prevGameState) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
+    let playerId = Game.findEmptySeat(gameForJoining) |> Js.Option.getExn; // #unsafe #todo Handle attempt to join a full room or fix to ensure that unfilled room was actually unfilled
     let pla_name = username == "" ? Player.stringOfId(playerId) : username;
-    let nextGameState =
-      {
-        ...prevGameState,
-        players:
-          Quad.update(
-            playerId,
-            x =>
-              Game.{
-                ...x,
-                pla_name: pla_name,
-                pla_socket: Some(socket),
-              },
-            prevGameState.players,
-          ),
-      };
+    let gameAftJoining = {
+      ...gameForJoining,
+      players:
+        Quad.update(
+          playerId,
+          x => Game.{...x, pla_name, pla_socket: Some(socket)},
+          gameForJoining.players,
+        ),
+    };
 
-    let playerCount = Game.playerCount(nextGameState);
+    let playerCount = Game.playerCount(gameAftJoining);
     let playersNeeded = 4 - playerCount;
 
-    let phase' = 
-      switch (prevGameState.phase) {
+    let phaseAftPhasing =
+      switch (gameAftJoining.phase) {
       | FindSubsPhase(_n, subPhase) =>
-        playersNeeded == 0
-          ? subPhase
-          : FindSubsPhase(playersNeeded, subPhase)
-      | FindPlayersPhase(_n) =>
-        playersNeeded == 0
-          ? DealPhase
-          : FindPlayersPhase(playersNeeded);
+        if (playersNeeded == 0) {
+          subPhase;
+        } else {
+          FindSubsPhase(playersNeeded, subPhase);
+        }
+
+      | FindPlayersPhase(_n, canSub) =>
+        playersNeeded == 0 ? DealPhase : FindPlayersPhase(playersNeeded, canSub)
       | otherPhase => otherPhase
+      };
+
+    if (gameAftJoining.phase->Game.isFindSubsPhase && not(phaseAftPhasing->Game.isFindSubsPhase)) {
+      /* 
+        This may be the last game to exit the FindSubPhase Any games that are in the
+        FindPlayersPhase needs to disable the option for subbing.
+      */
+      let canSub =
+        publicGames |> Belt.Array.some(_, gameState => Game.isFindSubsPhase(gameState.phase));
+
+      if (!canSub) {
+        Belt.Array.keep(publicGames, gameState => Game.isFindPlayersPhase(gameState.phase))
+        |> Belt.Array.forEach(
+             _,
+             mutateAndPublish(GameReducer.UpdateSubbing(false), roomKey_gameState),
+           );
+      };
     };
 
     let playerJoinedNotis =
@@ -443,21 +447,21 @@ let joinGame = (socket, username, clientSettings) => {
         (),
       );
 
-    let nextGameState = {
-      ...nextGameState,
-      phase: phase',
-      notis: prevGameState.notis @ playerJoinedNotis,
+    let gameAftUpdating = {
+      ...gameAftJoining,
+      phase: phaseAftPhasing,
+      notis: gameAftJoining.notis @ playerJoinedNotis,
     };
 
-    let nextGameState = {
-      ...nextGameState,
-      maybeKickTimeoutId: reconcileKickTimeout(prevGameState, nextGameState),
-    }
+    let gameAftKickReconciling = {
+      ...gameAftUpdating,
+      maybeKickTimeoutId: reconcileKickTimeout(gameForJoining, gameAftUpdating),
+    };
 
-    logger.info2(Game.debugOfState(nextGameState), "Saving game state." );
+    logger.info2(Game.debugOfState(gameAftKickReconciling), "Saving game state." );
 
-    StringMap.set(roomKey_gameState, roomKey, nextGameState);
-    updateClientStates(nextGameState);
+    StringMap.set(roomKey_gameState, roomKey, gameAftKickReconciling);
+    updateClientStates(gameAftKickReconciling);
   }
 };
 
@@ -512,7 +516,8 @@ let joinGame2 = (socket, username, gameState) => {
       switch (gameState.phase) {
       | FindSubsPhase(_n, subPhase) =>
         playersNeeded == 0 ? subPhase : FindSubsPhase(playersNeeded, subPhase)
-      | FindPlayersPhase(_n) => playersNeeded == 0 ? DealPhase : FindPlayersPhase(playersNeeded)
+      | FindPlayersPhase(_n, false) =>
+        playersNeeded == 0 ? DealPhase : FindPlayersPhase(playersNeeded, false)
       | otherPhase => otherPhase
       };
 
