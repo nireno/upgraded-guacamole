@@ -5,7 +5,7 @@ type ioCard = str_json
 type ioInviteCode = string
 type ioUsername = string
 type ioClientState = str_json
-type ioClientNotis = str_json
+type ioToast = str_json
 type ioClientSettings = str_json
 
 type clientToServer =
@@ -46,7 +46,7 @@ let stringOfClientToServer = fun
 
 type serverToClient =
   | SetState(ioClientState)
-  | AddNotis(ioClientNotis)
+  | ShowToast(ioToast)
   | Reset
   | AckOk
   | AckError(string);

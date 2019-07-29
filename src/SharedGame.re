@@ -15,7 +15,6 @@ let stringOfGameId =
   | Public(str)
   | Private(str) => str;
 
-[@decco] type notis = list(Noti.t);
 
 let kickPoints =
   Card.Rank.(
@@ -63,6 +62,17 @@ type phase =
   | PackDepletedPhase
   | GameOverPhase;
 
+let isPlayerActivePhase = fun
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase(_) 
+  | PackDepletedPhase => true
+  | IdlePhase 
+  | FindSubsPhase(_, _)
+  | FindPlayersPhase(_, _)
+  | GameOverPhase => false;
 
 let rec phase_encode =
   fun

@@ -1,6 +1,8 @@
+module StringMap = Belt.Map.String;
 let appLogger = Pino.make({"messageKey": "_msg", "level": "debug", "_app": "allfours", "_module": "AppPrelude"});
 
 type str_json = string;
+type sock_id = string;
 
 let teamIdtoName = (weTeamId, teamId) => {
   teamId == weTeamId ? "We" : "Dem"
@@ -29,4 +31,11 @@ let decodeWithDefault = (decode, default, jsonString) => {
   };
 };
 
-let not = b => !b
+let not = b => !b;
+let identity: 'a. 'a => 'a = a => a;
+
+type update('state, 'effect) =
+  | NoUpdate('state)
+  | Update('state)
+  | UpdateWithSideEffects('state, list('effect))
+  | SideEffects('state, list('effect))

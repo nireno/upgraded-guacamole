@@ -442,7 +442,7 @@ let rec reduce = (action, state) =>
         let players =
           state.players
           |> Quad.update(leavingPlayerId, x =>
-               {...x, pla_name: Player.stringOfId(leavingPlayerId), pla_socket: None}
+               {...x, pla_name: Player.stringOfId(leavingPlayerId), sock_id_maybe: None}
              );
 
         let playerLeftNotis =

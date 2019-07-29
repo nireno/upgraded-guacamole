@@ -101,10 +101,10 @@ module App = {
             | Belt.Result.Ok(state) =>
               dispatch(MatchServerState(state));
             }
-          | AddNotis(ioNotis) =>
-            switch (ClientGame.notis_decode(ioNotis |> Js.Json.parseExn)) {
+          | ShowToast(ioToast) =>
+            switch (Noti.t_decode(ioToast |> Js.Json.parseExn)) {
             | Belt.Result.Error(err) => Js.log(err)
-            | Belt.Result.Ok(newNotis) => updateNotis(Add(newNotis))
+            | Belt.Result.Ok(toast) => updateNotis(AddOne(toast))
             }
           | Reset =>
             dispatch(MatchServerState(ClientGame.initialState));
