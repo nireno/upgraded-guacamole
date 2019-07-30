@@ -509,20 +509,21 @@ SocketServer.onConnect(
         // SocketServer.Store.dispatch(RemoveSocket(socket));
         logger.info2(getGameStats(), "Game stats:");
       | IO_PlayAgain(username, _ioClientSettingsJson) =>
-        switch(ServerStore.getGameBySocket(sock_id)){
-        | None => ()
-        | Some(gameState) => 
-          let newGameState = switch(gameState.game_id){
-          | Public(_) => Game.initialState()
-          | Private(_) => Game.initPrivateGame()
-          }
+        switch (ServerStore.getGameBySocket(sock_id)) {
+        | None => ServerStore.dispatch(TriggerEffects([ServerEffect.ResetClient(sock_id)]))
+        | Some(gameState) =>
+          let newGameState =
+            switch (gameState.game_id) {
+            | Public(_) => Game.initialState()
+            | Private(_) => Game.initPrivateGame()
+            };
 
           ServerStore.dispatchMany([
             RemovePlayerBySocket(sock_id),
             AddGame(newGameState),
-            AttachPlayer(newGameState.game_id, sock_id, username)
+            AttachPlayer(newGameState.game_id, sock_id, username),
           ]);
-        }
+        };
         // leaveGame(socket);
         // let clientSettings =
         //   decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
