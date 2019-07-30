@@ -311,6 +311,11 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           );
           My.Global.clearMaybeTimeout(gameForLeave.maybeKickTimeoutId);
           let gameAftLeave = GameReducer.reduce(LeaveGame(player_id), gameForLeave);
+          let playerLeftToasts =
+            gameAftLeave.notis->List.keepMap(gameAftLeave->Join.mapNotiToSocketMaybe);
+
+          let gameAftLeave = GameReducer.reduce(ClearNotis, gameAftLeave);
+
           if (Game.playerCount(gameAftLeave) == 0) {
             // Remove the game if it becomes empty
             updateMany(
@@ -327,6 +332,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
                 TriggerEffects([
                   ServerEffect.ResetClient(sock_id),
                   ServerEffect.EmitStateByGame(gameAftLeave.game_id),
+                  ServerEffect.EmitClientToasts(playerLeftToasts),
                 ]),
                 ReconcileSubstitution,
               ],
@@ -455,8 +461,6 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
       | None => NoUpdate(db)
       | Some(gameState) =>
         let {Game.game_id} as gameAftAction = GameReducer.reduce(action, gameState);
-        let db_game =
-          db_game->StringMap.set(gameState.game_id->Game.stringOfGameId, gameAftAction);
 
         let maybeKickEffect =
           switch (reconcileKickTimeout(gameState, gameAftAction)) {
@@ -465,23 +469,35 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           | Reset => Some(ResetKickTimeout(game_id))
           };
 
-        // Check if all players have a pla_card on the board to know if this is the
-        // end of the trick.
-        let isEndTrick =
-          Quad.map(
-            player => Js.Option.isSome(player.Game.pla_card) ? true : false,
-            gameAftAction.players,
-          )
-          |> Quad.foldLeftUntil(
-               (iPlayed, wePlayed) => wePlayed && iPlayed,
-               wePlayed => !wePlayed,
-               true,
-             );
 
-        let maybeAdvanceRound =
+        let maybeAdvanceRound = {
+          // Check if all players have a pla_card on the board to know if this is the
+          // end of the trick.
+          let isEndTrick =
+            Quad.map(
+              player => Js.Option.isSome(player.Game.pla_card) ? true : false,
+              gameAftAction.players,
+            )
+            |> Quad.foldLeftUntil(
+                 (iPlayed, wePlayed) => wePlayed && iPlayed,
+                 wePlayed => !wePlayed,
+                 true,
+               );
           isEndTrick ? Some(ServerEffect.DelayThenAdvanceRound(game_id)) : None;
+        };
+        
+        let toasts = gameAftAction.notis->List.keepMap(Join.mapNotiToSocketMaybe(gameAftAction));
+        let gameAftAction'clearNotis = GameReducer.reduce(ClearNotis, gameAftAction);
 
-        let someEffects = [maybeAdvanceRound, maybeKickEffect]->List.keepMap(identity);
+        let db_game =
+          db_game->StringMap.set(gameState.game_id->Game.stringOfGameId, gameAftAction'clearNotis);
+
+        let maybeEmitToastsEffect = switch(toasts){
+        | [] => None
+        | toasts => Some(ServerEffect.EmitClientToasts(toasts))
+        }
+
+        let someEffects = [maybeAdvanceRound, maybeKickEffect, maybeEmitToastsEffect]->List.keepMap(identity);
 
         updateMany(
           [TriggerEffects([EmitStateByGame(game_id), ...someEffects])],
