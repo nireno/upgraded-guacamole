@@ -512,17 +512,20 @@ SocketServer.onConnect(
         switch (ServerStore.getGameBySocket(sock_id)) {
         | None => ServerStore.dispatch(TriggerEffects([ServerEffect.ResetClient(sock_id)]))
         | Some(gameState) =>
-          let newGameState =
             switch (gameState.game_id) {
-            | Public(_) => Game.initialState()
-            | Private(_) => Game.initPrivateGame()
+            | Public(_) => ServerStore.dispatchMany([
+                RemovePlayerBySocket(sock_id),
+                AttachPublicPlayer(sock_id, username)
+            ])
+            | Private(_) => 
+              let newGameState = Game.initPrivateGame()
+              ServerStore.dispatchMany([
+                RemovePlayerBySocket(sock_id),
+                AddGame(newGameState),
+                AttachPlayer(newGameState.game_id, sock_id, username),
+              ]);
             };
 
-          ServerStore.dispatchMany([
-            RemovePlayerBySocket(sock_id),
-            AddGame(newGameState),
-            AttachPlayer(newGameState.game_id, sock_id, username),
-          ]);
         };
         // leaveGame(socket);
         // let clientSettings =
