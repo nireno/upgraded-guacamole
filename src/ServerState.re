@@ -350,13 +350,25 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         logger.info("Attaching player to a new public game.");
         let nextGameId = db.db_public_games_created + 1;
         let gameState = {...Game.initialState(), game_id: Public(nextGameId->string_of_int)};
-        update(AddGame(gameState), db)
-        |> updateResult(IncrementPublicGamesCreated)
-        |> updateResult(AttachPlayer(gameState.game_id, sock_id, username))
-        |> updateResult(ReconcileSubstitution);
+        updateMany(
+          [
+            AddGame(gameState),
+            IncrementPublicGamesCreated,
+            RemovePlayerBySocket(sock_id),
+            AttachPlayer(gameState.game_id, sock_id, username),
+            ReconcileSubstitution,
+          ],
+          NoUpdate(db),
+        );
       | [gameState, ..._rest] => 
         logger.info("Attaching player to an existing public game.");
-        update(AttachPlayer(gameState.game_id, sock_id, username), db)
+        updateMany(
+          [
+            RemovePlayerBySocket(sock_id), 
+            AttachPlayer(gameState.game_id, sock_id, username)
+          ],
+          NoUpdate(db),
+        );
       };
     | AttachPrivatePlayer(sock_id, username, inviteCode, ack) =>
       /** Find game having the provided invite code */
@@ -379,6 +391,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
       | [gameState, ..._rest] =>
         updateMany(
           [
+            RemovePlayerBySocket(sock_id),
             AttachPlayer(gameState.game_id, sock_id, username),
             TriggerEffects([ServerEffect.EmitAck(ack, SocketMessages.AckOk)]),
           ],
