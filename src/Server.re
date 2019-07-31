@@ -471,7 +471,7 @@ SocketServer.onConnect(
       | IO_StartPrivateGame(username, _ioClientSettingsJson) =>
         // let clientSettings =
         //   decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
-        let gameState = Game.initPrivateGame();
+        let gameState = ServerStore.initPrivateGame();
         // let gameState = makePrivateGame(socket, username, clientSettings);
         // let str_game_id = Game.(stringOfGameId(gameState.game_id));
         ServerStore.dispatch(AddGame(gameState));
