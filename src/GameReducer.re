@@ -372,7 +372,7 @@ let rec reduce = (action, state) =>
           switch (state.maybeTrumpCard) {
           | None =>
             failwith(
-              "DealMore action expected state.kick to be Some thing but got None",
+              "DealMore action expected state.maybeTrumpCard to be Some thing but got None",
             )
           | Some(k) => k
           };
