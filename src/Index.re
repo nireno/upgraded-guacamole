@@ -537,7 +537,7 @@ module App = {
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
                         onSubClick={_event => sendIO(IO_Substitute(username))}
                       />
-                    | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id />
+                    | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id onLeaveClick={_event => sendIO(IO_LeaveGame)}/>
                     };
                   }
                 </Modal>

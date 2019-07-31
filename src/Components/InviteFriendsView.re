@@ -1,5 +1,5 @@
 [@react.component]
-let make = (~inviteCode, ~n) => {
+let make = (~onLeaveClick, ~inviteCode, ~n) => {
   let initialCopyText = "copy invite code"
   let (copyText, updateCopyText) = React.useState(() => initialCopyText);
   let friends = Grammar.byNumber(n, "friend");
@@ -23,5 +23,8 @@ let make = (~inviteCode, ~n) => {
     <div className="text-xl mt-6">
       {ReasonReact.string({j|Waiting for $n more $friends...|j})}
     </div>
+    <button className="btn btn-blue mt-4" onClick=onLeaveClick>
+      {ReasonReact.string("Cancel")}
+    </button>
   </div>;
 };
