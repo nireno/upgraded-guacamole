@@ -17,11 +17,7 @@ let make = (~onSave, ~settings) => {
       | _ => volumeLevel
       };
     let floatVal = floatVal < 0.0 ? 0.0 : floatVal > 1.0 ? 1.0 : floatVal;
-    let volume' =
-      switch (volume) {
-      | Mute(_) // Modifying the volume should unmute sound
-      | Level(_) => ClientSettings.Level(floatVal)
-      };
+    let volume' = floatVal == 0.0 ? ClientSettings.Mute(0.0) : Level(floatVal);
     updateVolume(_ => volume');
     let sound = React.Ref.current(blipSoundRef);
     Howler.volume(sound, floatVal);
@@ -37,6 +33,7 @@ let make = (~onSave, ~settings) => {
 
   let handleVolumeIconClick = _event => {
     let volume' = switch(volume){
+    | Mute(n) when n == 0.0 => ClientSettings.defaults.volume
     | Mute(n) => ClientSettings.Level(n)
     | Level(n) => Mute(n)
     };
@@ -52,12 +49,21 @@ let make = (~onSave, ~settings) => {
     <div className="mb-4 text-xl text-center"> {ReasonReact.string("All Fours Settings")} </div>
     <div className="mb-4"> {ReasonReact.string("Sound Effects Volume")} </div>
     <div className="mb-4 flex flex-row h-8">
-      <img
-        src={j|./static/img/$volumeIcon.svg|j}
-        onClick=handleVolumeIconClick
-        className="cursor-pointer"
-        style={ReactDOMRe.Style.make(~height="100%", ~width="auto", ())}
-      />
+      <div
+        className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded inline-flex items-center cursor-pointer"
+        onClick=handleVolumeIconClick>
+        <img
+          src={j|./static/img/$volumeIcon.svg|j}
+          className="block mx-4"
+          style={ReactDOMRe.Style.make(
+            ~height="100%",
+            ~width="auto",
+            ~minHeight="32px",
+            ~minWidth="32px",
+            (),
+          )}
+        />
+      </div>
       <input
         id="volume"
         type_="range"
