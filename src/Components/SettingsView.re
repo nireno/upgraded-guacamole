@@ -1,6 +1,5 @@
 [@react.component]
 let make = (~onSave, ~settings) => {
-  let (allowSubbing, updateAllowSubbing) = React.useState(() => settings.ClientSettings.allowSubbing);
   let (volume, updateVolume) = React.useState(() => settings.ClientSettings.volume);
   let blipSoundRef =
     React.useRef(Howler.(makeHowl(options(~src=[|"./static/audio/blip.mp3"|], ()))));
@@ -45,26 +44,13 @@ let make = (~onSave, ~settings) => {
   };
 
   let onSaveClick = _event => {
-    onSave(ClientSettings.{allowSubbing, volume});
+    onSave(ClientSettings.{volume: volume});
     ReasonReactRouter.push("./");
   };
   
-  <form className="bg-white shadow-md border border-solid border-gray-200 rounded px-8 pt-6 pb-8 mb-4">
+  <form className="bg-white shadow-md border border-solid border-gray-300 rounded px-8 pt-6 pb-8 mb-4 w-10/12">
     <div className="mb-4 text-xl text-center"> {ReasonReact.string("All Fours Settings")} </div>
-    <div className="mb-4"> {ReasonReact.string("Joining a game")} </div>
-    <div className="mb-4 flex flex-row ">
-      <input defaultChecked={allowSubbing ? true : false} type_="radio" name="substitute" id="substitute-yes" onClick={_ => updateAllowSubbing(_prev => true)}/>
-      <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-yes">
-        {ReasonReact.string("Shorter wait times (allow joining games already in progress)")}
-      </label>
-    </div>
-    <div className="mb-4 flex flex-row ">
-      <input type_="radio" name="substitute" id="substitute-no" defaultChecked={allowSubbing ? false : true} onClick={_ => updateAllowSubbing(_prev => false)}/>
-      <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-no">
-        {ReasonReact.string("Normal wait times (only join new games)")}
-      </label>
-    </div>
-    <div className="mb-4"> {ReasonReact.string("Audio Settings")} </div>
+    <div className="mb-4"> {ReasonReact.string("Sound Effects Volume")} </div>
     <div className="mb-4 flex flex-row h-8">
       <img
         src={j|./static/img/$volumeIcon.svg|j}
