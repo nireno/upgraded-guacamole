@@ -485,7 +485,7 @@ SocketServer.onConnect(
         //   updateClientStates(gameState);
           logger.info2(getGameStats(), "Game stats:");
         // };
-      | IO_JoinPrivateGame(_inviteCode, _username, _ioClientSettings) => ()
+      | IO_JoinPrivateGame(_inviteCode, _username, _ioClientSettings) => () //see onWithAck
       | IO_JoinGame(username, _ioClientSettingsJson) =>
         ServerStore.dispatch(AttachPublicPlayer(sock_id, username));
         // let gameState = switch(ServerStore.getGamesWhere(~privacy=Public, ~simplePhase=FindPlayersPhase, ())){
