@@ -95,6 +95,10 @@ let exists = (f, (a, b, c, d)) => {
   f(a) || f(b) || f(c) || f(d)
 };
 
+let every = (pred, (a, b, c, d)) => {
+  pred(a) && pred(b) && pred(c) && pred(d)
+};
+
 let forEach: (('a => unit), ('a, 'a, 'a, 'a)) => unit = (f, (r1, r2, r3, r4)) => {
   f(r1);
   f(r2);

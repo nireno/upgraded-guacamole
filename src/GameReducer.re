@@ -13,9 +13,15 @@ type action =
   | RunPack
   | DealAgain
   | LeaveGame(Player.id)
+  | UpdateSubbing(bool)
   | ClearNotis
   | CheatPoints(Team.id, int);
 
+/* 
+  This module should probably be called GameMachine and this function should
+  be the gameState machine. It takes some (before) state and an action and
+  produces some (after) state state.
+*/
 let rec reduce = (action, state) =>
       switch (action) {
       | Noop => state
@@ -366,7 +372,7 @@ let rec reduce = (action, state) =>
           switch (state.maybeTrumpCard) {
           | None =>
             failwith(
-              "DealMore action expected state.kick to be Some thing but got None",
+              "DealMore action expected state.maybeTrumpCard to be Some thing but got None",
             )
           | Some(k) => k
           };
@@ -426,7 +432,7 @@ let rec reduce = (action, state) =>
         let modPhase = (nPlayers, currentPhase) =>
           switch (currentPhase) {
           | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
-          | FindPlayersPhase(_n) => FindPlayersPhase(nPlayers)
+          | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayers, canSub)
           | GameOverPhase => GameOverPhase
           | phase => FindSubsPhase(nPlayers, phase)
           };
@@ -436,7 +442,7 @@ let rec reduce = (action, state) =>
         let players =
           state.players
           |> Quad.update(leavingPlayerId, x =>
-               {...x, pla_name: Player.stringOfId(leavingPlayerId), pla_socket: None}
+               {...x, pla_name: Player.stringOfId(leavingPlayerId), sock_id_maybe: None}
              );
 
         let playerLeftNotis =
@@ -451,8 +457,16 @@ let rec reduce = (action, state) =>
           ...state,
           players: players,
           phase: state.phase |> modPhase(4 - countPlayers(players)),
-          notis: state.notis @ playerLeftNotis
+          notis: state.notis @ playerLeftNotis,
+          maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
         };
+      | UpdateSubbing(canSub) => 
+        let phase =
+          switch (state.phase) {
+          | FindPlayersPhase(n, _) => FindPlayersPhase(n, canSub)
+          | phase => phase
+          };
+        {...state, phase};
       | ClearNotis => 
         {...state, notis: []}
       | CheatPoints(team, points) =>

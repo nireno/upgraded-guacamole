@@ -28,6 +28,7 @@
     "bs-express": "^0.12.0",
     "bs-socket": "github:nireno/bs-socket.io",
     "bs-webapi": "^0.15.2",
+    "copy-text-to-clipboard": "^2.1.0",
     "dotenv": "^8.0.0",
     "fs-extra": "^8.1.0",
     "howler": "^2.1.2",

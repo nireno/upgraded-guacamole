@@ -101,24 +101,32 @@ module App = {
             | Belt.Result.Ok(state) =>
               dispatch(MatchServerState(state));
             }
-          | AddNotis(ioNotis) =>
-            switch (ClientGame.notis_decode(ioNotis |> Js.Json.parseExn)) {
+          | ShowToast(ioToast) =>
+            switch (Noti.t_decode(ioToast |> Js.Json.parseExn)) {
             | Belt.Result.Error(err) => Js.log(err)
-            | Belt.Result.Ok(newNotis) => updateNotis(Add(newNotis))
+            | Belt.Result.Ok(toast) => updateNotis(AddOne(toast))
             }
           | Reset =>
             dispatch(MatchServerState(ClientGame.initialState));
             updateNotis(Reset(Noti.State.initial));
+          | AckOk | AckError(_) => ()
           }
         );
         None;
       }
     );
 
-    let sendIO = (ioAction, _event) => {
+    let sendIO = (ioAction) => {
       switch (maybeSocket) {
       | None => ()
       | Some(socket) => ClientSocket.T.emit(socket, ioAction)
+      };
+    };
+
+    let sendIOWithAck = (ioAction, ack) => {
+      switch (maybeSocket) {
+      | None => ()
+      | Some(socket) => ClientSocket.T.emitWithAck(socket, ioAction, ack)
       };
     };
 
@@ -184,6 +192,20 @@ module App = {
       };
     };
 
+    let handleCreatePrivateGameClick = _event => {
+      sendIO(
+        IO_StartPrivateGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+      );
+    };
+
+    let sendIoJoinPrivateGame = (inviteCode, ack) => {
+      sendIOWithAck(
+        IO_JoinPrivateGame(inviteCode, username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        ack,
+      );
+    };
+    
+    let stringOfGameId = SharedGame.stringOfGameId(state.gameId);
     /** 
       Reading the url backwords allows the app to work when it isn't served from
       the root url a website i.e. it will work whether the app is served from the
@@ -196,11 +218,10 @@ module App = {
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
         <MenuView>
           <ExperimentalView
-            onJoinClick={event => {
+            onJoinClick={_event => {
               ReasonReactRouter.push("./");
               sendIO(
                 IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
-                event,
               );
             }}
           />
@@ -214,12 +235,18 @@ module App = {
           <SettingsView onSave=saveClientSettings settings=clientSettings />
         </MenuView>
       </div>;
+    | ["private-games", ..._rest] => 
+      <div
+        ref={ReactDOMRe.Ref.domRef(appRef)}
+        className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
+        <MenuView> <JoinPrivateGameView sendJoinGame=sendIoJoinPrivateGame /> </MenuView>
+      </div>;
     | _ => 
     <div
       ref={ReactDOMRe.Ref.domRef(appRef)}
       className="all-fours-game font-sans flex flex-col relative mx-auto"
       onClick=handleAppClick>
-      {state.gameId == ""
+      {stringOfGameId == ""
          ? <MenuView>
              <div
                className="app-name text-white text-5xl"
@@ -230,9 +257,22 @@ module App = {
                )}>
                {ReasonReact.string("All Fours")}
              </div>
-             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./feedback")}>
-            //  <button className="btn btn-blue mt-1" onClick={sendIO(IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify))}>
-               {ReasonReact.string("Join Game")}
+             {
+               let onClick = _event =>
+                 node_env == "production"
+                   ? ReasonReactRouter.push("./feedback")
+                   : sendIO(
+                       IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+                     );
+               <button className="btn btn-blue mt-1" onClick>
+                 {ReasonReact.string("Join Public Game")}
+               </button>
+             }
+             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./private-games/")}>
+               {ReasonReact.string("Join Private Game")}
+             </button>
+             <button className="btn btn-blue mt-1" onClick=handleCreatePrivateGameClick>
+               {ReasonReact.string("Create Private Game")}
              </button>
              <div className="link link-white mt-4" 
                   onClick={_ => ReasonReactRouter.push("./settings")}>
@@ -437,12 +477,12 @@ module App = {
                </div>
                <WaitingMessage activePlayerName myPlayerId={state.me} maybeActivePlayer />
                <Player
-                 sendDeal={sendIO(SocketMessages.IO_Deal)}
-                 sendStandUp={sendIO(SocketMessages.IO_Stand)}
-                 sendBeg={sendIO(IO_Beg)}
-                 sendGiveOne={sendIO(SocketMessages.IO_GiveOne)}
-                 sendRunPack={sendIO(IO_RunPack)}
-                 sendReshuffle={sendIO(IO_DealAgain)}
+                 sendDeal={_event => sendIO(SocketMessages.IO_Deal)}
+                 sendStandUp={_event => sendIO(SocketMessages.IO_Stand)}
+                 sendBeg={_event => sendIO(IO_Beg)}
+                 sendGiveOne={_event => sendIO(SocketMessages.IO_GiveOne)}
+                 sendRunPack={_event => sendIO(IO_RunPack)}
+                 sendReshuffle={_event => sendIO(IO_DealAgain)}
                  playerPhase={state.phase}
                />
                <div className="player-hand flex flex-col">
@@ -486,12 +526,20 @@ module App = {
                </div>
              </div>
              {switch (state.gamePhase) {
-              | FindPlayersPhase(n) =>
+              | FindPlayersPhase(n, canSub) =>
                 <Modal visible=true>
-                  <FindPlayersView n />
-                  <button className="btn btn-blue mt-4" onClick={sendIO(IO_LeaveGame)}>
-                    {ReasonReact.string("Cancel")}
-                  </button>
+                  {
+                    switch (state.gameId) {
+                    | Public(_) =>
+                      <FindPlayersView
+                        n
+                        canSub
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        onSubClick={_event => sendIO(IO_Substitute(username))}
+                      />
+                    | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id onLeaveClick={_event => sendIO(IO_LeaveGame)}/>
+                    };
+                  }
                 </Modal>
               | FindSubsPhase(n, _) => <Modal visible=true> <FindSubsView n /> </Modal>
               | GameOverPhase =>
@@ -499,8 +547,8 @@ module App = {
                   <GameOverView
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
-                    playAgainClick={sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
-                    leaveClick={sendIO(IO_LeaveGame)}
+                    playAgainClick={_event => sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
+                    leaveClick={_event => sendIO(IO_LeaveGame)}
                   />
                 </Modal>
               | _ => ReasonReact.null
@@ -516,7 +564,7 @@ module App = {
                     {ReasonReact.string(Player.stringOfId(state.me))}
                   </div>
                   <div className="text-gray-500 text-xs">
-                    {ReasonReact.string("GameId: " ++ state.gameId ++ " ")}
+                    {ReasonReact.string("GameId: " ++ stringOfGameId ++ " ")}
                   </div>
                 </div>;
               }}

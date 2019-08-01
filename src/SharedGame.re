@@ -5,7 +5,16 @@ let settings =
   |> Js.Nullable.toOption 
   |> Js.Option.getWithDefault("default"));
 
-[@decco] type notis = list(Noti.t);
+[@decco]
+type game_id =
+  | Public(string)
+  | Private(string);
+
+let stringOfGameId =
+  fun
+  | Public(str)
+  | Private(str) => str;
+
 
 let kickPoints =
   Card.Rank.(
@@ -41,7 +50,10 @@ let teamOfPlayer =
 type phase =
   | IdlePhase
   | FindSubsPhase(int, phase)
-  | FindPlayersPhase(int)
+  | FindPlayersPhase(
+      int, /* numEmptySeats: Number of empty seats in this game */
+      bool, /* canSub: There exists a public game in FindSubsPhase */
+    )
   | DealPhase
   | BegPhase
   | GiveOnePhase
@@ -50,6 +62,17 @@ type phase =
   | PackDepletedPhase
   | GameOverPhase;
 
+let isPlayerActivePhase = fun
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase(_) 
+  | PackDepletedPhase => true
+  | IdlePhase 
+  | FindSubsPhase(_, _)
+  | FindPlayersPhase(_, _)
+  | GameOverPhase => false;
 
 let rec phase_encode =
   fun
@@ -60,13 +83,19 @@ let rec phase_encode =
       n |> float_of_int |> Js.Json.number,
       phase_encode(phase),
     |])
-  | FindPlayersPhase(n) =>
-    Js.Json.array([|Js.Json.string("find-players-phase"), Js.Json.number(n |> float_of_int)|])
+  | FindPlayersPhase(numEmptySeats, canSub) => {
+      Js.Json.array([|
+        Js.Json.string("find-players-phase"),
+        Js.Json.number(numEmptySeats |> float_of_int),
+        Js.Json.boolean(canSub),
+      |]);
+    }
   | DealPhase => Js.Json.string("deal-phase")
   | BegPhase => Js.Json.string("beg-phase")
   | GiveOnePhase => Js.Json.string("give-one-phase")
   | RunPackPhase => Js.Json.string("run-pack-phase")
-  | PlayerTurnPhase(playerId) => Js.Json.string("player-turn-phase-" ++ Quad.stringifyId(playerId))
+  | PlayerTurnPhase(playerId) =>
+    Js.Json.string("player-turn-phase-" ++ Quad.stringifyId(playerId))
   | PackDepletedPhase => Js.Json.string("pack-depleted-phase")
   | GameOverPhase => Js.Json.string("game-over-phase");
 
@@ -88,17 +117,23 @@ let rec phase_decode = json => {
         | _ => Decco.error("Failed to decode phase classified as string: " ++ str_phase, json)
       }
     | Js.Json.JSONArray(jsonTs) => 
-      switch(jsonTs){
-        | [|_findPlayersPhase, n|] => 
-          FindPlayersPhase(Js.Json.decodeNumber(n) |> Js.Option.getExn |> int_of_float) -> Belt.Result.Ok
-        | [|_findSubsPhase, n, jsonPhase|] => 
-          switch(phase_decode(jsonPhase)){
-            | Belt.Result.Error(_) => Decco.error("Failed to recursively decode FindSubsPhase.", json)
-            | Belt.Result.Ok(phase) => FindSubsPhase(Js.Json.decodeNumber(n) |> Js.Option.getExn |> int_of_float, phase)->Belt.Result.Ok
-          }
-          
-        | _ => Decco.error("Failed to decode phase classified as array.", json)
-      }
+      switch (jsonTs) {
+      | [|phaseJson, numEmptySeats, canSub|]
+          when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-players-phase" =>
+        FindPlayersPhase(
+          Js.Json.decodeNumber(numEmptySeats) |> Js.Option.getExn |> int_of_float,
+          Js.Json.decodeBoolean(canSub) |> Js.Option.getExn,
+        )
+        ->Belt.Result.Ok
+      | [|phaseJson, n, subPhaseJson|] 
+          when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-subs-phase" =>
+        switch (phase_decode(subPhaseJson)) {
+        | Belt.Result.Error(_) => Decco.error("Failed to recursively decode FindSubsPhase.", json)
+        | Belt.Result.Ok(phase) => FindSubsPhase(Js.Json.decodeNumber(n) |> Js.Option.getExn |> int_of_float, phase)->Belt.Result.Ok
+        }
+
+      | _ => Decco.error("Failed to decode phase classified as array.", json)
+      };
     | _ => Decco.error("Failed to decode phase. Json was not classified as expected.", json)
   }
 };
@@ -106,7 +141,7 @@ let rec phase_decode = json => {
 let rec stringOfPhase = fun
   | IdlePhase => "IdlePhase"
   | FindSubsPhase(n, phase) => "FindSubsPhase(" ++ string_of_int(n) ++ ", " ++ stringOfPhase(phase) ++ ")"
-  | FindPlayersPhase(n) => "FindPlayersPhase(" ++ string_of_int(n) ++ ")"
+  | FindPlayersPhase(numEmptySeats, canSub) => "FindPlayersPhase(" ++ string_of_int(numEmptySeats) ++ ", " ++ string_of_bool(canSub) ++ ")"
   | DealPhase => "DealPhase"
   | BegPhase => "BegPhase"
   | GiveOnePhase => "GiveOnePhase"

@@ -1,13 +1,12 @@
 [@react.component]
 let make = (~onSave, ~settings) => {
-  let (allowSubbing, updateAllowSubbing) = React.useState(() => settings.ClientSettings.allowSubbing);
   let (volume, updateVolume) = React.useState(() => settings.ClientSettings.volume);
   let blipSoundRef =
     React.useRef(Howler.(makeHowl(options(~src=[|"./static/audio/blip.mp3"|], ()))));
 
   let volumeLevel: float =
     switch (volume) {
-    | Mute(v) => 0.0 
+    | Mute(_) => 0.0 
     | Level(v) => v
     };
   
@@ -18,11 +17,7 @@ let make = (~onSave, ~settings) => {
       | _ => volumeLevel
       };
     let floatVal = floatVal < 0.0 ? 0.0 : floatVal > 1.0 ? 1.0 : floatVal;
-    let volume' =
-      switch (volume) {
-      | Mute(_) // Modifying the volume should unmute sound
-      | Level(_) => ClientSettings.Level(floatVal)
-      };
+    let volume' = floatVal == 0.0 ? ClientSettings.Mute(0.0) : Level(floatVal);
     updateVolume(_ => volume');
     let sound = React.Ref.current(blipSoundRef);
     Howler.volume(sound, floatVal);
@@ -38,6 +33,7 @@ let make = (~onSave, ~settings) => {
 
   let handleVolumeIconClick = _event => {
     let volume' = switch(volume){
+    | Mute(n) when n == 0.0 => ClientSettings.defaults.volume
     | Mute(n) => ClientSettings.Level(n)
     | Level(n) => Mute(n)
     };
@@ -45,33 +41,29 @@ let make = (~onSave, ~settings) => {
   };
 
   let onSaveClick = _event => {
-    onSave(ClientSettings.{allowSubbing, volume});
+    onSave(ClientSettings.{volume: volume});
     ReasonReactRouter.push("./");
   };
   
-  <form className="bg-white shadow-md border border-solid border-gray-200 rounded px-8 pt-6 pb-8 mb-4">
+  <form className="bg-white shadow-md border border-solid border-gray-300 rounded px-8 pt-6 pb-8 mb-4 w-10/12">
     <div className="mb-4 text-xl text-center"> {ReasonReact.string("All Fours Settings")} </div>
-    <div className="mb-4"> {ReasonReact.string("Joining a game")} </div>
-    <div className="mb-4 flex flex-row ">
-      <input defaultChecked={allowSubbing ? true : false} type_="radio" name="substitute" id="substitute-yes" onClick={_ => updateAllowSubbing(_prev => true)}/>
-      <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-yes">
-        {ReasonReact.string("Shorter wait times (allow joining games already in progress)")}
-      </label>
-    </div>
-    <div className="mb-4 flex flex-row ">
-      <input type_="radio" name="substitute" id="substitute-no" defaultChecked={allowSubbing ? false : true} onClick={_ => updateAllowSubbing(_prev => false)}/>
-      <label className="text-gray-700 text-sm mb-2 ml-2" htmlFor="substitute-no">
-        {ReasonReact.string("Normal wait times (only join new games)")}
-      </label>
-    </div>
-    <div className="mb-4"> {ReasonReact.string("Audio Settings")} </div>
+    <div className="mb-4"> {ReasonReact.string("Sound Effects Volume")} </div>
     <div className="mb-4 flex flex-row h-8">
-      <img
-        src={j|./static/img/$volumeIcon.svg|j}
-        onClick=handleVolumeIconClick
-        className="cursor-pointer"
-        style={ReactDOMRe.Style.make(~height="100%", ~width="auto", ())}
-      />
+      <div
+        className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded inline-flex items-center cursor-pointer"
+        onClick=handleVolumeIconClick>
+        <img
+          src={j|./static/img/$volumeIcon.svg|j}
+          className="block mx-4"
+          style={ReactDOMRe.Style.make(
+            ~height="100%",
+            ~width="auto",
+            ~minHeight="32px",
+            ~minWidth="32px",
+            (),
+          )}
+        />
+      </div>
       <input
         id="volume"
         type_="range"

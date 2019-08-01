@@ -19,7 +19,7 @@ type partnerInfo = {
 
 [@decco]
 type state = {
-  gameId: string,
+  gameId: game_id,
   phase: Player.phase,
   gamePhase: SharedGame.phase,
   players: (playerState, playerState, playerState, playerState),
@@ -39,9 +39,9 @@ type state = {
 };
 
 let initialState = {
-  gameId: "",
+  gameId: Public(""),
   phase: PlayerIdlePhase,
-  gamePhase: FindPlayersPhase(3),
+  gamePhase: FindPlayersPhase(3, false),
   players: (
     {pla_name: Player.stringOfId(N1), pla_card: None},
     {pla_name: Player.stringOfId(N2), pla_card: None},
@@ -69,26 +69,28 @@ type action =
 let reducer = (prevState, action) => {
   switch (action) {
   | MatchServerState(nextState) => 
+    let stringOfPrevGameId = stringOfGameId(prevState.gameId);
+    let stringOfNextGameId = stringOfGameId(nextState.gameId);
 
     // Prevent user from navigating away from an in-progress game.
-    if(prevState.gameId == "" && nextState.gameId != ""){
+    if (stringOfPrevGameId == "" && stringOfNextGameId != "") {
       Raw.addUnloadListener(Raw.preventUnloadListener);
-    } else if(prevState.gameId != "" && nextState.gameId == "") {
+    } else if (stringOfPrevGameId != "" && stringOfNextGameId == "") {
       Raw.removeUnloadListener(Raw.preventUnloadListener);
     } else {
-      ()
+      ();
     };
 
     let (prevHasEmptySeats, prevNumEmptySeats) =
       switch (prevState.gamePhase) {
-      | FindPlayersPhase(n)
+      | FindPlayersPhase(n, _)
       | FindSubsPhase(n, _) => (true, n)
       | _ => (false, 0)
       };
 
     let (currHasEmptySeats, currNumEmptySeats) =
       switch (nextState.gamePhase) {
-      | FindPlayersPhase(n)
+      | FindPlayersPhase(n, _)
       | FindSubsPhase(n, _) => (true, n)
       | _ => (false, 0)
       };

@@ -9,7 +9,6 @@ open AppPrelude;
  */
 [@bs.deriving jsConverter]
 type key = [
-  | `AllowSubbing
   | `Volume
   | `Muted
   // | [@bs.as "miniCoconut"] `Kiwi
@@ -31,20 +30,13 @@ let getClientSettings = () => {
     decodeWithDefault(ClientSettings.volume_decode, ClientSettings.defaults.volume, volumeJson);
 
   ClientSettings.{
-    allowSubbing:
-      switch (
-        getItem(keyToJs(`AllowSubbing))
-        |> Js.Nullable.toOption
-        |> Js.Option.getWithDefault("yes")
-      ) {
-      | "yes" => true
-      | _ => false
-      },
     volume: getItemWithDefault(`Volume, decodeVolume, ClientSettings.defaults.volume),
   };
 };
 
-let updateClientSettings = (newSettings) => {
-    setItem(keyToJs(`AllowSubbing), newSettings.ClientSettings.allowSubbing ? "yes" : "no");
-    setItem(keyToJs(`Volume), ClientSettings.volume_encode(newSettings.volume) |> Js.Json.stringify);
+let updateClientSettings = newSettings => {
+  setItem(
+    keyToJs(`Volume),
+    ClientSettings.volume_encode(newSettings.ClientSettings.volume) |> Js.Json.stringify,
+  );
 };
