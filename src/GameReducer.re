@@ -368,6 +368,8 @@ let rec reduce = (action, state) =>
         let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
         let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
         let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+        let dealer = Quad.get(state.dealer, state.players);
+
         let prevKick =
           switch (state.maybeTrumpCard) {
           | None =>
@@ -412,6 +414,12 @@ let rec reduce = (action, state) =>
               teamOfPlayer(state.dealer),
               x => {...x, team_score: x.team_score + pointsKicked},
               state.teams,
+            ),
+          notis:
+            Noti.playerBroadcast(
+              ~from=state.dealer,
+              ~msg=Noti.Text(dealer.pla_name ++ " runs the pack"),
+              (),
             ),
         };
         
