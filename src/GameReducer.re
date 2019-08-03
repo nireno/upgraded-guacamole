@@ -428,12 +428,19 @@ let rec reduce = (action, state) =>
 
         state |> updateStatePhase;
       | DealAgain =>
+        let dealer = Quad.get(state.dealer, state.players);
         {
           ...state,
           players: Quad.map(x => {...x, pla_hand: []}, state.players),
           maybeTrumpCard: None,
           deck: Deck.make() |> Deck.shuffle,
           phase: DealPhase,
+          notis:
+            Noti.playerBroadcast(
+              ~from=state.dealer,
+              ~msg=Noti.Text(dealer.pla_name ++ " has to redeal"),
+              (),
+            ),
         }
 
       | LeaveGame(leavingPlayerId) => 
