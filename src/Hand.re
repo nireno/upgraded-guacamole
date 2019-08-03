@@ -249,7 +249,7 @@ module FaceUpHand = {
           ? sendPlayCard(card) : onInvalidCardClick(msg);
       };
 
-      <ReactSpring.AnimatedDiv key={kCard.key} className="hand-card" style=springStyle>
+      <ReactSpring.AnimatedDiv key={kCard.key} className="hand-card pointer-events-auto" style=springStyle>
         <Card clickAction card={kCard.card} />
       </ReactSpring.AnimatedDiv>;
     };
@@ -261,7 +261,7 @@ module FaceUpHand = {
           Array.map(makeAnimatedCard, first6) |> ReasonReact.array;
         }
       </div>
-      <div className="player-hand-row flex flex-row justify-center content-center">
+      <div className="player-hand-row flex flex-row justify-center content-center pointer pointer-events-none">
         {
           let second6 = transitions->Belt.Array.slice(~offset=6, ~len=6);
           Array.map(makeAnimatedCard, second6) |> ReasonReact.array;
