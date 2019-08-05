@@ -13,7 +13,7 @@ let make = (~sendJoinGame) => {
       fun
       | SocketMessages.AckOk => {
           updateState(_ => Initial);
-          ReasonReactRouter.replace("/");
+          ReasonReactRouter.replace("../");
         }
       | _ => updateState(_ => Error);
     updateState(_ => Query);
