@@ -168,14 +168,16 @@ SocketServer.onConnect(
         let logger =
           logger.makeChild({"_context": "socket-onevent-with-ack", "event": stringOfEvent});
 
-        logger.debug2("Handling `%s` event. ", stringOfEvent);
+        // logger.debug2("Handling `%s` event. ", stringOfEvent);
 
         switch (io) {
         | IO_JoinPrivateGame(inviteCode, username, _ioClientSettings) =>
           logger.info("Invite code: " ++ inviteCode);
           ServerStore.dispatch(AttachPrivatePlayer(sock_id, username, inviteCode, ack));
 
-        | _ => logger.warn("Ignoring socket message")
+        | _ => 
+          // todo: merge on and onWith ack so I don't have to ignore other messages like this
+          ()
         };
       },
     );

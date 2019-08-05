@@ -1,9 +1,11 @@
 include SharedGame;
 
-[@decco] type maybePlayerId = option(Player.id);
-[@decco] type maybeTeamId = option(Team.id);
-[@decco] type maybeTeamJackAward = option( (Team.id, GameAward.award) );
 [@decco] type maybeCard = option(Card.t);
+
+[@decco] type maybeTeamHigh = option((Team.id, Card.t));
+[@decco] type maybeTeamLow = option((Team.id, Card.t));
+[@decco] type maybeTeamJack = option((Team.id, GameAward.jackAward));
+[@decco] type maybeTeamGame = option((Team.id, int, int));
 
 [@decco]
 type playerState = {
@@ -32,10 +34,6 @@ type state = {
   handFacing: Hand.handFacing,
   maybeLeadCard: maybeCard,
   maybeTrumpCard: maybeCard,
-  maybeTeamHigh: maybeTeamId,
-  maybeTeamLow: maybeTeamId,
-  maybeTeamJack: maybeTeamJackAward,
-  maybeTeamGame: maybeTeamId,
 };
 
 let initialState = {
@@ -57,10 +55,6 @@ let initialState = {
   handFacing: FaceDownHand(0),
   maybeLeadCard: None,
   maybeTrumpCard: None,
-  maybeTeamHigh: None,
-  maybeTeamLow: None,
-  maybeTeamJack: None,
-  maybeTeamGame: None,
 };
 
 type action =

@@ -34,16 +34,12 @@ let rec dispatch: ServerState.msg => unit =
   msg => {
     let state = getState();
     switch (ServerState.update(msg, state)) {
-    | NoUpdate(_) => 
-      logger.debug("NoUpdate")
+    | NoUpdate(_) => ()
     | Update(stateAftUpdate) => 
-      logger.debug("Update")
       store := stateAftUpdate
     | SideEffects(_, effects) => 
-      logger.debug("SideEffects");
       List.forEach(effects, perform(getState()))
     | UpdateWithSideEffects(stateAftUpdate, effects) =>
-      logger.debug("UpdateWithSideEffects");
       store := stateAftUpdate;
       effects->List.forEach(perform(stateAftUpdate));
     };
@@ -55,12 +51,10 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
       // let {db_socket} = ServerStore.getState();
       // let socket = db_socket->StringMap.get(sock_id);
       let clientStateJson = clientState |> ClientGame.state_encode; // #unsafe
-      logger.debug2(clientStateJson, "EmitClientState");
       let msg: SocketMessages.serverToClient = SetState(clientStateJson |> Js.Json.stringify);
       SocketServer.emit(msg, sock_id);
     
     | EmitStateByGame(game_id) => 
-      logger.debug2(game_id, "EmitStateByGame");
       switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
       | None => 
         logger.debug("EmitStatByGame: game not found")

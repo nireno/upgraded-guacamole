@@ -11,7 +11,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
       <tr>
         {switch (maybeTeamHigh) {
          | None => ReasonReact.null
-         | Some(teamId) =>
+         | Some((teamId, _card)) =>
            teamId == weTeamId
              ? <>
                  <td>
@@ -34,7 +34,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
       <tr>
         {switch (maybeTeamLow) {
          | None => ReasonReact.null
-         | Some(teamId) =>
+         | Some((teamId, _card)) =>
            teamId == weTeamId
              ? <>
                  <td>
@@ -62,9 +62,9 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
              ? <>
                  <td>
                    {ReasonReact.string(
-                      GameAward.toString(jackAward)
+                      GameAward.stringOfJackAward(jackAward)
                       ++ " (+"
-                      ++ (GameAward.value(jackAward) |> string_of_int)
+                      ++ (GameAward.jackAwardValue(jackAward) |> string_of_int)
                       ++ ")",
                     )}
                  </td>
@@ -74,9 +74,9 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
                  <td> {ReasonReact.string("-")} </td>
                  <td>
                    {ReasonReact.string(
-                      GameAward.toString(jackAward)
+                      GameAward.stringOfJackAward(jackAward)
                       ++ " (+"
-                      ++ (GameAward.value(jackAward) |> string_of_int)
+                      ++ (GameAward.jackAwardValue(jackAward) |> string_of_int)
                       ++ ")",
                     )}
                  </td>
@@ -84,33 +84,47 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
          }}
       </tr>
       <tr>
-        {switch (maybeTeamGame) {
-         | None => <> <td colSpan=2> {ReasonReact.string("Tied for game.")} </td> </>
-         | Some(teamId) =>
-           teamId == weTeamId
-             ? <>
-                 <td>
-                   {ReasonReact.string(
-                      GameAward.toString(GameAward.GameAward)
-                      ++ " (+"
-                      ++ (GameAward.value(GameAward.GameAward) |> string_of_int)
-                      ++ ")",
-                    )}
-                 </td>
-                 <td> {ReasonReact.string("-")} </td>
-               </>
-             : <>
-                 <td> {ReasonReact.string("-")} </td>
-                 <td>
-                   {ReasonReact.string(
-                      GameAward.toString(GameAward.GameAward)
-                      ++ " (+"
-                      ++ (GameAward.value(GameAward.GameAward) |> string_of_int)
-                      ++ ")",
-                    )}
-                 </td>
-               </>
-         }}
+        {
+          switch (maybeTeamGame) {
+          | None => <> <td colSpan=2> {ReasonReact.string("Tied for game.")} </td> </>
+          | Some((teamId, winnerPoints, loserPoints)) =>
+            teamId == weTeamId
+              ? <>
+                  <td>
+                    {ReasonReact.string(
+                       winnerPoints->string_of_int
+                       ++ " for "
+                       ++ GameAward.toString(GameAward.GameAward)
+                       ++ " (+"
+                       ++ (GameAward.value(GameAward.GameAward) |> string_of_int)
+                       ++ ")",
+                     )}
+                  </td>
+                  <td>
+                    {ReasonReact.string(
+                       loserPoints->string_of_int ++ " for " ++ GameAward.toString(GameAward.GameAward),
+                     )}
+                  </td>
+                </>
+              : <>
+                  <td>
+                    {ReasonReact.string(
+                       loserPoints->string_of_int ++ " for " ++ GameAward.toString(GameAward.GameAward),
+                     )}
+                  </td>
+                  <td>
+                    {ReasonReact.string(
+                       winnerPoints->string_of_int
+                       ++ " for "
+                       ++ GameAward.toString(GameAward.GameAward)
+                       ++ " (+"
+                       ++ (GameAward.value(GameAward.GameAward) |> string_of_int)
+                       ++ ")",
+                     )}
+                  </td>
+                </>
+          };
+        }
       </tr>
     </tbody>
   </table>;

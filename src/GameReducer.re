@@ -17,6 +17,151 @@ type action =
   | ClearNotis
   | CheatPoints(Team.id, int);
 
+let getTeamHighAndLowMaybes:
+  ((Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t), option(Card.t)) =>
+  (option((Team.id, Card.t)), option(( Team.id, Card.t ))) =
+  ((player1Hand, player2Hand, player3Hand, player4Hand), maybeTrumpCard) => {
+    switch (maybeTrumpCard) {
+    | None => (None, None)
+    | Some({Card.suit: trumpSuit}) =>
+      let playerCards =
+        List.flatten([
+          player1Hand->Belt.List.map(card => (Quad.N1, card)),
+          player2Hand->Belt.List.map(card => (Quad.N2, card)),
+          player3Hand->Belt.List.map(card => (Quad.N3, card)),
+          player4Hand->Belt.List.map(card => (Quad.N4, card))]
+        );
+
+      let playersTrumpAsc: list((Player.id, Card.t)) =
+        playerCards
+        |> List.filter(((_, {Card.suit})) => suit == trumpSuit)
+        |> List.sort(((_, {Card.rank: rank1}), (_, {rank: rank2})) => compare(rank1, rank2));
+
+      let playersTrumpDesc = List.rev(playersTrumpAsc);
+
+      let lowPlayerCard =
+        try (Some(List.hd(playersTrumpAsc))) {
+        | Failure("hd") => None
+        };
+
+      let maybeTeamLow =
+        switch (lowPlayerCard) {
+        | None => None
+        | Some((playerId, card)) => Some((playerId->teamOfPlayer, card))
+        };
+
+      let highPlayerCard =
+        try (Some(List.hd(playersTrumpDesc))) {
+        | Failure("hd") => None
+        };
+
+      let maybeTeamHigh =
+        switch (highPlayerCard) {
+        | None => None
+        | Some((playerId, card)) => Some((playerId->teamOfPlayer, card))
+        };
+
+      (maybeTeamHigh, maybeTeamLow);
+    };
+  };
+
+
+let maybeAddHighPoint = state =>
+  switch (state.maybeTeamHigh) {
+  | None => state
+  | Some((teamId, _card)) => {
+      ...state,
+      teams:
+        GameTeams.update(
+          teamId,
+          x => {...x, team_score: x.team_score + GameAward.value(HighAward)},
+          state.teams,
+        ),
+    }
+  };
+
+let maybeAddLowPoint = state =>
+  switch (state.maybeTeamLow) {
+  | None => state
+  | Some((teamId, _card)) => {
+      ...state,
+      teams:
+        GameTeams.update(
+          teamId,
+          x => {...x, team_score: x.team_score + GameAward.value(LowAward)},
+          state.teams,
+        ),
+    }
+  };
+
+let maybeAddJackPoints = state =>
+  switch (state.maybeTeamJack) {
+  | None => state
+  | Some((team, award)) => {
+      ...state,
+      teams:
+        GameTeams.update(
+          team,
+          x => {...x, team_score: x.team_score + GameAward.jackAwardValue(award)},
+          state.teams,
+        ),
+    }
+  };
+
+let getWinningTeamMaybe = ({teams: ({team_score: team1Score}, {team_score: team2Score})}) =>
+  team1Score == SharedGame.settings.winningScore
+    ? Some(Team.T1) : team2Score == SharedGame.settings.winningScore ? Some(T2) : None;
+
+let getHLJ = (game, teamId) => {
+  let h =
+    switch (game.maybeTeamHigh) {
+    | Some((teamHighId, card)) when teamHighId == teamId => Some(card)
+    | _ => None
+    };
+
+  let l =
+    switch (game.maybeTeamLow) {
+    | Some((teamLowId, card)) when teamLowId == teamId => Some(card)
+    | _ => None
+    };
+
+  let j =
+    switch (game.maybeTeamJack) {
+    | Some((teamJackId, jackAward)) when teamJackId == teamId => Some(jackAward)
+    | _ => None
+    };
+
+  (h, l, j);
+};
+
+let getDecisiveAward = hlj =>
+  switch (hlj) {
+  | (None, None, None) => None
+  | (Some(card), None, None) => Some(GameAward.HighDecides(card))
+  | (None, Some(card), None) => Some(LowDecides(card))
+  | (None, None, Some(jackAward)) =>
+    switch (jackAward) {
+    | GameAward.RunJackAward => Some(RunJackDecides)
+    | HangJackAward => Some(HangJackDecides)
+    }
+  | (Some(highCard), Some(lowCard), None) => Some(HighAndLowDecides(highCard, lowCard))
+  | (Some(highCard), None, Some(jackAward)) =>
+    switch (jackAward) {
+    | RunJackAward => Some(HighAndRunJackDecides(highCard))
+    | HangJackAward => Some(HighAndHangJackDecides(highCard))
+    }
+  | (None, Some(lowCard), Some(jackAward)) =>
+    switch (jackAward) {
+    | RunJackAward => Some(LowAndRunJackDecides(lowCard))
+    | HangJackAward => Some(LowAndHangJackDecides(lowCard))
+    }
+  | (Some(highCard), Some(lowCard), Some(jackAward)) =>
+    switch (jackAward) {
+    | RunJackAward => Some(HighLowAndRunJackDecides(highCard, lowCard))
+    | HangJackAward => Some(HighLowAndHangJackDecides(highCard, lowCard))
+    }
+  };
+
 /* 
   This module should probably be called GameMachine and this function should
   be the gameState machine. It takes some (before) state and an action and
@@ -34,52 +179,6 @@ let rec reduce = (action, state) =>
           Quad.get(N2, state.players).pla_tricks 
           @ Quad.get(N4, state.players).pla_tricks;
 
-        let playersCards: list((Player.id, Card.t)) =
-          team1Tricks
-          @ team2Tricks
-          |> List.map(Quad.toDict)
-          |> List.concat;
-
-        /** Action requires that the game has a trump card kicked. #unsafe */
-        let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard);
-
-        let playersTrumpAsc: list((Player.id, Card.t)) =
-          playersCards
-          |> List.filter(((_, {Card.suit})) => suit == trumpSuit)
-          |> List.sort(((_, {Card.rank: rank1}), (_, {rank: rank2})) =>
-               compare(rank1, rank2)
-             );
-
-        let playersTrumpDesc = List.rev(playersTrumpAsc);
-
-        let lowPlayerCard =
-          try (Some(List.hd(playersTrumpAsc))) {
-          | Failure("hd") => None
-          };
-
-        let highPlayerCard =
-          try (Some(List.hd(playersTrumpDesc))) {
-          | Failure("hd") => None
-          };
-
-        let state =
-          switch (lowPlayerCard) {
-          | None => {...state, maybeTeamLow: None}
-          | Some((player, _card)) => {
-              ...state,
-              maybeTeamLow: Some(teamOfPlayer(player)),
-            }
-          };
-
-        let state =
-          switch (highPlayerCard) {
-          | None => {...state, maybeTeamHigh: None}
-          | Some((player, _card)) => {
-              ...state,
-              maybeTeamHigh: Some(teamOfPlayer(player)),
-            }
-          };
-
         let calcPoints = tricks =>
           tricks
           |> List.map(Quad.toList)
@@ -88,34 +187,24 @@ let rec reduce = (action, state) =>
                (acc, {Card.rank}) => acc + Card.Rank.pointsOfRank(rank),
                0,
              );
+        
         let team1Points = calcPoints(team1Tricks);
         let team2Points = calcPoints(team2Tricks);
+
         let maybeTeamGame =
           team1Points == team2Points
             ? None
-            : team1Points > team2Points ? Some(Team.T1) : Some(Team.T2);
-        // {...state, maybeTeamGame};
-        /* what used to be EndRound end */
+            : team1Points > team2Points ? Some((Team.T1, team1Points, team2Points)) : Some((Team.T2, team2Points, team1Points));
 
-        let maybeAddPoints = (maybeTeam, points, state) =>
-          switch (maybeTeam) {
+        let maybeAddGamePoint = (maybeTeamGame, state) =>
+          switch (maybeTeamGame) {
           | None => state
-          | Some(teamId) => {
-              ...state,
-              teams:
-                GameTeams.update(teamId, x => {...x, team_score: x.team_score + points}, state.teams),
-            }
-          };
-
-        let maybeAddJackPoints = (maybeTeamJack, state) =>
-          switch (maybeTeamJack) {
-          | None => state
-          | Some((team, award)) => {
+          | Some((teamId, _, _)) => {
               ...state,
               teams:
                 GameTeams.update(
-                  team,
-                  x => {...x, team_score: x.team_score + GameAward.value(award)},
+                  teamId,
+                  x => {...x, team_score: x.team_score + GameAward.value(GameAward)},
                   state.teams,
                 ),
             }
@@ -124,22 +213,21 @@ let rec reduce = (action, state) =>
         let updateScore = state =>
           Util.updateUntil(
             [
-              maybeAddPoints(state.maybeTeamHigh, GameAward.value(HighAward)),
-              maybeAddPoints(state.maybeTeamLow, GameAward.value(LowAward)),
-              maybeAddJackPoints(state.maybeTeamJack),
-              maybeAddPoints(maybeTeamGame, GameAward.value(GameAward)),
+              maybeAddHighPoint,
+              maybeAddLowPoint,
+              maybeAddJackPoints,
+              maybeAddGamePoint(maybeTeamGame),
             ],
             isGameOverTest,
             state,
           );
-
 
         let nextDealer = Quad.nextId(state.dealer);
 
         let state = updateScore(state);
 
         {...state, 
-          phase: isGameOverTest(state) ? GameOverPhase : DealPhase,
+          phase: isGameOverTest(state) ? GameOverPhase(None) : DealPhase,
           deck: Deck.make() |> Deck.shuffle,
           players: Quad.map(x => {...x, pla_tricks: []}, state.players),
           dealer: nextDealer,
@@ -148,7 +236,6 @@ let rec reduce = (action, state) =>
           maybeTeamHigh: None,
           maybeTeamLow: None,
           maybeTeamJack: None,
-          maybeTeamGame: None,
           notis: Noti.(broadcast(~msg=RoundSummary({
             noti_maybeTeamHigh: state.maybeTeamHigh,
             noti_maybeTeamLow: state.maybeTeamLow,
@@ -221,7 +308,6 @@ let rec reduce = (action, state) =>
                   switch (award) {
                   | RunJackAward => Noti.broadcast(~msg=Text("Jack gets away!"), ())
                   | HangJackAward => Noti.broadcast(~msg=Text("Jack gets hanged!"), ())
-                  | _ => []
                   }
                 };
               (maybeTeamJackAward, jackAwardNotis);
@@ -238,6 +324,7 @@ let rec reduce = (action, state) =>
             notis: jackAwardNotis,
           };
         };
+
       | Deal =>
         let dealCards = state => {
           let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, state.deck);
@@ -275,9 +362,14 @@ let rec reduce = (action, state) =>
 
         let state = state |> dealCards |> kickTrump;
 
+        let maybeDecisiveAward = switch(state.maybeTrumpCard){
+        | None => None
+        | Some(card) => Some(GameAward.KickDecides(card))
+        };
+
         {
           ...state,
-          phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
+          phase: isGameOverTest(state) ? GameOverPhase(maybeDecisiveAward) : BegPhase,
         };
 
       | EndTrick => state
@@ -318,25 +410,64 @@ let rec reduce = (action, state) =>
           phase: PlayerTurnPhase(trickWinner),
         };
 
-        let state = state  |> advanceRound;
+        let state = state |> advanceRound;
 
-        /* Any player whose hand is empty at this points indicates all players' hands are empty */
-        List.length(Quad.get(N1, state.players).pla_hand) == 0
-          ? reduce(NewRound, state) : state;
+        let gameOverTestState =
+          Util.updateUntil(
+            [maybeAddHighPoint, maybeAddLowPoint, maybeAddJackPoints],
+            isGameOverTest,
+            state,
+          );
+
+        gameOverTestState
+        ->getWinningTeamMaybe
+        ->Belt.Option.mapWithDefault(
+          /* Any player whose hand is empty at this points indicates all players' hands are empty */
+            List.length(Quad.get(N1, state.players).pla_hand) == 0
+            ? reduce(NewRound, state) : state,
+            teamId => {
+              let decisiveAward = gameOverTestState->getHLJ(teamId)->getDecisiveAward;
+              {...gameOverTestState, phase: GameOverPhase(decisiveAward)};
+            },
+          );
       | Beg =>
         let beggerId = Quad.nextId(state.dealer);
         let pla_name = Quad.get(beggerId, state.players).pla_name;
         let notis = Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(pla_name ++ " begs"), ());
 
         {...state, phase: GiveOnePhase, notis};
+
       | Stand =>
         let beggerId = Quad.nextId(state.dealer);
         let begger = Quad.get(beggerId, state.players);
-        {
+
+        let (maybeTeamHigh, maybeTeamLow) =
+          getTeamHighAndLowMaybes(
+            state.players->Quad.map(player => player.pla_hand, _),
+            state.maybeTrumpCard,
+          );
+
+        let state' = {
           ...state,
-          phase: PlayerTurnPhase(beggerId),
-          notis: Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.pla_name ++ " stands"), ())
-        }
+          maybeTeamHigh,
+          maybeTeamLow,
+          notis: Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.pla_name ++ " stands"), ()),
+        };
+
+        let gameOverTestState =
+          Util.updateUntil([maybeAddHighPoint, maybeAddLowPoint], isGameOverTest, state');
+
+        switch (gameOverTestState->getWinningTeamMaybe) {
+        | None => {
+            ...state', // don't use gameOverTestState here. Points for high and low should usually be added at the end of the round.
+            phase: PlayerTurnPhase(beggerId),
+          }
+
+        | Some(teamId) =>
+          let decisiveAward = gameOverTestState->getHLJ(teamId)->getDecisiveAward;
+          {...gameOverTestState, phase: GameOverPhase(decisiveAward)};
+        };
+
       | GiveOne
           when
             [Quad.N1, N3]
@@ -355,12 +486,36 @@ let rec reduce = (action, state) =>
 
         let dealer = Quad.get(state.dealer, state.players);
 
-        {
+        let (maybeTeamHigh, maybeTeamLow) =
+          getTeamHighAndLowMaybes(
+            state.players->Quad.map(player => player.pla_hand, _),
+            state.maybeTrumpCard,
+          );
+
+        let state' = {
           ...state,
-          phase: PlayerTurnPhase(state.leader),
           teams:
             GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
-          notis: state.notis @ Noti.playerBroadcast(~from=state.dealer, ~msg=Noti.Text(dealer.pla_name ++ " gives one."), ())
+          notis:
+            state.notis
+            @ Noti.playerBroadcast(
+                ~from=state.dealer,
+                ~msg=Noti.Text(dealer.pla_name ++ " gives one."),
+                (),
+              ),
+          maybeTeamHigh,
+          maybeTeamLow,
+        };
+
+        let gameOverTestState =
+          Util.updateUntil([maybeAddHighPoint, maybeAddLowPoint], isGameOverTest, state');
+
+        switch (gameOverTestState->getWinningTeamMaybe) {
+        | None => {...state', phase: PlayerTurnPhase(state.leader)}
+
+        | Some(teamId) =>
+          let decisiveAward = gameOverTestState->getHLJ(teamId)->getDecisiveAward;
+          {...gameOverTestState, phase: GameOverPhase(decisiveAward)};
         };
 
       | RunPack =>
@@ -422,11 +577,42 @@ let rec reduce = (action, state) =>
               (),
             ),
         };
-        
-        let updateStatePhase = state => 
-          {...state, phase: isGameOverTest(state) ? GameOverPhase : state.phase};
 
-        state |> updateStatePhase;
+        let (maybeTeamHigh, maybeTeamLow) =
+          getTeamHighAndLowMaybes(
+            state.players->Quad.map(player => player.pla_hand, _),
+            state.maybeTrumpCard,
+          );
+
+        let state = {...state, maybeTeamHigh, maybeTeamLow};
+
+        let maybeDecisiveAward =
+          switch (state.maybeTrumpCard) {
+          | None => None
+          | Some(card) => Some(GameAward.KickDecides(card))
+          };
+
+        if (isGameOverTest(state)) {
+          {...state, phase: GameOverPhase(maybeDecisiveAward)};
+        } else {
+          switch (state.phase) {
+          | PlayerTurnPhase(_) =>
+            let gameOverTestState =
+              Util.updateUntil([maybeAddHighPoint, maybeAddLowPoint], isGameOverTest, state);
+
+            gameOverTestState
+            ->getWinningTeamMaybe
+            ->Belt.Option.mapWithDefault(
+                state,
+                teamId => {
+                  let decisiveAward = gameOverTestState->getHLJ(teamId)->getDecisiveAward;
+                  {...gameOverTestState, phase: GameOverPhase(decisiveAward)};
+                },
+              );
+          | _ => state
+          };
+        };
+
       | DealAgain =>
         let dealer = Quad.get(state.dealer, state.players);
         {
@@ -448,7 +634,7 @@ let rec reduce = (action, state) =>
           switch (currentPhase) {
           | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
           | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayers, canSub)
-          | GameOverPhase => GameOverPhase
+          | GameOverPhase(x) => GameOverPhase(x)
           | phase => FindSubsPhase(nPlayers, phase)
           };
         

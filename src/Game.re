@@ -20,19 +20,18 @@ let initialPlayerState = playerId => {
 [@decco] type notis = list(Noti.t);
 
 type state = {
-  game_id: game_id,
+  game_id,
   deck: Deck.t,
   players: (playerState, playerState, playerState, playerState),
   teams: (teamState, teamState),
-  notis: notis,
+  notis,
   maybeTrumpCard: option(Card.t),
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
   leader: Player.id,
-  maybeTeamHigh: option(Team.id),
-  maybeTeamLow: option(Team.id),
-  maybeTeamJack: option((Team.id, GameAward.award)),
-  maybeTeamGame: option(Team.id),
+  maybeTeamHigh: option((Team.id, Card.t)),
+  maybeTeamLow: option((Team.id, Card.t)),
+  maybeTeamJack: option((Team.id, GameAward.jackAward)),
   phase,
   maybeKickTimeoutId: option(Js.Global.timeoutId),
 };
@@ -52,6 +51,30 @@ let debugOfState = (state) => {
     {j|{$name, $socket, $card, [$tricks] }|j};
   };
 
+  let stringOfTeamHigh = switch(state.maybeTeamHigh){
+  | None => "None"
+  | Some((team_id, card)) => 
+    let stringOfTeam = team_id->Team.stringOfTeam;
+    let stringOfCard = card->Card.stringOfCard;
+    {j|($stringOfTeam, $stringOfCard)|j}
+  }
+
+  let stringOfTeamLow = switch(state.maybeTeamLow){
+  | None => "None"
+  | Some((team_id, card)) => 
+    let stringOfTeam = team_id->Team.stringOfTeam;
+    let stringOfCard = card->Card.stringOfCard;
+    {j|($stringOfTeam, $stringOfCard)|j}
+  }
+
+  let stringOfTeamJack = switch(state.maybeTeamJack){
+  | None => "None"
+  | Some((team_id, jackAward)) => 
+    let stringOfTeam = team_id->Team.stringOfTeam;
+    let stringOfJackAward = jackAward->GameAward.stringOfJackAward;
+    {j|($stringOfTeam, $stringOfJackAward)|j}
+  }
+
   let debugOfPlayers = {
     "Player1": Quad.select(N1, stringOfPlayer, state.players),
     "Player2": Quad.select(N2, stringOfPlayer, state.players),
@@ -66,6 +89,9 @@ let debugOfState = (state) => {
     "leader": Player.stringOfId(state.leader),
     "maybeTrumpCard": Card.codeOfMaybeCard(state.maybeTrumpCard),
     "maybeLeadCard": Card.codeOfMaybeCard(state.maybeLeadCard),
+    "maybeTeamHigh": stringOfTeamHigh,
+    "maybeTeamLow": stringOfTeamLow,
+    "maybeTeamJack": stringOfTeamJack,
     "players": debugOfPlayers,
   }
 };
@@ -89,7 +115,6 @@ let initialState = () => {
     maybeTeamHigh: None,
     maybeTeamLow: None,
     maybeTeamJack: None,
-    maybeTeamGame: None,
     phase: FindPlayersPhase(4, false),
     maybeKickTimeoutId: None,
   };
