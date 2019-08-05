@@ -142,7 +142,7 @@ SocketServer.onConnect(
                 AttachPublicPlayer(sock_id, username),
               ])
             | Private(_) =>
-              let newGameState = Game.initPrivateGame();
+              let newGameState = ServerStore.initPrivateGame();
               ServerStore.dispatchMany([
                 RemovePlayerBySocket(sock_id),
                 AddGame(newGameState),
