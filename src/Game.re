@@ -294,3 +294,32 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
         };
       (playerId, playerPhase);
     };
+
+module TestState = {
+  // State initializers for testing specific functionality.
+
+  let initHangJackGame = () => {
+    let aceHearts = {Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Ace};
+    let twoHearts = {Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Two};
+    {
+      ...initialState(),
+      game_id: Public("1"),
+      phase: FindSubsPhase(4, PlayerTurnPhase(N2)),
+      players: (
+        {
+          ...initialPlayerState(N1),
+          pla_hand: [{Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Jack}, {suit: Clubs, rank: Two}],
+        },
+        {...initialPlayerState(N2), pla_hand: [aceHearts, {suit: Clubs, rank: Three}]},
+        {...initialPlayerState(N3), pla_hand: [twoHearts, {suit: Clubs, rank: Four}]},
+        {
+          ...initialPlayerState(N4),
+          pla_hand: [{Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Three}, {suit: Clubs, rank: Five}],
+        },
+      ),
+      maybeTrumpCard: Some({suit: Card.Suit.Hearts, rank: Card.Rank.Ten}),
+      maybeTeamHigh: Some((T2, aceHearts)),
+      maybeTeamLow: Some((T1, twoHearts)),
+    };
+  };
+};

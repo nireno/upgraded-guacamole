@@ -368,6 +368,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         logger.info("Attaching player to a new public game.");
         let nextGameId = db.db_public_games_created + 1;
         let gameState = {...Game.initialState(), game_id: Public(nextGameId->string_of_int)};
+        // let gameState = Game.TestState.initHangJackGame();
         updateMany(
           [
             AddGame(gameState),
