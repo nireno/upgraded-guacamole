@@ -29,7 +29,7 @@ let authMiddleware: (string, string) => Express.Middleware.t = [%raw
 
       // parse login and password from headers
       const b64auth = (req.headers.authorization || '').split(' ')[1] || ''
-      const [login, password] = new Buffer(b64auth, 'base64').toString().split(':')
+      const [login, password] = Buffer.from(b64auth, 'base64').toString().split(':')
       if(login == user && password == pass){
         next();
       } else {
