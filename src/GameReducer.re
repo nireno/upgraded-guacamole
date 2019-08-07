@@ -124,6 +124,16 @@ let maybeAddJackPoints = (( state, awards )) =>
     (state, (h, l, Some(jackAwardData), g))
   };
 
+let getKickTrumpNotis = (dealerId, maybeTrumpCard) =>
+  switch (maybeTrumpCard) {
+  | Some(trumpCard) when kickPoints(trumpCard.Card.rank) > 0 =>
+    let trumpCardText = trumpCard->Card.stringOfCard;
+    let kickPointsText = kickPoints(trumpCard.rank)->string_of_int;
+    let msg = {j|Dealer kicked $trumpCardText:  +$kickPointsText|j};
+    Noti.broadcast(~msg=Text(msg), ~kind=Confirm, ());
+  | _ => []
+  };
+
 /* 
   This module should probably be called GameMachine and this function should
   be the gameState machine. It takes some (before) state and an action and
@@ -335,10 +345,12 @@ let rec reduce = (action, state) =>
 
     let state = state |> dealCards |> kickTrump;
 
+    let kickTrumpNotis = getKickTrumpNotis(state.dealer, state.maybeTrumpCard);
 
     {
       ...state,
       phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
+      notis: state.notis @ kickTrumpNotis,
     };
 
   | EndTrick => state
@@ -591,7 +603,9 @@ let rec reduce = (action, state) =>
         state.maybeTrumpCard,
       );
 
-    let state = {...state, maybeTeamHigh, maybeTeamLow};
+    let kickTrumpNotis = getKickTrumpNotis(state.dealer, state.maybeTrumpCard);
+
+    let state = {...state, maybeTeamHigh, maybeTeamLow, notis: state.notis @ kickTrumpNotis};
 
     if (isGameOverTest(state)) {
       {...state, phase: GameOverPhase};
