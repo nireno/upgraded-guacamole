@@ -1,3 +1,6 @@
+[@bs.val]
+external allfours_feedback_url: Js.Nullable.t(string) = "process.env.allfours_feedback_url";
+
 [@react.component]
 let make = (~weScore, ~demScore, ~playAgainClick, ~leaveClick) => {
   let (outcomeText, outcomeImg) =
@@ -15,5 +18,15 @@ let make = (~weScore, ~demScore, ~playAgainClick, ~leaveClick) => {
         {ReasonReact.string("Play Again")}
       </button>
     </div>
+    {switch (Js.Nullable.toOption(allfours_feedback_url)) {
+     | None => ReasonReact.null
+     | Some(href) =>
+       <div className="text-xs text-center mt-8">
+         <span> {ReasonReact.string("Love it / Hate it: ")} </span>
+         <a href target="_blank" rel="noopener noreferrer">
+           {ReasonReact.string("click here to send feedback.")}
+         </a>
+       </div>
+     }}
   </>;
 };
