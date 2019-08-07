@@ -17,19 +17,6 @@ let getGamesWhere: (~phase: Game.Filter.phase=?, ~privacy: Game.Filter.privacy=?
     ServerState.getGamesWhere(~phase?, ~privacy, getState());
   };
 
-let rec initPrivateGame = () => {
-  let gameIdExists = (searchId, gameState) =>
-    switch (gameState.Game.game_id) {
-    | Public(_) => false
-    | Private(id) => searchId == id
-    };
-  let {ServerState.db_game} = getState();
-  let newGameState = Game.initPrivateGame();
-  let stringOfGameId = newGameState.game_id->Game.stringOfGameId;
-  db_game->StringMap.valuesToArray->Array.some(gameIdExists(stringOfGameId))
-    ? initPrivateGame() : newGameState;
-};
-
 let rec dispatch: ServerState.msg => unit =
   msg => {
     let state = getState();

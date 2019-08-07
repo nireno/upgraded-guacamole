@@ -20,7 +20,11 @@ type playerGame = {
 type db = {
   db_game: Map.String.t(Game.state), /* game_id -> Game.state */ 
   db_player_game: Map.String.t(playerGame), /* sock_id -> playerGame */
+  db_server_started_at: Js.Date.t,
   db_public_games_created: int,
+  db_private_games_created: int,
+  db_public_games_started: int,
+  db_private_games_started: int,
 };
 
 let getGameBySocket: (sock_id, db) => option(Game.state) =
@@ -61,12 +65,12 @@ type username = string;
 
 type msg = 
   | AddGame(Game.state)
-  | IncrementPublicGamesCreated
   | AddPlayerGame(sock_id, Player.id, Game.game_id)
   | RemoveGame(Game.game_id)
   | ReplaceGame(Game.game_id, Game.state)
   | AttachPlayer(Game.game_id, sock_id, username )
   | AttachPublicPlayer(sock_id, username)
+  | CreatePrivateGame(sock_id, username)
   | AttachPrivatePlayer(sock_id, username, string, SocketMessages.serverToClient => unit)
   | RemovePlayerBySocket(sock_id)
   | AttachSubstitute(sock_id, username)
@@ -81,12 +85,12 @@ type msg =
 
 let stringOfMsg = fun
   | AddGame(_game) => "AddGame"
-  | IncrementPublicGamesCreated => "IncrementPublicGamesCreated"
   | AddPlayerGame(_sock_id, _player_id, _game_id) => "AddPlayerGame"
   | RemoveGame(_game_id) => "RemoveGame"
   | ReplaceGame(_game_id, _state) => "ReplaceGame"
   | AttachPlayer(_game_id, _sock_id, _username ) => "AttachPlayer"
   | AttachPublicPlayer(_sock_id, _username) => "AttachPublicPlayer"
+  | CreatePrivateGame(sock_id, username) => "CreatePrivateGame(" ++ sock_id ++ "," ++ username ++ ")"
   | AttachPrivatePlayer(_sock_id, _username, _invite_code, _ack) => "AttachPrivatePlayer"
   | RemovePlayerBySocket(_sock_id) => "RemovePlayerBySocket"
   | AttachSubstitute(_sock_id, _username) => "AttachSubstitute"
@@ -102,8 +106,12 @@ let stringOfMsg = fun
 
 let empty = () => {
   db_game: Map.String.empty,
-  db_public_games_created: 0,
   db_player_game: Map.String.empty,
+  db_server_started_at: Js.Date.make(),
+  db_public_games_created: 0,
+  db_private_games_created: 0,
+  db_public_games_started: 0,
+  db_private_games_started: 0,
 };
 
 
@@ -204,6 +212,17 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
   };
 }
 
+let rec initPrivateGame = (db_game) => {
+  let gameIdExists = (searchId, gameState) =>
+    switch (gameState.Game.game_id) {
+    | Public(_) => false
+    | Private(id) => searchId == id
+    };
+  let newGameState = Game.initPrivateGame();
+  let stringOfGameId = newGameState.game_id->Game.stringOfGameId;
+  db_game->StringMap.valuesToArray->Array.some(gameIdExists(stringOfGameId))
+    ? initPrivateGame(db_game) : newGameState;
+};
 
 let rec update: (msg, db) => update(db, ServerEffect.effect) =
   (msg, {db_game, db_player_game} as db) => {
@@ -216,9 +235,6 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
       | None => Update({...db, db_game: db_game->StringMap.set(key, game)})
       | Some(_) => NoUpdate(db)
       };
-
-    | IncrementPublicGamesCreated =>
-      Update({...db, db_public_games_created: db.db_public_games_created + 1})
 
     | AddPlayerGame(sock_id, player_id, game_id) =>
       let db = {
@@ -270,6 +286,19 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
               playersNeeded == 0 ? DealPhase : FindPlayersPhase(playersNeeded, canSub)
             | otherPhase => otherPhase
             };
+
+          // Track how many games were actually started by looking at those that went 
+          // specifically from the FindPlayersPhase to the DealPhase
+          let db' =
+            switch (gameState.phase) {
+            | FindPlayersPhase(_, _) when phase == DealPhase =>
+              switch (gameState.game_id) {
+              | Public(_) => {...db', db_public_games_started: db'.db_public_games_started + 1}
+              | Private(_) => {...db', db_private_games_started: db'.db_private_games_started + 1}
+              }
+            | _ => db'
+            };
+
           let gameAftAttach = {...gameState, players, phase};
           let playerJoinedNotis =
             Noti.playerBroadcast(
@@ -370,15 +399,15 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         let nextGameId = db.db_public_games_created + 1;
         let gameState = {...Game.initialState(), game_id: Public(nextGameId->string_of_int)};
         // let gameState = Game.TestState.initHangJackGame();
+        let db' = {...db, db_public_games_created: db.db_public_games_created + 1};
         updateMany(
           [
             AddGame(gameState),
-            IncrementPublicGamesCreated,
             RemovePlayerBySocket(sock_id),
             AttachPlayer(gameState.game_id, sock_id, username),
             ReconcileSubstitution,
           ],
-          NoUpdate(db),
+          Update(db'),
         );
       | [gameState, ..._rest] => 
         logger.info("Attaching player to an existing public game.");
@@ -390,6 +419,16 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           NoUpdate(db),
         );
       };
+    | CreatePrivateGame(sock_id, username) =>
+      let db' = {...db, db_private_games_created: db.db_private_games_created + 1};
+      let gameState = initPrivateGame(db.db_game);
+      updateMany(
+        [
+          AddGame(gameState), 
+          AttachPlayer(gameState.game_id, sock_id, username)
+        ],
+        Update(db'),
+      );
     | AttachPrivatePlayer(sock_id, username, inviteCode, ack) =>
       /** Find game having the provided invite code */
       let gameMatchesCode = (inviteCode, gameState) => {

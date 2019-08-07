@@ -116,9 +116,7 @@ SocketServer.onConnect(
         logger.debug2("Handling `%s` event. ", stringOfEvent);
         switch (io) {
         | IO_StartPrivateGame(username, _ioClientSettingsJson) =>
-          let gameState = ServerStore.initPrivateGame();
-          ServerStore.dispatch(AddGame(gameState));
-          ServerStore.dispatch(AttachPlayer(gameState.game_id, sock_id, username));
+          ServerStore.dispatch(CreatePrivateGame(sock_id, username));
           logger.info2(getGameStats(), "Game stats:");
 
         | IO_JoinPrivateGame(_inviteCode, _username, _ioClientSettings) => () // handled later by Socket.onWithAck
@@ -142,12 +140,9 @@ SocketServer.onConnect(
                 AttachPublicPlayer(sock_id, username),
               ])
             | Private(_) =>
-              let newGameState = ServerStore.initPrivateGame();
               ServerStore.dispatchMany([
                 RemovePlayerBySocket(sock_id),
-                AddGame(newGameState),
-                AttachPlayer(newGameState.game_id, sock_id, username),
-              ]);
+                CreatePrivateGame(sock_id, username)]);
             }
           };
           logger.info2(getGameStats(), "Game stats:");
@@ -195,12 +190,36 @@ switch (Js.Nullable.toOption(adminPasswordEnv)) {
     app,
     ~path="/dashboard",
     Express.Middleware.from((_next, _req) => {
-      let {ServerState.db_game, db_public_games_created} = ServerStore.getState();
+      let {
+        ServerState.db_game,
+        db_public_games_created,
+        db_public_games_started,
+        db_private_games_created,
+        db_private_games_started,
+        db_server_started_at,
+      } =
+        ServerStore.getState();
       let gameStates = StringMap.valuesToArray(db_game);
       <div>
         <div>
-          <span> {"Games since server started: " |> ReasonReact.string} </span>
+          <span> {"Server started at: " |> ReasonReact.string} </span>
+          <span>{db_server_started_at->Js.Date.toISOString |> ReasonReact.string}</span>
+        </div>
+        <div>
+          <span> {"Public games created: " |> ReasonReact.string} </span>
           <span> {db_public_games_created |> string_of_int |> ReasonReact.string} </span>
+        </div>
+        <div>
+          <span> {"Public games started:" |> ReasonReact.string} </span>
+          <span> {db_public_games_started |> string_of_int |> ReasonReact.string} </span>
+        </div>
+        <div>
+          <span> {"Private games created: " |> ReasonReact.string} </span>
+          <span> {db_private_games_created |> string_of_int |> ReasonReact.string} </span>
+        </div>
+        <div>
+          <span> {"Private games started:" |> ReasonReact.string} </span>
+          <span> {db_private_games_started |> string_of_int |> ReasonReact.string} </span>
         </div>
         <div>
           <span> {"Currently Active games: " |> ReasonReact.string} </span>
