@@ -239,4 +239,4 @@ let httpPort = Js.Nullable.toOption(httpPortEnv)
  |> Js.Option.getWithDefault("3000")
  |> int_of_string;
 
-Http.listen(http, httpPort, () => print_endline("Listening on *:" ++ string_of_int(httpPort)));
+Http.listen(http, httpPort, () => logger.info("Listening on *:" ++ string_of_int(httpPort)));
