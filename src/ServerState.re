@@ -340,6 +340,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
               [
                 RemoveGame(gameAftLeave.game_id),
                 TriggerEffects([ServerEffect.ResetClient(sock_id)]),
+                ReconcileSubstitution,
               ],
               Update(dbAftRemove_player_game),
             );
