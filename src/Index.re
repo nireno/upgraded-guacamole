@@ -542,10 +542,9 @@ module App = {
                   }
                 </Modal>
               | FindSubsPhase(n, _) => <Modal visible=true> <FindSubsView n /> </Modal>
-              | GameOverPhase(maybeDecisiveAward) =>
+              | GameOverPhase =>
                 <Modal visible=true>
                   <GameOverView
-                    decisiveAward=?maybeDecisiveAward
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
                     playAgainClick={_event => sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}

@@ -29,9 +29,9 @@ type state = {
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
   leader: Player.id,
-  maybeTeamHigh: option((Team.id, Card.t)),
-  maybeTeamLow: option((Team.id, Card.t)),
-  maybeTeamJack: option((Team.id, GameAward.jackAward)),
+  maybeTeamHigh: option(GameAward.luckyAwardData),
+  maybeTeamLow: option(GameAward.luckyAwardData),
+  maybeTeamJack: option(GameAward.jackAwardData),
   phase,
   maybeKickTimeoutId: option(Js.Global.timeoutId),
 };
@@ -51,30 +51,18 @@ let debugOfState = (state) => {
     {j|{$name, $socket, $card, [$tricks] }|j};
   };
 
-  let stringOfTeamHigh = switch(state.maybeTeamHigh){
-  | None => "None"
-  | Some((team_id, card)) => 
-    let stringOfTeam = team_id->Team.stringOfTeam;
-    let stringOfCard = card->Card.stringOfCard;
-    {j|($stringOfTeam, $stringOfCard)|j}
-  }
+  let stringOfTeamHigh =
+    state.maybeTeamHigh
+      ->Belt.Option.mapWithDefault("None", GameAward.stringOfLuckyAwardData);
 
-  let stringOfTeamLow = switch(state.maybeTeamLow){
-  | None => "None"
-  | Some((team_id, card)) => 
-    let stringOfTeam = team_id->Team.stringOfTeam;
-    let stringOfCard = card->Card.stringOfCard;
-    {j|($stringOfTeam, $stringOfCard)|j}
-  }
+  let stringOfTeamLow = 
+    state.maybeTeamLow
+     ->Belt.Option.mapWithDefault("None", GameAward.stringOfLuckyAwardData)
 
-  let stringOfTeamJack = switch(state.maybeTeamJack){
-  | None => "None"
-  | Some((team_id, jackAward)) => 
-    let stringOfTeam = team_id->Team.stringOfTeam;
-    let stringOfJackAward = jackAward->GameAward.stringOfJackAward;
-    {j|($stringOfTeam, $stringOfJackAward)|j}
-  }
-
+  let stringOfTeamJack = 
+    state.maybeTeamJack
+      ->Belt.Option.mapWithDefault("None", GameAward.stringOfJackAwardData)
+  
   let debugOfPlayers = {
     "Player1": Quad.select(N1, stringOfPlayer, state.players),
     "Player2": Quad.select(N2, stringOfPlayer, state.players),
@@ -295,31 +283,43 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
       (playerId, playerPhase);
     };
 
-module TestState = {
-  // State initializers for testing specific functionality.
+// module TestState = {
+//   // State initializers for testing specific functionality.
 
-  let initHangJackGame = () => {
-    let aceHearts = {Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Ace};
-    let twoHearts = {Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Two};
-    {
-      ...initialState(),
-      game_id: Public("1"),
-      phase: FindSubsPhase(4, PlayerTurnPhase(N2)),
-      players: (
-        {
-          ...initialPlayerState(N1),
-          pla_hand: [{Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Jack}, {suit: Clubs, rank: Two}],
-        },
-        {...initialPlayerState(N2), pla_hand: [aceHearts, {suit: Clubs, rank: Three}]},
-        {...initialPlayerState(N3), pla_hand: [twoHearts, {suit: Clubs, rank: Four}]},
-        {
-          ...initialPlayerState(N4),
-          pla_hand: [{Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Three}, {suit: Clubs, rank: Five}],
-        },
-      ),
-      maybeTrumpCard: Some({suit: Card.Suit.Hearts, rank: Card.Rank.Ten}),
-      maybeTeamHigh: Some((T2, aceHearts)),
-      maybeTeamLow: Some((T1, twoHearts)),
-    };
-  };
-};
+//   let initHangJackGame = () => {
+//     let aceHearts = {Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Ace};
+//     let twoHearts = {Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Two};
+//     let aceOfHearts = {rank: Ace, suit: Hearts};
+//     let jackOfHearts = {rank: Jack, suit: Hearts};
+
+//     let maybeTeamHigh = {
+//       team_id: T2,
+//       winning_card: aceOfHearts,
+//       losing_card: jackOfHearts,
+//     };
+
+//     let maybeTeamLow = {
+//       team_id: T1,
+//     }
+//     {
+//       ...initialState(),
+//       game_id: Public("1"),
+//       phase: FindSubsPhase(4, PlayerTurnPhase(N2)),
+//       players: (
+//         {
+//           ...initialPlayerState(N1),
+//           pla_hand: [{Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Jack}, {suit: Clubs, rank: Two}],
+//         },
+//         {...initialPlayerState(N2), pla_hand: [aceHearts, {suit: Clubs, rank: Three}]},
+//         {...initialPlayerState(N3), pla_hand: [twoHearts, {suit: Clubs, rank: Four}]},
+//         {
+//           ...initialPlayerState(N4),
+//           pla_hand: [{Card.suit: Card.Suit.Hearts, Card.rank: Card.Rank.Three}, {suit: Clubs, rank: Five}],
+//         },
+//       ),
+//       maybeTrumpCard: Some({suit: Card.Suit.Hearts, rank: Card.Rank.Ten}),
+//       maybeTeamHigh: Some(LuckyPoint(T2, {rank: Ace, suit: Hearts}, Some({rank: Jack, suit: Hearts}))),
+//       maybeTeamLow: Some(LuckyPoint(T1, {rank: Two, suit: Hearts}, Some({rank: Three, suit: Hearts}))),
+//     };
+//   };
+// };

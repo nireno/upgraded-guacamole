@@ -1,49 +1,47 @@
-[@decco] 
-type jackAward = 
+[@decco]
+type luckyAwardData = {
+  team_id: Team.id,
+  winning_card: Card.t,
+  losing_card_maybe: option(Card.t),
+};
+
+[@decco]
+type gameAwardData = {
+  team_id_maybe: option(Team.id),
+  winning_count: int,
+  losing_count: int,
+};
+
+[@decco]
+type jackAwardType =
   | HangJackAward
   | RunJackAward;
 
-let jackAwardValue = fun
-  | HangJackAward => 3
-  | RunJackAward => 1;
+[@decco]
+type jackAwardData = {
+  team_id: Team.id,
+  jack_award_type: jackAwardType,
+};
 
-let stringOfJackAward = fun
+let jackAwardValue =
+  fun
+  | HangJackAward => Ruleset.default.hangJackAwardValue
+  | RunJackAward => Ruleset.default.runJackAwardValue;
+
+let stringOfJackAward =
+  fun
   | HangJackAward => "Hang Jack"
   | RunJackAward => "Run Jack";
 
+let stringOfLuckyAwardData = (d: luckyAwardData) => {
+  let team = d.team_id->Team.stringOfTeam;
+  let card1 = d.winning_card->Card.stringOfCard;
+  let card2 = d.losing_card_maybe->Card.stringOfMaybeCard;
+  {j|{$team, $card1, $card2}|j};
+};
 
-[@decco]
-type award =
-  | HighAward
-  | LowAward
-  | JackAward(jackAward)
-  | GameAward;
-
-// A decisive point can end the game before the round is over
-[@decco]
-type decisiveAward =
-  | KickDecides(Card.t)
-  | HighDecides(Card.t)
-  | LowDecides(Card.t)
-  | RunJackDecides
-  | HangJackDecides
-  | HighAndLowDecides(Card.t, Card.t)
-  | HighAndRunJackDecides(Card.t)
-  | HighAndHangJackDecides(Card.t)
-  | LowAndRunJackDecides(Card.t)
-  | LowAndHangJackDecides(Card.t)
-  | HighLowAndRunJackDecides(Card.t, Card.t)
-  | HighLowAndHangJackDecides(Card.t, Card.t);
-
-let value =
-  fun
-  | HighAward
-  | LowAward
-  | GameAward => 1
-  | JackAward(jackAward) => jackAwardValue(jackAward);
-
-let toString = fun 
-| HighAward => "High"
-| LowAward => "Low"
-| GameAward => "Game"
-| JackAward(jackAward) => stringOfJackAward(jackAward);
+let stringOfJackAwardData = (d: jackAwardData) => {
+  let teamText = d.team_id->Team.stringOfTeam;
+  let jackText = d.jack_award_type->stringOfJackAward;
+  {j|{$teamText, $jackText}|j};
+};

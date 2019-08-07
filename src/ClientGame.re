@@ -2,10 +2,10 @@ include SharedGame;
 
 [@decco] type maybeCard = option(Card.t);
 
-[@decco] type maybeTeamHigh = option((Team.id, Card.t));
-[@decco] type maybeTeamLow = option((Team.id, Card.t));
-[@decco] type maybeTeamJack = option((Team.id, GameAward.jackAward));
-[@decco] type maybeTeamGame = option((Team.id, int, int));
+[@decco] type maybeTeamHigh = option(GameAward.luckyAwardData);
+[@decco] type maybeTeamLow = option(GameAward.luckyAwardData);
+[@decco] type maybeTeamJack = option(GameAward.jackAwardData);
+[@decco] type maybeTeamGame = option(GameAward.gameAwardData);
 
 [@decco]
 type playerState = {
