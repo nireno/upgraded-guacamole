@@ -360,63 +360,69 @@ let rec reduce = (action, state) =>
     // state |> updatePlayers;
 
   | AdvanceRound => 
-    let {Card.suit: leadSuit} = Js.Option.getExn(state.maybeLeadCard); /* Action requires leadCard. #unsafe */
-    let {Card.suit: trumpSuit} = Js.Option.getExn(state.maybeTrumpCard); /* Action requires trumpCard. #unsafe */
+    let (p1CardMaybe, p2CardMaybe, p3CardMaybe, p4CardMaybe) =
+      state.players->Quad.map(p => p.pla_card, _);
 
-    let getPlayerCard = playerId =>
-      Quad.select(playerId, x => Js.Option.getExn(x.pla_card), state.players); /* #unsafe */
+    switch (
+      My.Option.all6(
+        p1CardMaybe,
+        p2CardMaybe,
+        p3CardMaybe,
+        p4CardMaybe,
+        state.maybeLeadCard,
+        state.maybeTrumpCard,
+      )
+    ) {
+    | None => state
+    | Some((p1Card, p2Card, p3Card, p4Card, {Card.suit: leadSuit}, {Card.suit: trumpSuit})) =>
+      let trick = (p1Card, p2Card, p3Card, p4Card);
 
-    /* This action requires that the board has four cards. #unsafe*/
-    let trick = (getPlayerCard(N1), getPlayerCard(N2), getPlayerCard(N3), getPlayerCard(N4));
+      let (trickWinner, _card) = Trick.getWinnerCard(trumpSuit, leadSuit, trick);
 
-    let (trickWinner, _card) =
-      Trick.getWinnerCard(trumpSuit, leadSuit, trick);
+      let advanceRound = state => {
+        ...state,
+        players:
+          Quad.update(trickWinner, x => {...x, pla_tricks: x.pla_tricks @ [trick]}, state.players)
+          |> Quad.map(x => {...x, pla_card: None}),
+        teams:
+          GameTeams.update(
+            teamOfPlayer(trickWinner),
+            x => {...x, team_points: x.team_points + Trick.getValue(trick)},
+            state.teams,
+          ),
+        leader: trickWinner,
+        maybeLeadCard: None,
+        phase: PlayerTurnPhase(trickWinner),
+      };
 
-    let advanceRound = state => {
-      ...state,
-      players:
-        Quad.update(
-          trickWinner,
-          x => {...x, pla_tricks: x.pla_tricks @ [trick]},
-          state.players,
-        ) |> Quad.map(x => {...x, pla_card: None}),
-      teams:
-        GameTeams.update(
-          teamOfPlayer(trickWinner),
-          x => {...x, team_points: x.team_points + Trick.getValue(trick)},
-          state.teams,
-        ),
-      leader: trickWinner,
-      maybeLeadCard: None,
-      phase: PlayerTurnPhase(trickWinner),
-    };
+      let state = state |> advanceRound;
 
-    let state = state |> advanceRound;
-
-    let (gameOverTestState, (h, l, j, g)) =
-      Util.updateUntil(
-        [maybeAddHighPoint, maybeAddLowPoint, maybeAddJackPoints],
-        ((state, _)) => isGameOverTest(state),
-        (state, (None, None, None, None))
-      );
-    
-    if (isGameOverTest(gameOverTestState)) {
-      let notis =
-        Noti.broadcast(
-          ~msg=
-            RoundSummary({
-              noti_maybeTeamHigh: h,
-              noti_maybeTeamLow: l,
-              noti_maybeTeamJack: j,
-              noti_maybeTeamGame: g,
-            }),
-          ~kind=Confirm,
-          (),
+      let (gameOverTestState, (h, l, j, g)) =
+        Util.updateUntil(
+          [maybeAddHighPoint, maybeAddLowPoint, maybeAddJackPoints],
+          ((state, _)) => isGameOverTest(state),
+          (state, (None, None, None, None)),
         );
-      {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
-    } else {
-      /* Any player whose hand is empty at this points indicates all players' hands are empty */
-      List.length(Quad.get(N1, state.players).pla_hand) == 0 ? reduce(NewRound, state) : state;
+
+      if (isGameOverTest(gameOverTestState)) {
+        let notis =
+          Noti.broadcast(
+            ~msg=
+              RoundSummary({
+                noti_maybeTeamHigh: h,
+                noti_maybeTeamLow: l,
+                noti_maybeTeamJack: j,
+                noti_maybeTeamGame: g,
+              }),
+            ~kind=Confirm,
+            (),
+          );
+        {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+      } else {
+        /* Any player whose hand is empty at this points indicates all players' hands are empty */
+        List.length(Quad.get(N1, state.players).pla_hand) == 0
+          ? reduce(NewRound, state) : state;
+      };
     };
   | Beg =>
     let beggerId = Quad.nextId(state.dealer);
