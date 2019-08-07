@@ -8,10 +8,10 @@ type kind = Confirm | Duration(int);
 
 [@decco]
 type roundSummary = {
-  noti_maybeTeamHigh: option(Team.id),
-  noti_maybeTeamLow: option(Team.id),
-  noti_maybeTeamJack: option((Team.id, GameAward.award)),
-  noti_maybeTeamGame: option(Team.id)
+  noti_maybeTeamHigh: option(GameAward.luckyAwardData),
+  noti_maybeTeamLow: option(GameAward.luckyAwardData),
+  noti_maybeTeamJack: option(GameAward.jackAwardData),
+  noti_maybeTeamGame: option(GameAward.gameAwardData)
 };
 
 [@decco]

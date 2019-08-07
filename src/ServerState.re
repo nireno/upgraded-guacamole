@@ -79,6 +79,27 @@ type msg =
   | ReconcileSubstitution
   ;
 
+let stringOfMsg = fun
+  | AddGame(_game) => "AddGame"
+  | IncrementPublicGamesCreated => "IncrementPublicGamesCreated"
+  | AddPlayerGame(_sock_id, _player_id, _game_id) => "AddPlayerGame"
+  | RemoveGame(_game_id) => "RemoveGame"
+  | ReplaceGame(_game_id, _state) => "ReplaceGame"
+  | AttachPlayer(_game_id, _sock_id, _username ) => "AttachPlayer"
+  | AttachPublicPlayer(_sock_id, _username) => "AttachPublicPlayer"
+  | AttachPrivatePlayer(_sock_id, _username, _invite_code, _ack) => "AttachPrivatePlayer"
+  | RemovePlayerBySocket(_sock_id) => "RemovePlayerBySocket"
+  | AttachSubstitute(_sock_id, _username) => "AttachSubstitute"
+  | KickActivePlayer(_game_id) => "KickActivePlayer"
+  | InsertKickTimeoutId(_game_id, _timeoutId) => "InsertKickTimeoutId"
+  | DeleteKickTimeoutId(_game_id) => "DeleteKickTimeoutId"
+  | UpdateGame(_game_id, _action) => "UpdateGame"
+  | UpdateGameBySocket(_sock_id, _action) => "UpdateGameBySocket"
+  | TriggerEffects(_effects) => "TriggerEffects"
+  | ReconcileSubstitution => "ReconcileSubstitution"
+  ;
+
+
 let empty = () => {
   db_game: Map.String.empty,
   db_public_games_created: 0,
@@ -144,10 +165,6 @@ let buildClientState = (gameState, player, playerPhase) => {
     handFacing,
     maybeTrumpCard: gameState.maybeTrumpCard,
     maybeLeadCard: gameState.maybeLeadCard,
-    maybeTeamHigh: gameState.maybeTeamHigh,
-    maybeTeamLow: gameState.maybeTeamLow,
-    maybeTeamJack: gameState.maybeTeamJack,
-    maybeTeamGame: gameState.maybeTeamGame,
   };
 };
 
@@ -190,7 +207,7 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
 
 let rec update: (msg, db) => update(db, ServerEffect.effect) =
   (msg, {db_game, db_player_game} as db) => {
-    let logger = logger.makeChild({"_context": "update"});
+    let logger = logger.makeChild({"_context": "ServerState.update", "update_msg": stringOfMsg(msg)});
     switch (msg) {
     | AddGame(game) =>
       // ensure game_id is not already in db_game
@@ -218,6 +235,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
       };
 
     | ReplaceGame(game_id, game) =>
+      logger.debug2(Game.debugOfState(game), "Updating game");
       updateMany(
         [RemoveGame(game_id), AddGame(game), TriggerEffects([EmitStateByGame(game_id)])],
         NoUpdate(db),
@@ -350,6 +368,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         logger.info("Attaching player to a new public game.");
         let nextGameId = db.db_public_games_created + 1;
         let gameState = {...Game.initialState(), game_id: Public(nextGameId->string_of_int)};
+        // let gameState = Game.TestState.initHangJackGame();
         updateMany(
           [
             AddGame(gameState),
@@ -502,9 +521,6 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         let toasts = gameAftAction.notis->List.keepMap(Join.mapNotiToSocketMaybe(gameAftAction));
         let gameAftAction'clearNotis = GameReducer.reduce(ClearNotis, gameAftAction);
 
-        let db_game =
-          db_game->StringMap.set(gameState.game_id->Game.stringOfGameId, gameAftAction'clearNotis);
-
         let maybeEmitToastsEffect = switch(toasts){
         | [] => None
         | toasts => Some(ServerEffect.EmitClientToasts(toasts))
@@ -513,13 +529,15 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         let someEffects = [maybeAdvanceRound, maybeKickEffect, maybeEmitToastsEffect]->List.keepMap(identity);
 
         updateMany(
-          [TriggerEffects([EmitStateByGame(game_id), ...someEffects])],
-          Update({...db, db_game}),
+          [
+            ReplaceGame(gameState.game_id, gameAftAction'clearNotis),
+            TriggerEffects([EmitStateByGame(game_id), ...someEffects]),
+          ],
+          NoUpdate(db),
         );
       }
 
     | TriggerEffects(effects) =>
-      logger.debug("TriggerEffects");
       SideEffects(db, effects);
 
     | ReconcileSubstitution =>

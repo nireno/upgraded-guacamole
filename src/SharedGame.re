@@ -44,6 +44,7 @@ let teamOfPlayer =
   | N2
   | N4 => Team.T2;
 
+
 /*[@decco] won't work. decco doesn'nt yet support recursive types
   Follow at:https://github.com/ryb73/ppx_decco/issues/6 
 */
@@ -99,43 +100,46 @@ let rec phase_encode =
   | PackDepletedPhase => Js.Json.string("pack-depleted-phase")
   | GameOverPhase => Js.Json.string("game-over-phase");
 
-let rec phase_decode = json => {
-  switch(Js.Json.classify(json)){
-    | Js.Json.JSONString(str_phase) => 
-      switch(str_phase){
-        | "idle-phase" => Belt.Result.Ok(IdlePhase)
-        | "deal-phase" => Belt.Result.Ok(DealPhase)
-        | "beg-phase" => Belt.Result.Ok(BegPhase)
-        | "give-one-phase" => Belt.Result.Ok(GiveOnePhase)
-        | "run-pack-phase" => Belt.Result.Ok(RunPackPhase)
-        | "player-turn-phase-N1" => Belt.Result.Ok(PlayerTurnPhase(N1))
-        | "player-turn-phase-N2" => Belt.Result.Ok(PlayerTurnPhase(N2))
-        | "player-turn-phase-N3" => Belt.Result.Ok(PlayerTurnPhase(N3))
-        | "player-turn-phase-N4" => Belt.Result.Ok(PlayerTurnPhase(N4))
-        | "pack-depleted-phase" => Belt.Result.Ok(PackDepletedPhase)
-        | "game-over-phase" => Belt.Result.Ok(GameOverPhase)
-        | _ => Decco.error("Failed to decode phase classified as string: " ++ str_phase, json)
-      }
-    | Js.Json.JSONArray(jsonTs) => 
-      switch (jsonTs) {
-      | [|phaseJson, numEmptySeats, canSub|]
-          when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-players-phase" =>
-        FindPlayersPhase(
-          Js.Json.decodeNumber(numEmptySeats) |> Js.Option.getExn |> int_of_float,
-          Js.Json.decodeBoolean(canSub) |> Js.Option.getExn,
-        )
-        ->Belt.Result.Ok
-      | [|phaseJson, n, subPhaseJson|] 
-          when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-subs-phase" =>
-        switch (phase_decode(subPhaseJson)) {
-        | Belt.Result.Error(_) => Decco.error("Failed to recursively decode FindSubsPhase.", json)
-        | Belt.Result.Ok(phase) => FindSubsPhase(Js.Json.decodeNumber(n) |> Js.Option.getExn |> int_of_float, phase)->Belt.Result.Ok
-        }
 
-      | _ => Decco.error("Failed to decode phase classified as array.", json)
-      };
-    | _ => Decco.error("Failed to decode phase. Json was not classified as expected.", json)
-  }
+let rec phase_decode = json => {
+  switch (Js.Json.classify(json)) {
+  | Js.Json.JSONString(str_phase) =>
+    switch (str_phase) {
+    | "idle-phase" => Belt.Result.Ok(IdlePhase)
+    | "deal-phase" => Belt.Result.Ok(DealPhase)
+    | "beg-phase" => Belt.Result.Ok(BegPhase)
+    | "give-one-phase" => Belt.Result.Ok(GiveOnePhase)
+    | "run-pack-phase" => Belt.Result.Ok(RunPackPhase)
+    | "player-turn-phase-N1" => Belt.Result.Ok(PlayerTurnPhase(N1))
+    | "player-turn-phase-N2" => Belt.Result.Ok(PlayerTurnPhase(N2))
+    | "player-turn-phase-N3" => Belt.Result.Ok(PlayerTurnPhase(N3))
+    | "player-turn-phase-N4" => Belt.Result.Ok(PlayerTurnPhase(N4))
+    | "pack-depleted-phase" => Belt.Result.Ok(PackDepletedPhase)
+    | "game-over-phase" => Belt.Result.Ok(GameOverPhase)
+    | _ => Decco.error("Failed to decode phase classified as string: " ++ str_phase, json)
+    }
+  | Js.Json.JSONArray(jsonTs) =>
+    switch (jsonTs) {
+    | [|phaseJson, numEmptySeats, canSub|]
+        when
+          Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-players-phase" =>
+      FindPlayersPhase(
+        Js.Json.decodeNumber(numEmptySeats) |> Js.Option.getExn |> int_of_float,
+        Js.Json.decodeBoolean(canSub) |> Js.Option.getExn,
+      )
+      ->Belt.Result.Ok
+    | [|phaseJson, n, subPhaseJson|]
+        when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-subs-phase" =>
+      switch (phase_decode(subPhaseJson)) {
+      | Belt.Result.Error(_) => Decco.error("Failed to recursively decode FindSubsPhase.", json)
+      | Belt.Result.Ok(phase) =>
+        FindSubsPhase(Js.Json.decodeNumber(n) |> Js.Option.getExn |> int_of_float, phase)
+        ->Belt.Result.Ok
+      }
+    | _ => Decco.error("Failed to decode phase classified as array.", json)
+    }
+  | _ => Decco.error("Failed to decode phase. Json was not classified as expected.", json)
+  };
 };
 
 let rec stringOfPhase = fun
