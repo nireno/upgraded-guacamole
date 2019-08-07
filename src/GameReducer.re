@@ -14,8 +14,7 @@ type action =
   | DealAgain
   | LeaveGame(Player.id)
   | UpdateSubbing(bool)
-  | ClearNotis
-  | CheatPoints(Team.id, int);
+  | ClearNotis;
 
 let getTeamHighAndLowMaybes:
   ((Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t), option(Card.t)) =>
@@ -124,7 +123,7 @@ let maybeAddJackPoints = (( state, awards )) =>
     (state, (h, l, Some(jackAwardData), g))
   };
 
-let getKickTrumpNotis = (dealerId, maybeTrumpCard) =>
+let getKickTrumpNotis = (maybeTrumpCard) =>
   switch (maybeTrumpCard) {
   | Some(trumpCard) when kickPoints(trumpCard.Card.rank) > 0 =>
     let trumpCardText = trumpCard->Card.stringOfCard;
@@ -345,7 +344,7 @@ let rec reduce = (action, state) =>
 
     let state = state |> dealCards |> kickTrump;
 
-    let kickTrumpNotis = getKickTrumpNotis(state.dealer, state.maybeTrumpCard);
+    let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
 
     {
       ...state,
@@ -609,7 +608,7 @@ let rec reduce = (action, state) =>
         state.maybeTrumpCard,
       );
 
-    let kickTrumpNotis = getKickTrumpNotis(state.dealer, state.maybeTrumpCard);
+    let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
 
     let state = {...state, maybeTeamHigh, maybeTeamLow, notis: state.notis @ kickTrumpNotis};
 
@@ -703,10 +702,5 @@ let rec reduce = (action, state) =>
       };
     {...state, phase};
   | ClearNotis => 
-    {...state, notis: []}
-  | CheatPoints(team, points) =>
-    {
-      ...state,
-      teams: GameTeams.update(team, x => {...x, team_score: x.team_score + points}, state.teams),
-    };
-  }
+    {...state, notis: []};
+  };

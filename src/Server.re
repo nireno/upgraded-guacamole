@@ -67,14 +67,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   | IO_GiveOne => GiveOne
   | IO_Deal => Deal
   | IO_RunPack => RunPack
-  | IO_DealAgain => DealAgain
-  | IO_CheatPoints(ioTeamId, points) => {
-    switch(ioTeamId |> Js.Json.parseExn |> Team.id_decode){
-      | Belt.Result.Error(_) => Noop
-      | Belt.Result.Ok(teamId) => CheatPoints(teamId, points)
-    };
-    
-  };
+  | IO_DealAgain => DealAgain;
 
 let onSocketDisconnect = socket =>
   SocketServer.Socket.onDisconnect(
