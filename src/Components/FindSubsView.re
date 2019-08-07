@@ -1,8 +1,12 @@
 [@react.component]
-let make = (~n) => {
+let make = (~n, ~onLeaveClick) => {
   let players = Grammar.byNumber(n, "player");
   let n = string_of_int(n);
   <div className="text-center">
-    {ReasonReact.string({j|$n $players disconnected. Finding substitutes ...|j})}
+    <div> {ReasonReact.string({j|$n $players disconnected|j})} </div>
+    <div> {ReasonReact.string({j|Please wait while I find substitutes...|j})} </div>
+    <button className="btn btn-blue mt-4" onClick=onLeaveClick>
+      {ReasonReact.string("Leave Game")}
+    </button>
   </div>;
 };

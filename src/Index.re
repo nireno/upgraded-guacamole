@@ -541,7 +541,10 @@ module App = {
                     };
                   }
                 </Modal>
-              | FindSubsPhase(n, _) => <Modal visible=true> <FindSubsView n /> </Modal>
+              | FindSubsPhase(n, _) => 
+                <Modal visible=true> 
+                  <FindSubsView n onLeaveClick={_event => sendIO(IO_LeaveGame)} /> 
+                </Modal>
               | GameOverPhase =>
                 <Modal visible=true>
                   <GameOverView
