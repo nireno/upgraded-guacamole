@@ -135,15 +135,24 @@ let reducer = (prevState, action) => {
       Howler.play(sound);
     };
 
-    let isPlayerTurn =
+    let wasActivePlayer =
+      switch (ActivePlayer.find(prevState.gamePhase, prevState.dealer)) {
+      | Some(activePlayer) when activePlayer.id == nextState.me => true
+      | _ => false
+      };
+
+    let isActivePlayer =
       switch (ActivePlayer.find(nextState.gamePhase, nextState.dealer)) {
       | Some(activePlayer) when activePlayer.id == nextState.me => true
       | _ => false
       };
 
-    /** "player turn" sound effect.  This is only played if not already playing the "Game in progress" sound effect */
-    if (!prevHasEmptySeats && isPlayerTurn) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/your_turn_subtle.mp3"|], ())));
+    // "player turn" sound effect.
+    if (!prevHasEmptySeats  //only play if not already playing the "Game in progress" sound effect
+        && !wasActivePlayer  // only play the first time the player becomes active.
+        && isActivePlayer) {
+      let sound =
+        Howler.(makeHowl(howlOptions(~src=[|"./static/audio/your_turn_subtle.mp3"|], ())));
       Howler.play(sound);
     };
 
