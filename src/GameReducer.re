@@ -133,6 +133,43 @@ let getKickTrumpNotis = (maybeTrumpCard) =>
   | _ => []
   };
 
+
+module ValidatePlay = {
+  type playFailure =
+    | WaitForTurn
+    | AlreadyPlayed
+    | CardNotInHand
+    | CantUnderTrump
+    | MustFollowSuit
+    | MustFollowTrumpedSuit;
+
+  // TODO - Still need to handle CantUnderTrump and MustFollowSuit
+  let validate =
+      (game_phase, playerId, game_leader_id, cardPlayed, pla_hand, pla_card, game_followsuit_maybe, game_trumpcard_maybe) => {
+    game_phase != PlayerTurnPhase(playerId)
+      ? Belt.Result.Error(WaitForTurn)
+      : pla_card != None
+          ? Belt.Result.Error(AlreadyPlayed)
+          : 
+            !List.exists(card => card == cardPlayed, pla_hand)
+              ? Belt.Result.Error(CardNotInHand)
+              // there must be an empty slot on the board for the player
+              : (
+                switch (game_followsuit_maybe) {
+                | Some(suitToFollow)
+                    when
+                      game_leader_id == playerId
+                      && game_trumpcard_maybe->Belt.Option.mapWithDefault(false, trumpCard =>
+                           trumpCard.Card.suit != cardPlayed.Card.suit
+                         )
+                      && cardPlayed.suit != suitToFollow =>
+                  Belt.Result.Error(MustFollowTrumpedSuit)
+                | _ => Ok()
+                }
+              );
+  };
+};
+
 /* 
   This module should probably be called GameMachine and this function should
   be the gameState machine. It takes some (before) state and an action and
@@ -230,18 +267,19 @@ let rec reduce = (action, state) =>
     let player = Quad.get(playerId, state.players);
     let hand' = List.filter(c' => c != c', player.pla_hand);
 
-    let canPlayCard =
-      // This player has the turn
-      state.phase == PlayerTurnPhase(playerId)
-      // and Card c was in player hand
-      && player.pla_hand != hand'
-      // and there is an empty slot on the board for the player
-      && player.pla_card == None
-        ? true : false;
+    let validationResult =
+      ValidatePlay.validate(
+        state.phase,
+        playerId,
+        state.leader,
+        c,
+        player.pla_hand,
+        player.pla_card,
+        state.game_follow_suit,
+        state.maybeTrumpCard,
+      );
 
-    if (!canPlayCard) {
-      state;
-    } else {
+    let updateGame = () => {
       /*
         When the current player is the last player in the trick (i.e. the next player
         is the lead player), it means this current player will end the trick. There
@@ -305,6 +343,43 @@ let rec reduce = (action, state) =>
         phase: phase',
         notis: jackAwardNotis,
       };
+    };
+
+    switch (validationResult) {
+    | Belt.Result.Error(validationError) =>
+      let noti_message =
+        switch (validationError) {
+        | CardNotInHand => Noti.Text("How are you even playing that card?")
+        | CantUnderTrump => Text("You can't under-trump.")
+        | MustFollowSuit => 
+          switch(My.Option.all2(state.maybeLeadCard, state.maybeTrumpCard)){
+          | None => Text("You can't play that card.")
+          | Some(({suit: leadSuit}, {suit: trumpSuit})) =>
+            Text({j|You must follow suit ($leadSuit) or play trump ($trumpSuit).|j})
+          }
+        | MustFollowTrumpedSuit =>
+          switch (My.Option.all2(state.maybeTrumpCard, state.game_follow_suit)) {
+          | None => Text("You can't play that card.")
+          | Some(({suit: trumpSuit}, suitToFollow)) =>
+            let trumpSuitText = trumpSuit->Card.Suit.toString;
+            let suitToFollowText = suitToFollow->Card.Suit.toString;
+            Text({j|You must follow with your captured suit ($suitToFollowText) or play trump ($trumpSuitText).|j});
+          }
+        | WaitForTurn => Text("Wait for your turn.")
+        | AlreadyPlayed => Text("You already have a card in play.")
+        };
+
+      let errorNoti = {
+        Noti.noti_id: Nanoid.nanoid(),
+        noti_recipient: playerId,
+        noti_message,
+        noti_level: Danger,
+        noti_kind: Duration(5000),
+      };
+
+      {...state, notis: state.notis @ [errorNoti]};
+
+    | Belt.Result.Ok () => updateGame()
     };
 
   | Deal =>
@@ -376,8 +451,54 @@ let rec reduce = (action, state) =>
     | Some((p1Card, p2Card, p3Card, p4Card, {Card.suit: leadSuit}, {Card.suit: trumpSuit})) =>
       let trick = (p1Card, p2Card, p3Card, p4Card);
 
-      let (trickWinner, _card) = Trick.getWinnerCard(trumpSuit, leadSuit, trick);
+      let (trickWinner, trickWinnerCard) = Trick.getWinnerCard(trumpSuit, leadSuit, trick);
 
+      let game_follow_suit =
+        switch (state.game_follow_suit) {
+        // clear the follow-suit field whenever trick-winner is not the leader
+        | Some(_) when state.leader != trickWinner => None
+        // the above case clears the follow-suit field in all cases when the trick-winner 
+        // is not the leader. The only remaining case when game_follow_suit is Some(thing) 
+        // would be when the trick-winner *is* the leader and in this case I only None the follow-suit
+        // flag if the leader did indeed follow with the suit-to-follow 
+        | Some(suitToFollow) when trickWinnerCard.suit == suitToFollow => None
+        | game_followsuit_maybe =>
+          // in order for trump-and-follow to be but in effect
+          // the leading-suit *must not* be trump
+          leadSuit != trumpSuit
+          // the player must win the trick with trump
+          && trickWinnerCard.suit == trumpSuit
+          // and must still have a leading-suit card in hand
+          && Quad.select(
+               trickWinner,
+               p => (p.pla_hand->List.exists(({Card.suit}) => suit == leadSuit, _)),
+               state.players,
+             )
+            ? Some(leadSuit) : game_followsuit_maybe;
+        };
+
+      // Commented out the notifications because it might get annoying for people 
+      // who already accustomed to trump-and-follow.
+      // let followSuitNotis =
+      //   game_follow_suit->Belt.Option.mapWithDefault(
+      //     [],
+      //     capturedSuit => {
+      //       let trumpSuitText = trumpSuit->Card.Suit.toString;
+      //       let capturedSuitText = capturedSuit->Card.Suit.toString;
+      //       [
+      //         {
+      //           Noti.noti_id: Nanoid.nanoid(),
+      //           noti_recipient: trickWinner,
+      //           noti_message:
+      //             Text(
+      //               {j|You must follow with the captured suit ($capturedSuitText) or play trump ($trumpSuitText)|j},
+      //             ),
+      //           noti_level: Warning,
+      //           noti_kind: Confirm,
+      //         },
+      //       ];
+      //     },
+      //   );
       let advanceRound = state => {
         ...state,
         players:
@@ -392,6 +513,8 @@ let rec reduce = (action, state) =>
         leader: trickWinner,
         maybeLeadCard: None,
         phase: PlayerTurnPhase(trickWinner),
+        game_follow_suit,
+        // notis: state.notis @ followSuitNotis
       };
 
       let state = state |> advanceRound;

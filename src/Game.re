@@ -34,6 +34,7 @@ type state = {
   maybeTeamJack: option(GameAward.jackAwardData),
   phase,
   maybeKickTimeoutId: option(Js.Global.timeoutId),
+  game_follow_suit: option(Card.Suit.t),
 };
 
 module SockServ = BsSocket.Server.Make(SocketMessages);
@@ -70,6 +71,12 @@ let debugOfState = (state) => {
     "Player4": Quad.select(N4, stringOfPlayer, state.players),
   };
 
+  let debugOf_game_follow_suit =
+    state.game_follow_suit
+    ->Belt.Option.mapWithDefault("None", (cardSuit) =>
+        "Some(" ++ cardSuit->Card.Suit.toString ++ ")"
+      );
+
   {
     "game_id": state.game_id,
     "phase": stringOfPhase(state.phase),
@@ -81,7 +88,8 @@ let debugOfState = (state) => {
     "maybeTeamLow": stringOfTeamLow,
     "maybeTeamJack": stringOfTeamJack,
     "players": debugOfPlayers,
-  }
+    "game_follow_suit": debugOf_game_follow_suit,
+  };
 };
 
 let initialState = () => {
@@ -105,6 +113,7 @@ let initialState = () => {
     maybeTeamJack: None,
     phase: FindPlayersPhase(4, false),
     maybeKickTimeoutId: None,
+    game_follow_suit: None,
   };
 };
 
