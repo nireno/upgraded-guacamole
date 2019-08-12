@@ -291,11 +291,11 @@ let rec reduce = (action, state) =>
     }
 
   | PlayCard(playerId, c) =>
-    let player = Quad.get(playerId, state.players);
-    let hand' = List.filter(c' => c != c', player.pla_hand);
-    let cardMaybesOnBoard = state.players->Quad.map(player => player.pla_card, _);
     switch(state.phase){
     | PlayerTurnPhase(phasePlayerId) when phasePlayerId == playerId =>
+      let player = Quad.get(playerId, state.players);
+      let hand' = List.filter(c' => c != c', player.pla_hand);
+      let cardMaybesOnBoard = state.players->Quad.map(player => player.pla_card, _);
       switch(state.maybeTrumpCard){
       | None => 
         // This should be an impossible state.
@@ -420,57 +420,64 @@ let rec reduce = (action, state) =>
         };
       }
     | _ => 
-      // This should be an impossible state.
+      let playerIdText = playerId->Player.stringOfId
       logger.warn(
-        "Player is somehow playing a card when its not their turn in PlayerTurnPhase(playerId)",
+        {j|`PlayerTurnPhase($playerIdText)` recieved out of phase.|j}
       );
       state;
     }
 
   | Deal =>
-    let dealCards = state => {
-      let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, state.deck);
-      let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
-      let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
-      let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+    switch(state.phase){
+    | DealPhase => 
+      let dealCards = state => {
+        let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, state.deck);
+        let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+        let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+        let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, deck);
+        {
+          ...state,
+          deck,
+          leader: Quad.nextId(state.dealer),
+          players:
+            state.players
+            |> Quad.update(N1, x => {...x, pla_hand: p1Hand})
+            |> Quad.update(N2, x => {...x, pla_hand: p2Hand})
+            |> Quad.update(N3, x => {...x, pla_hand: p3Hand})
+            |> Quad.update(N4, x => {...x, pla_hand: p4Hand}),
+          teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
+        };
+      };
+
+      let kickTrump = state => {
+        let dealerTeam = teamOfPlayer(state.dealer);
+        let (cards, deck) = Deck.deal(1, state.deck);
+        let trumpCard = List.hd(cards); /* Dealing expects enough cards to kick trump. #unsafe */
+        let points = kickPoints(trumpCard.rank);
+
+        {
+          ...state,
+          deck,
+          maybeTrumpCard: Some(trumpCard),
+          teams:
+            GameTeams.update(dealerTeam, x => {...x, team_score: x.team_score + points}, state.teams),
+        };
+      };
+
+      let state = state |> dealCards |> kickTrump;
+
+      let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
+
       {
         ...state,
-        deck,
-        leader: Quad.nextId(state.dealer),
-        players:
-          state.players
-          |> Quad.update(N1, x => {...x, pla_hand: p1Hand})
-          |> Quad.update(N2, x => {...x, pla_hand: p2Hand})
-          |> Quad.update(N3, x => {...x, pla_hand: p3Hand})
-          |> Quad.update(N4, x => {...x, pla_hand: p4Hand}),
-        teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
+        phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
+        notis: state.notis @ kickTrumpNotis,
       };
-    };
 
-    let kickTrump = state => {
-      let dealerTeam = teamOfPlayer(state.dealer);
-      let (cards, deck) = Deck.deal(1, state.deck);
-      let trumpCard = List.hd(cards); /* Dealing expects enough cards to kick trump. #unsafe */
-      let points = kickPoints(trumpCard.rank);
-
-      {
-        ...state,
-        deck,
-        maybeTrumpCard: Some(trumpCard),
-        teams:
-          GameTeams.update(dealerTeam, x => {...x, team_score: x.team_score + points}, state.teams),
-      };
-    };
-
-    let state = state |> dealCards |> kickTrump;
-
-    let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
-
-    {
-      ...state,
-      phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
-      notis: state.notis @ kickTrumpNotis,
-    };
+    | _ =>
+      logger.warn("`Deal` recieved out of phase.");
+      state
+    }
 
   | EndTrick => state
     // TODO: Endtrick is practically a noop at this point. 
@@ -592,276 +599,315 @@ let rec reduce = (action, state) =>
       };
     };
   | Beg =>
-    let beggerId = Quad.nextId(state.dealer);
-    let pla_name = Quad.get(beggerId, state.players).pla_name;
-    let notis = Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(pla_name ++ " begs"), ());
-
-    {...state, phase: GiveOnePhase, notis};
+    switch(state.phase){
+    | BegPhase =>
+      let beggerId = Quad.nextId(state.dealer);
+      let pla_name = Quad.get(beggerId, state.players).pla_name;
+      let notis = Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(pla_name ++ " begs"), ());
+      {...state, phase: GiveOnePhase, notis};
+    | _ => 
+      logger.warn("`Beg` recieved out of phase.")
+      state
+    }
 
   | Stand =>
-    let beggerId = Quad.nextId(state.dealer);
-    let begger = Quad.get(beggerId, state.players);
+    switch(state.phase){
+    | BegPhase =>
+      let beggerId = Quad.nextId(state.dealer);
+      let begger = Quad.get(beggerId, state.players);
 
-    let (maybeTeamHigh, maybeTeamLow) =
-      getTeamHighAndLowMaybes(
-        state.players->Quad.map(player => player.pla_hand, _),
-        state.maybeTrumpCard,
-      );
-
-    let state' = {
-      ...state,
-      maybeTeamHigh,
-      maybeTeamLow,
-      notis: Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.pla_name ++ " stands"), ()),
-    };
-
-    let (gameOverTestState, (h, l, j, g)) =
-      Util.updateUntil(
-        [maybeAddHighPoint, maybeAddLowPoint],
-        ((state, _)) => isGameOverTest(state),
-        (state', (None, None, None, None)),
-      );
-    
-
-    if (isGameOverTest(gameOverTestState)) {
-      let notis =
-        Noti.broadcast(
-          ~msg=
-            RoundSummary({
-              noti_maybeTeamHigh: h,
-              noti_maybeTeamLow: l,
-              noti_maybeTeamJack: j,
-              noti_maybeTeamGame: g,
-            }),
-          ~kind=Confirm,
-          (),
+      let (maybeTeamHigh, maybeTeamLow) =
+        getTeamHighAndLowMaybes(
+          state.players->Quad.map(player => player.pla_hand, _),
+          state.maybeTrumpCard,
         );
 
-      {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
-    } else {
-      {
-        ...state', // don't use gameOverTestState here. Points for high and low should usually be added at the end of the round.
-        phase: PlayerTurnPhase(beggerId),
-      };
-    };
-    
-
-  | GiveOne
-      when
-        [Quad.N1, N3]
-        |> List.mem(state.dealer)
-        && GameTeams.get(T2, state.teams).team_score == 13
-        || [Quad.N2, N4]
-        |> List.mem(state.dealer)
-        && GameTeams.get(T1, state.teams).team_score == 13 =>
-    state;
-  | GiveOne =>
-    let receivingTeamId =
-      switch (state.dealer) {
-      | N1 | N3 => Team.T2 
-      | N2 | N4 => T1
+      let state' = {
+        ...state,
+        maybeTeamHigh,
+        maybeTeamLow,
+        notis: Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.pla_name ++ " stands"), ()),
       };
 
-    let dealer = Quad.get(state.dealer, state.players);
+      let (gameOverTestState, (h, l, j, g)) =
+        Util.updateUntil(
+          [maybeAddHighPoint, maybeAddLowPoint],
+          ((state, _)) => isGameOverTest(state),
+          (state', (None, None, None, None)),
+        );
+      
 
-    let (maybeTeamHigh, maybeTeamLow) =
-      getTeamHighAndLowMaybes(
-        state.players->Quad.map(player => player.pla_hand, _),
-        state.maybeTrumpCard,
-      );
-
-    let state' = {
-      ...state,
-      teams:
-        GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
-      notis:
-        state.notis
-        @ Noti.playerBroadcast(
-            ~from=state.dealer,
-            ~msg=Noti.Text(dealer.pla_name ++ " gives one."),
+      if (isGameOverTest(gameOverTestState)) {
+        let notis =
+          Noti.broadcast(
+            ~msg=
+              RoundSummary({
+                noti_maybeTeamHigh: h,
+                noti_maybeTeamLow: l,
+                noti_maybeTeamJack: j,
+                noti_maybeTeamGame: g,
+              }),
+            ~kind=Confirm,
             (),
-          ),
-      maybeTeamHigh,
-      maybeTeamLow,
-    };
+          );
 
-    let (gameOverTestState, (h, l, j, g)) =
-      Util.updateUntil(
-        [maybeAddHighPoint, maybeAddLowPoint],
-        ((state, _)) => isGameOverTest(state),
-        (state', (None, None, None, None)),
-      );
+        {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+      } else {
+        {
+          ...state', // don't use gameOverTestState here. Points for high and low should usually be added at the end of the round.
+          phase: PlayerTurnPhase(beggerId),
+        };
+      };
+    
+    | _ => 
+      logger.warn("`Stand` recieved out of phase.")
+      state
+    }
 
-    if (isGameOverTest(gameOverTestState)) {
-      let notis =
-        Noti.broadcast(
-          ~msg=
-            RoundSummary({
-              noti_maybeTeamHigh: h,
-              noti_maybeTeamLow: l,
-              noti_maybeTeamJack: j,
-              noti_maybeTeamGame: g,
-            }),
-          ~kind=Confirm,
-          (),
+  // | GiveOne
+  //     when
+  //       [Quad.N1, N3]
+  //       |> List.mem(state.dealer)
+  //       && GameTeams.get(T2, state.teams).team_score == 13
+  //       || [Quad.N2, N4]
+  //       |> List.mem(state.dealer)
+  //       && GameTeams.get(T1, state.teams).team_score == 13 =>
+  //   state;
+  | GiveOne =>
+    switch(state.phase){
+    | GiveOnePhase =>
+      let receivingTeamId =
+        switch (state.dealer) {
+        | N1 | N3 => Team.T2 
+        | N2 | N4 => T1
+        };
+
+      let dealer = Quad.get(state.dealer, state.players);
+
+      let (maybeTeamHigh, maybeTeamLow) =
+        getTeamHighAndLowMaybes(
+          state.players->Quad.map(player => player.pla_hand, _),
+          state.maybeTrumpCard,
         );
-      {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
-    } else {
-      {...state', phase: PlayerTurnPhase(state.leader)};
+
+      let state' = {
+        ...state,
+        teams:
+          GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
+        notis:
+          state.notis
+          @ Noti.playerBroadcast(
+              ~from=state.dealer,
+              ~msg=Noti.Text(dealer.pla_name ++ " gives one."),
+              (),
+            ),
+        maybeTeamHigh,
+        maybeTeamLow,
+      };
+
+      let (gameOverTestState, (h, l, j, g)) =
+        Util.updateUntil(
+          [maybeAddHighPoint, maybeAddLowPoint],
+          ((state, _)) => isGameOverTest(state),
+          (state', (None, None, None, None)),
+        );
+
+      if (isGameOverTest(gameOverTestState)) {
+        let notis =
+          Noti.broadcast(
+            ~msg=
+              RoundSummary({
+                noti_maybeTeamHigh: h,
+                noti_maybeTeamLow: l,
+                noti_maybeTeamJack: j,
+                noti_maybeTeamGame: g,
+              }),
+            ~kind=Confirm,
+            (),
+          );
+        {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+      } else {
+        {...state', phase: PlayerTurnPhase(state.leader)};
+      };
+
+    | _ => 
+      logger.warn("`GiveOne` recieved out of phase.");
+      state;
     };
 
   | RunPack =>
-    let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, state.deck);
-    let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
-    let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
-    let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
-    let dealer = Quad.get(state.dealer, state.players);
+    switch(state.phase){
+    | GiveOnePhase
+    | RunPackPhase =>
+      let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, state.deck);
+      let (p2Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+      let (p3Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+      let (p4Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, deck);
+      let dealer = Quad.get(state.dealer, state.players);
 
-    let prevKick =
-      switch (state.maybeTrumpCard) {
-      | None =>
-        failwith(
-          "DealMore action expected state.maybeTrumpCard to be Some thing but got None",
-        )
-      | Some(k) => k
-      };
-
-    let kick = Js.Option.getExn(state.maybeTrumpCard);
-    let {Card.suit: kickSuit} = kick;
-
-    let (cards, deck) = Deck.deal(1, deck);
-    let kick' = List.hd(cards);
-    let {Card.rank: kickRank', Card.suit: kickSuit'} = kick';
-    let pointsKicked = kickPoints(kickRank');
-
-    let state =
-      kickSuit == kickSuit'
-        ? {
-          ...state,
-          phase:
-            List.length(deck) < 12 ? PackDepletedPhase : RunPackPhase,
-        }
-        : {
-          ...state,
-          phase: PlayerTurnPhase(state.leader),
+      let prevKick =
+        switch (state.maybeTrumpCard) {
+        | None =>
+          failwith(
+            "DealMore action expected state.maybeTrumpCard to be Some thing but got None",
+          )
+        | Some(k) => k
         };
 
-    let state = {
-      ...state,
-      players:
-        state.players
-        |> Quad.update(N1, x => {...x, pla_hand: x.pla_hand @ p1Hand})
-        |> Quad.update(N2, x => {...x, pla_hand: x.pla_hand @ p2Hand})
-        |> Quad.update(N3, x => {...x, pla_hand: x.pla_hand @ p3Hand})
-        |> Quad.update(N4, x => {...x, pla_hand: x.pla_hand @ p4Hand}),
-      deck: deck @ [prevKick],
-      maybeTrumpCard: Some(kick'),
-      teams:
-        GameTeams.update(
-          teamOfPlayer(state.dealer),
-          x => {...x, team_score: x.team_score + pointsKicked},
-          state.teams,
-        ),
-      notis:
-        Noti.playerBroadcast(
-          ~from=state.dealer,
-          ~msg=Noti.Text(dealer.pla_name ++ " runs the pack"),
-          (),
-        ),
-    };
+      let kick = Js.Option.getExn(state.maybeTrumpCard);
+      let {Card.suit: kickSuit} = kick;
 
-    let (maybeTeamHigh, maybeTeamLow) =
-      getTeamHighAndLowMaybes(
-        state.players->Quad.map(player => player.pla_hand, _),
-        state.maybeTrumpCard,
-      );
+      let (cards, deck) = Deck.deal(1, deck);
+      let kick' = List.hd(cards);
+      let {Card.rank: kickRank', Card.suit: kickSuit'} = kick';
+      let pointsKicked = kickPoints(kickRank');
 
-    let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
+      let state =
+        kickSuit == kickSuit'
+          ? {
+            ...state,
+            phase:
+              List.length(deck) < SharedGame.settings.nCardsToRun * 4 + 1 // enough for 4 players and kicking 1 trump?
+                ? PackDepletedPhase : RunPackPhase,
+          }
+          : {
+            ...state,
+            phase: PlayerTurnPhase(state.leader),
+          };
 
-    let state = {...state, maybeTeamHigh, maybeTeamLow, notis: state.notis @ kickTrumpNotis};
+      let state = {
+        ...state,
+        players:
+          state.players
+          |> Quad.update(N1, x => {...x, pla_hand: x.pla_hand @ p1Hand})
+          |> Quad.update(N2, x => {...x, pla_hand: x.pla_hand @ p2Hand})
+          |> Quad.update(N3, x => {...x, pla_hand: x.pla_hand @ p3Hand})
+          |> Quad.update(N4, x => {...x, pla_hand: x.pla_hand @ p4Hand}),
+        deck: deck @ [prevKick],
+        maybeTrumpCard: Some(kick'),
+        teams:
+          GameTeams.update(
+            teamOfPlayer(state.dealer),
+            x => {...x, team_score: x.team_score + pointsKicked},
+            state.teams,
+          ),
+        notis:
+          Noti.playerBroadcast(
+            ~from=state.dealer,
+            ~msg=Noti.Text(dealer.pla_name ++ " runs the pack"),
+            (),
+          ),
+      };
 
-    if (isGameOverTest(state)) {
-      {...state, phase: GameOverPhase};
-    } else {
-      switch (state.phase) {
-      | PlayerTurnPhase(_) =>
-        let (gameOverTestState, (h, l, j, g)) =
-          Util.updateUntil(
-            [maybeAddHighPoint, maybeAddLowPoint],
-            ((state, _)) => isGameOverTest(state),
-            (state, (None, None, None, None)),
-          );
+      let (maybeTeamHigh, maybeTeamLow) =
+        getTeamHighAndLowMaybes(
+          state.players->Quad.map(player => player.pla_hand, _),
+          state.maybeTrumpCard,
+        );
 
-        if (isGameOverTest(gameOverTestState)) {
-          let notis =
-            Noti.broadcast(
-              ~msg=
-                RoundSummary({
-                  noti_maybeTeamHigh: h,
-                  noti_maybeTeamLow: l,
-                  noti_maybeTeamJack: j,
-                  noti_maybeTeamGame: g,
-                }),
-              ~kind=Confirm,
-              (),
+      let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
+
+      let state = {...state, maybeTeamHigh, maybeTeamLow, notis: state.notis @ kickTrumpNotis};
+
+      if (isGameOverTest(state)) {
+        {...state, phase: GameOverPhase};
+      } else {
+        switch (state.phase) {
+        | PlayerTurnPhase(_) =>
+          let (gameOverTestState, (h, l, j, g)) =
+            Util.updateUntil(
+              [maybeAddHighPoint, maybeAddLowPoint],
+              ((state, _)) => isGameOverTest(state),
+              (state, (None, None, None, None)),
             );
 
-          {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
-        } else {
-          state;
-        };
-      | _ => state
-      };
-    };
+          if (isGameOverTest(gameOverTestState)) {
+            let notis =
+              Noti.broadcast(
+                ~msg=
+                  RoundSummary({
+                    noti_maybeTeamHigh: h,
+                    noti_maybeTeamLow: l,
+                    noti_maybeTeamJack: j,
+                    noti_maybeTeamGame: g,
+                  }),
+                ~kind=Confirm,
+                (),
+              );
 
+            {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+          } else {
+            state;
+          };
+        | _ => state
+        };
+      };
+
+    | _ =>
+      logger.warn("`RunPack` recieved out of phase.");
+      state
+    }
   | DealAgain =>
-    let dealer = Quad.get(state.dealer, state.players);
-    {
-      ...state,
-      players: Quad.map(x => {...x, pla_hand: []}, state.players),
-      maybeTrumpCard: None,
-      deck: Deck.make() |> Deck.shuffle,
-      phase: DealPhase,
-      notis:
-        Noti.playerBroadcast(
-          ~from=state.dealer,
-          ~msg=Noti.Text(dealer.pla_name ++ " has to redeal"),
-          (),
-        ),
+    switch(state.phase){
+    | PackDepletedPhase => 
+      let dealer = Quad.get(state.dealer, state.players);
+      {
+        ...state,
+        players: Quad.map(x => {...x, pla_hand: []}, state.players),
+        maybeTrumpCard: None,
+        deck: Deck.make() |> Deck.shuffle,
+        phase: DealPhase,
+        notis:
+          Noti.playerBroadcast(
+            ~from=state.dealer,
+            ~msg=Noti.Text(dealer.pla_name ++ " has to redeal"),
+            (),
+          ),
+      }
+    | _ => 
+      logger.warn("`DealAgain` recieved out of phase.")
+      state
     }
 
   | LeaveGame(leavingPlayerId) => 
-    let modPhase = (nPlayers, currentPhase) =>
-      switch (currentPhase) {
-      | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
-      | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayers, canSub)
-      | GameOverPhase => GameOverPhase
-      | phase => FindSubsPhase(nPlayers, phase)
+    switch(state.players->Quad.select(leavingPlayerId, player => player.sock_id_maybe, _)){
+    | None =>
+      logger.warn("Ignoring `LeaveGame` recieved for player with a socket of None.")
+      state
+    | Some(_socket) =>
+      let modPhase = (nPlayers, currentPhase) =>
+        switch (currentPhase) {
+        | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
+        | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayers, canSub)
+        | GameOverPhase => GameOverPhase
+        | phase => FindSubsPhase(nPlayers, phase)
+        };
+      
+      let leavingPlayer = Quad.get(leavingPlayerId, state.players);
+
+      let players =
+        state.players
+        |> Quad.update(leavingPlayerId, x =>
+              {...x, pla_name: Player.stringOfId(leavingPlayerId), sock_id_maybe: None}
+            );
+
+      let playerLeftNotis =
+        Noti.playerBroadcast(
+          ~from=leavingPlayerId,
+          ~msg=Noti.Text(leavingPlayer.pla_name ++ " has left game."),
+          ~level=Warning,
+          (),
+        );
+
+      {
+        ...state,
+        players: players,
+        phase: state.phase |> modPhase(4 - countPlayers(players)),
+        notis: state.notis @ playerLeftNotis,
+        maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
       };
-    
-    let leavingPlayer = Quad.get(leavingPlayerId, state.players);
+    }
 
-    let players =
-      state.players
-      |> Quad.update(leavingPlayerId, x =>
-            {...x, pla_name: Player.stringOfId(leavingPlayerId), sock_id_maybe: None}
-          );
-
-    let playerLeftNotis =
-      Noti.playerBroadcast(
-        ~from=leavingPlayerId,
-        ~msg=Noti.Text(leavingPlayer.pla_name ++ " has left game."),
-        ~level=Warning,
-        (),
-      );
-
-    {
-      ...state,
-      players: players,
-      phase: state.phase |> modPhase(4 - countPlayers(players)),
-      notis: state.notis @ playerLeftNotis,
-      maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
-    };
   | UpdateSubbing(canSub) => 
     let phase =
       switch (state.phase) {
