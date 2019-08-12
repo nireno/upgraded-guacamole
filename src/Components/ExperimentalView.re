@@ -24,7 +24,7 @@ let make = (~onJoinClick) => {
      }}
     <div className="flex items-center justify-around">
       <div onClick={_ => ReasonReactRouter.replace("./")} className="link link-blue" href="#">
-        {ReasonReact.string("Leave Game")}
+        {ReasonReact.string("Cancel")}
       </div>
       <button onClick=onJoinClick className="btn btn-blue" type_="button">
         {ReasonReact.string("Join Game")}
