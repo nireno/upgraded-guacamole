@@ -2,14 +2,14 @@ type t = {
   nCardsToDeal: int,
   nCardsToRun: int,
   winningScore: int,
-  kickPlayerMillis: int
+  kickPlayerMillis: int,
 }
 
 let default = {
   nCardsToDeal: 6,
   nCardsToRun: 3,
   winningScore: 14,
-  kickPlayerMillis: 60 * 1000
+  kickPlayerMillis: 60 * 1000,
 };
 
 let debug = {
