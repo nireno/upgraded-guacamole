@@ -219,7 +219,7 @@ module App = {
         <MenuView>
           <ExperimentalView
             onJoinClick={_event => {
-              ReasonReactRouter.push("./");
+              ReasonReactRouter.replace("./");
               sendIO(
                 IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
               );
@@ -260,7 +260,7 @@ module App = {
              {
                let onClick = _event =>
                  node_env == "production"
-                   ? ReasonReactRouter.push("./feedback")
+                   ? ReasonReactRouter.replace("./feedback")
                    : sendIO(
                        IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
                      );
@@ -268,14 +268,14 @@ module App = {
                  {ReasonReact.string("Join Public Game")}
                </button>
              }
-             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.push("./private-games/")}>
+             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.replace("./private-games/")}>
                {ReasonReact.string("Join Private Game")}
              </button>
              <button className="btn btn-blue mt-1" onClick=handleCreatePrivateGameClick>
                {ReasonReact.string("Create Private Game")}
              </button>
              <div className="link link-white mt-4" 
-                  onClick={_ => ReasonReactRouter.push("./settings")}>
+                  onClick={_ => ReasonReactRouter.replace("./settings")}>
                {ReasonReact.string("Settings")}
              </div>
              {switch (Js.Nullable.toOption(allfours_rules_url)) {

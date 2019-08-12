@@ -48,7 +48,7 @@ let make = (~sendJoinGame) => {
            </form>
          </div>
          <div className="flex items-center justify-around">
-           <div onClick={_ => ReasonReactRouter.push("../")} className="link link-blue" href="#">
+           <div onClick={_ => ReasonReactRouter.replace("../")} className="link link-blue" href="#">
              {ReasonReact.string("Cancel")}
            </div>
            <button onClick=submit className="btn btn-blue" type_="button">

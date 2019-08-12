@@ -42,7 +42,7 @@ let make = (~onSave, ~settings) => {
 
   let onSaveClick = _event => {
     onSave(ClientSettings.{volume: volume});
-    ReasonReactRouter.push("./");
+    ReasonReactRouter.replace("./");
   };
   
   <form className="bg-white shadow-md border border-solid border-gray-300 rounded px-8 pt-6 pb-8 mb-4 w-10/12">
@@ -77,7 +77,7 @@ let make = (~onSave, ~settings) => {
     </div>
     <div className="flex items-center justify-around">
       <div
-        onClick={_ => ReasonReactRouter.push("./")}
+        onClick={_ => ReasonReactRouter.replace("./")}
         className="link link-blue"
         href="#">
         {ReasonReact.string("Cancel")}
