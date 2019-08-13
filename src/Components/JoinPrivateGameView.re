@@ -7,15 +7,19 @@ type formState =
 let make = (~sendJoinGame) => {
   let (inviteCode, updateInviteCode) = React.useState(() => "");
   let (state, updateState) = React.useState(() => Initial);
+  let (canJoin, setCanJoin) = React.useState(() => true);
 
   let submit = _event => {
-    let ackJoinGame =
-      fun
-      | SocketMessages.AckOk => {
-          updateState(_ => Initial);
-          ReasonReactRouter.replace("../");
-        }
-      | _ => updateState(_ => Error);
+    setCanJoin(_ => false);
+    let ackJoinGame = response => {
+      setCanJoin(_ => true);
+      switch (response) {
+      | SocketMessages.AckOk =>
+        updateState(_ => Initial);
+        ReasonReactRouter.replace("../");
+      | _ => updateState(_ => Error)
+      };
+    };
     updateState(_ => Query);
     sendJoinGame(inviteCode, ackJoinGame);
   };
@@ -51,9 +55,9 @@ let make = (~sendJoinGame) => {
            <div onClick={_ => ReasonReactRouter.replace("../")} className="link link-blue" href="#">
              {ReasonReact.string("Cancel")}
            </div>
-           <button onClick=submit className="btn btn-blue" type_="button">
-             {ReasonReact.string("Join Game")}
-           </button>
+            <button onClick=submit disabled={!(canJoin)} className={"btn btn-blue " ++ (canJoin ? "" : "btn-disabled")} type_="button">
+              {ReasonReact.string("Join Game")}
+            </button>
          </div>
        </>
      | Query => <div className="text-xl text-center"> {ReasonReact.string("Searching...")} </div>
