@@ -114,9 +114,7 @@ SocketServer.onConnect(
 
         | IO_JoinPrivateGame(_inviteCode, _username, _ioClientSettings) => () // handled later by Socket.onWithAck
 
-        | IO_JoinGame(username, _ioClientSettingsJson) =>
-          ServerStore.dispatch(AttachPublicPlayer(sock_id, username));
-          logger.info2(getGameStats(), "Game stats:");
+        | IO_JoinGame(_username, _ioClientSettingsJson) => () // handled later by Socket.onWithAck
 
         | IO_LeaveGame =>
           ServerStore.dispatch(RemovePlayerBySocket(sock_id));
@@ -128,9 +126,10 @@ SocketServer.onConnect(
           | Some(gameState) =>
             switch (gameState.game_id) {
             | Public(_) =>
+              let noAck = _ => ()
               ServerStore.dispatchMany([
                 RemovePlayerBySocket(sock_id),
-                AttachPublicPlayer(sock_id, username),
+                AttachPublicPlayer(sock_id, username, noAck),
               ])
             | Private(_) =>
               ServerStore.dispatchMany([
@@ -162,7 +161,10 @@ SocketServer.onConnect(
         | IO_JoinPrivateGame(inviteCode, username, _ioClientSettings) =>
           logger.info("Invite code: " ++ inviteCode);
           ServerStore.dispatch(AttachPrivatePlayer(sock_id, username, inviteCode, ack));
-
+        
+        | IO_JoinGame(username, _ioClientSettingsJson) =>
+          ServerStore.dispatch(AttachPublicPlayer(sock_id, username, ack));
+          logger.info2(getGameStats(), "Game stats:");
         | _ => 
           // todo: merge on and onWith ack so I don't have to ignore other messages like this
           ()

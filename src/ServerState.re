@@ -69,9 +69,9 @@ type msg =
   | RemoveGame(Game.game_id)
   | ReplaceGame(Game.game_id, Game.state)
   | AttachPlayer(Game.game_id, sock_id, username )
-  | AttachPublicPlayer(sock_id, username)
+  | AttachPublicPlayer(sock_id, username, SocketMessages.ack)
   | CreatePrivateGame(sock_id, username)
-  | AttachPrivatePlayer(sock_id, username, string, SocketMessages.serverToClient => unit)
+  | AttachPrivatePlayer(sock_id, username, string, SocketMessages.ack)
   | RemovePlayerBySocket(sock_id)
   | AttachSubstitute(sock_id, username)
   | KickActivePlayer(Game.game_id)
@@ -89,7 +89,7 @@ let stringOfMsg = fun
   | RemoveGame(_game_id) => "RemoveGame"
   | ReplaceGame(_game_id, _state) => "ReplaceGame"
   | AttachPlayer(_game_id, _sock_id, _username ) => "AttachPlayer"
-  | AttachPublicPlayer(_sock_id, _username) => "AttachPublicPlayer"
+  | AttachPublicPlayer(_sock_id, _username, _ack) => "AttachPublicPlayer"
   | CreatePrivateGame(sock_id, username) => "CreatePrivateGame(" ++ sock_id ++ "," ++ username ++ ")"
   | AttachPrivatePlayer(_sock_id, _username, _invite_code, _ack) => "AttachPrivatePlayer"
   | RemovePlayerBySocket(_sock_id) => "RemovePlayerBySocket"
@@ -389,7 +389,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           };
         };
       };
-    | AttachPublicPlayer(sock_id, username) =>
+    | AttachPublicPlayer(sock_id, username, ack) =>
       let logger =
         logger.makeChild({"_context": "AttachPublicPlayer", "sock_id": sock_id, "username": username});
 
@@ -406,6 +406,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
             RemovePlayerBySocket(sock_id),
             AttachPlayer(gameState.game_id, sock_id, username),
             ReconcileSubstitution,
+            TriggerEffects([ServerEffect.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           Update(db'),
         );
@@ -414,7 +415,8 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         updateMany(
           [
             RemovePlayerBySocket(sock_id), 
-            AttachPlayer(gameState.game_id, sock_id, username)
+            AttachPlayer(gameState.game_id, sock_id, username),
+            TriggerEffects([ServerEffect.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           NoUpdate(db),
         );

@@ -2,7 +2,7 @@
 external allfours_feedback_url: Js.Nullable.t(string) = "process.env.allfours_feedback_url";
 
 [@react.component]
-let make = (~onJoinClick) => {
+let make = (~onJoinClick, ~canJoinPublicGame, ~onCancelClick) => {
   <div
     className="bg-white shadow-md border border-solid border-gray-200 rounded px-8 pt-6 pb-8 mb-4">
     <div className="mb-4 text-xl text-center"> {ReasonReact.string("Here be dragons")} </div>
@@ -23,11 +23,16 @@ let make = (~onJoinClick) => {
        </p>
      }}
     <div className="flex items-center justify-around">
-      <div onClick={_ => ReasonReactRouter.replace("./")} className="link link-blue" href="#">
+      <div onClick=onCancelClick className="link link-blue" href="#">
         {ReasonReact.string("Cancel")}
       </div>
-      <button onClick=onJoinClick className="btn btn-blue" type_="button">
-        {ReasonReact.string("Join Game")}
+      <button
+        style={ReactDOMRe.Style.make(~minWidth="7rem", ())}
+        onClick=onJoinClick
+        className={"btn btn-blue " ++ (canJoinPublicGame ? "" : "btn-disabled")}
+        disabled={!canJoinPublicGame}
+        type_="button">
+        {ReasonReact.string(canJoinPublicGame ? "Join Game" : "Joining")}
       </button>
     </div>
   </div>;

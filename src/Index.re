@@ -26,6 +26,7 @@ module App = {
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
     let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
+    let (canJoinPublicGame, updateCanJoinPublicGame) = React.useState(() => true);
 
     let saveClientSettings = newClientSettings => {
       LocalStorage.updateClientSettings(newClientSettings);
@@ -206,6 +207,37 @@ module App = {
     };
     
     let stringOfGameId = SharedGame.stringOfGameId(state.gameId);
+
+    let onExperimentalClick = _event => ReasonReactRouter.replace("./feedback");
+
+    let onExperimentalJoinClick = _event => {
+      updateCanJoinPublicGame(_ => false);
+      let ackJoinGame = _response => {
+        updateCanJoinPublicGame(_ => true);
+        ReasonReactRouter.replace("./");
+      };
+      sendIOWithAck(
+        IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        ackJoinGame,
+      );
+    };
+
+    let onExperimentalCancelClick = _event => {
+      updateCanJoinPublicGame(_ => true);
+      ReasonReactRouter.replace("./");
+    };
+
+    let onJoinPublicGameClick = _event => {
+      updateCanJoinPublicGame(_ => false);
+      let ackJoinGame = _response => {
+        updateCanJoinPublicGame(_ => true);
+      };
+      sendIOWithAck(
+        IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        ackJoinGame,
+      );
+    };
+    
     /** 
       Reading the url backwords allows the app to work when it isn't served from
       the root url a website i.e. it will work whether the app is served from the
@@ -218,12 +250,9 @@ module App = {
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
         <MenuView>
           <ExperimentalView
-            onJoinClick={_event => {
-              ReasonReactRouter.replace("./");
-              sendIO(
-                IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
-              );
-            }}
+            onJoinClick=onExperimentalJoinClick
+            canJoinPublicGame
+            onCancelClick=onExperimentalCancelClick
           />
         </MenuView>
       </div>;
@@ -258,15 +287,12 @@ module App = {
                {ReasonReact.string("All Fours")}
              </div>
              {
-               let onClick = _event =>
-                 node_env == "production"
-                   ? ReasonReactRouter.replace("./feedback")
-                   : sendIO(
-                       IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
-                     );
-               <button className="btn btn-blue mt-1" onClick>
+               <button
+                 className={"btn btn-blue mt-1 " ++ (canJoinPublicGame ? "" : "btn-disabled")}
+                 onClick={node_env == "production" ? onExperimentalClick : onJoinPublicGameClick}
+                 disabled={!canJoinPublicGame}>
                  {ReasonReact.string("Join Public Game")}
-               </button>
+               </button>;
              }
              <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.replace("./private-games/")}>
                {ReasonReact.string("Join Private Game")}

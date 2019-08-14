@@ -46,3 +46,5 @@ type serverToClient =
   | Reset
   | AckOk
   | AckError(string);
+
+type ack = serverToClient => unit
