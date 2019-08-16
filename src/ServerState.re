@@ -81,6 +81,7 @@ type msg =
   | UpdateGameBySocket(sock_id, GameReducer.action)
   | TriggerEffects(list(ServerEffect.effect))
   | ReconcileSubstitution
+  | IdleWithTimeout(Game.game_id, Timer.timeout)
   ;
 
 let stringOfMsg = fun
@@ -101,6 +102,7 @@ let stringOfMsg = fun
   | UpdateGameBySocket(_sock_id, _action) => "UpdateGameBySocket"
   | TriggerEffects(_effects) => "TriggerEffects"
   | ReconcileSubstitution => "ReconcileSubstitution"
+  | IdleWithTimeout(_, _) => "IdleWithTimeout"
   ;
 
 
@@ -280,6 +282,8 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           let playersNeeded = 4 - Game.countPlayers(players);
           let phase =
             switch (gameState.phase) {
+            | FindSubsPhase(_n, IdlePhase(Some(timeout))) when playersNeeded == 0 =>
+                SharedGame.IdlePhase(Some(Timer.restartTimeout(timeout)))
             | FindSubsPhase(_n, subPhase) =>
               playersNeeded == 0 ? subPhase : FindSubsPhase(playersNeeded, subPhase)
             | FindPlayersPhase(_n, canSub) =>
@@ -610,6 +614,13 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         ->List.fromArray;
 
       updateMany(updates, NoUpdate(db));
+    | IdleWithTimeout(game_id, timeout) => 
+      let db_game =
+        db_game->StringMap.update(
+          game_id->SharedGame.stringOfGameId, 
+          Belt.Option.map(_, game => {...game, phase: IdlePhase(Some(timeout))})
+        );
+      Update({...db, db_game});
     };
   }
 and updateResult: (msg, update(db, ServerEffect.effect)) => update(db, ServerEffect.effect) =

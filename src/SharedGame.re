@@ -49,7 +49,7 @@ let teamOfPlayer =
   Follow at:https://github.com/ryb73/ppx_decco/issues/6 
 */
 type phase =
-  | IdlePhase
+  | IdlePhase(option(Timer.timeout))
   | FindSubsPhase(int, phase)
   | FindPlayersPhase(
       int, /* numEmptySeats: Number of empty seats in this game */
@@ -70,14 +70,14 @@ let isPlayerActivePhase = fun
   | RunPackPhase
   | PlayerTurnPhase(_) 
   | PackDepletedPhase => true
-  | IdlePhase 
+  | IdlePhase(_)
   | FindSubsPhase(_, _)
   | FindPlayersPhase(_, _)
   | GameOverPhase => false;
 
 let rec phase_encode =
   fun
-  | IdlePhase => Js.Json.string("idle-phase")
+  | IdlePhase(_) => Js.Json.string("idle-phase") 
   | FindSubsPhase(n, phase) =>
     Js.Json.array([|
       Js.Json.string("find-subs-phase"),
@@ -105,7 +105,7 @@ let rec phase_decode = json => {
   switch (Js.Json.classify(json)) {
   | Js.Json.JSONString(str_phase) =>
     switch (str_phase) {
-    | "idle-phase" => Belt.Result.Ok(IdlePhase)
+    | "idle-phase" => Belt.Result.Ok(IdlePhase(None)) // The client should be the only one decoding this data and doesn't need to know the details of the timer.
     | "deal-phase" => Belt.Result.Ok(DealPhase)
     | "beg-phase" => Belt.Result.Ok(BegPhase)
     | "give-one-phase" => Belt.Result.Ok(GiveOnePhase)
@@ -143,7 +143,7 @@ let rec phase_decode = json => {
 };
 
 let rec stringOfPhase = fun
-  | IdlePhase => "IdlePhase"
+  | IdlePhase(_) => "IdlePhase"
   | FindSubsPhase(n, phase) => "FindSubsPhase(" ++ string_of_int(n) ++ ", " ++ stringOfPhase(phase) ++ ")"
   | FindPlayersPhase(numEmptySeats, canSub) => "FindPlayersPhase(" ++ string_of_int(numEmptySeats) ++ ", " ++ string_of_bool(canSub) ++ ")"
   | DealPhase => "DealPhase"

@@ -325,7 +325,7 @@ let rec reduce = (action, state) =>
             if the player who wins the trick is the last player in the trick.
             */
           let nextPlayer = Quad.nextId(playerId);
-          let phase' = nextPlayer == state.leader ? IdlePhase : PlayerTurnPhase(nextPlayer);
+          let phase' = nextPlayer == state.leader ? IdlePhase(None) : PlayerTurnPhase(nextPlayer);
           let nextPlayers =
             Quad.update(playerId, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players);
 
@@ -880,6 +880,11 @@ let rec reduce = (action, state) =>
         | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
         | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayers, canSub)
         | GameOverPhase => GameOverPhase
+        | IdlePhase(Some(timeout)) =>
+          FindSubsPhase(
+            nPlayers,
+            IdlePhase(Some(timeout->Timer.pauseTimeout)),
+          );
         | phase => FindSubsPhase(nPlayers, phase)
         };
       

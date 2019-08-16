@@ -85,10 +85,9 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
       }
 
     | DelayThenAdvanceRound(game_id) =>
-      Js.Global.setTimeout(() => {
-        dispatch(UpdateGame(game_id, AdvanceRound))
-      }, 2750) |> ignore;
-    
+      let timeout = Timer.startTimeout(() => dispatch(UpdateGame(game_id, AdvanceRound)), 2750);
+      dispatch(IdleWithTimeout(game_id, timeout));
+
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 
       SocketServer.emit(Reset, sock_id);
