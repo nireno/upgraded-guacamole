@@ -421,7 +421,7 @@ module App = {
                        };
                      }
                      <PlayerTagsView
-                       className="player-tags player-tags__north flex flex-row justify-center"
+                       className="player-tags player-tags__north flex flex-row justify-center items-center"
                        tags=northTags
                      />
                      <div
@@ -475,7 +475,7 @@ module App = {
                        />
                      </div>
                      <PlayerTagsView
-                       className="player-tags player-tags__south flex flex-row justify-center"
+                       className="player-tags player-tags__south flex flex-row justify-center items-center"
                        tags=southTags
                      />
                    </div>
