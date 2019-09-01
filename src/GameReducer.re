@@ -273,7 +273,7 @@ let rec reduce = (action, state) =>
     let nextDealer = Quad.nextId(state.dealer);
 
     {...state, 
-      phase: isGameOverTest(state) ? GameOverPhase : DealPhase,
+      phase: isGameOverTest(state) ? GameOverPhase(Quad.make(_ => RematchUnknown)) : DealPhase,
       deck: Deck.make() |> Deck.shuffle,
       players: Quad.map(x => {...x, pla_tricks: []}, state.players),
       dealer: nextDealer,
@@ -470,7 +470,7 @@ let rec reduce = (action, state) =>
 
       {
         ...state,
-        phase: isGameOverTest(state) ? GameOverPhase : BegPhase,
+        phase: isGameOverTest(state) ? GameOverPhase(Quad.make(_ => RematchUnknown)) : BegPhase,
         notis: state.notis @ kickTrumpNotis,
       };
 
@@ -591,7 +591,7 @@ let rec reduce = (action, state) =>
             ~kind=Confirm,
             (),
           );
-        {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+        {...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown)), notis: gameOverTestState.notis @ notis};
       } else {
         /* Any player whose hand is empty at this points indicates all players' hands are empty */
         List.length(Quad.get(N1, state.players).pla_hand) == 0
@@ -651,7 +651,7 @@ let rec reduce = (action, state) =>
             (),
           );
 
-        {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+        {...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown)), notis: gameOverTestState.notis @ notis};
       } else {
         {
           ...state', // don't use gameOverTestState here. Points for high and low should usually be added at the end of the round.
@@ -725,7 +725,7 @@ let rec reduce = (action, state) =>
             ~kind=Confirm,
             (),
           );
-        {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+        {...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown)), notis: gameOverTestState.notis @ notis};
       } else {
         {...state', phase: PlayerTurnPhase(state.leader)};
       };
@@ -810,7 +810,7 @@ let rec reduce = (action, state) =>
       let state = {...state, maybeTeamHigh, maybeTeamLow, notis: state.notis @ kickTrumpNotis};
 
       if (isGameOverTest(state)) {
-        {...state, phase: GameOverPhase};
+        {...state, phase: GameOverPhase(Quad.make(_ => RematchUnknown))};
       } else {
         switch (state.phase) {
         | PlayerTurnPhase(_) =>
@@ -835,7 +835,7 @@ let rec reduce = (action, state) =>
                 (),
               );
 
-            {...gameOverTestState, phase: GameOverPhase, notis: gameOverTestState.notis @ notis};
+            {...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown)), notis: gameOverTestState.notis @ notis};
           } else {
             state;
           };
@@ -875,18 +875,27 @@ let rec reduce = (action, state) =>
       logger.warn("Ignoring `LeaveGame` recieved for player with a socket of None.")
       state
     | Some(_socket) =>
-      let modPhase = (nPlayers, currentPhase) =>
+
+      let getNextPhase = (nPlayers, currentPhase) => {
+        let nPlayersToFind = 4 - nPlayers;
+
         switch (currentPhase) {
-        | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayers, subPhase)
-        | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayers, canSub)
-        | GameOverPhase => GameOverPhase
+        | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayersToFind, subPhase)
+        | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayersToFind, canSub)
+        | GameOverPhase(rematchDecisions) =>
+          let rematchDecisions = rematchDecisions->Quad.put(leavingPlayerId, RematchDenied, _);
+          let numRematchUnknowns = rematchDecisions->Quad.countHaving(_, decision => decision == RematchUnknown);
+          if (numRematchUnknowns == 0) {
+            FindPlayersPhase(nPlayersToFind, false);
+          } else {
+            GameOverPhase(rematchDecisions);
+          };
+
         | IdlePhase(Some(timeout)) =>
-          FindSubsPhase(
-            nPlayers,
-            IdlePhase(Some(timeout->Timer.pauseTimeout)),
-          );
-        | phase => FindSubsPhase(nPlayers, phase)
+          FindSubsPhase(nPlayersToFind, IdlePhase(Some(timeout->Timer.pauseTimeout)))
+        | phase => FindSubsPhase(nPlayersToFind, phase)
         };
+      };
       
       let leavingPlayer = Quad.get(leavingPlayerId, state.players);
 
@@ -895,7 +904,7 @@ let rec reduce = (action, state) =>
         |> Quad.update(leavingPlayerId, x =>
               {...x, pla_name: Player.stringOfId(leavingPlayerId), sock_id_maybe: None}
             );
-
+      
       let playerLeftNotis =
         Noti.playerBroadcast(
           ~from=leavingPlayerId,
@@ -903,11 +912,11 @@ let rec reduce = (action, state) =>
           ~level=Warning,
           (),
         );
-
+      
       {
         ...state,
         players: players,
-        phase: state.phase |> modPhase(4 - countPlayers(players)),
+        phase: getNextPhase(countPlayers(players), state.phase),
         notis: state.notis @ playerLeftNotis,
         maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
       };

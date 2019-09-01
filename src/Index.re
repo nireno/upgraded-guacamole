@@ -571,12 +571,15 @@ module App = {
                 <Modal visible=true> 
                   <FindSubsView n onLeaveClick={_event => sendIO(IO_LeaveGame)} /> 
                 </Modal>
-              | GameOverPhase =>
+              | GameOverPhase(rematchDecisions) =>
                 <Modal visible=true>
                   <GameOverView
+                    me={state.me}
+                    players={state.players}
+                    rematchDecisions
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
-                    playAgainClick={_event => sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
+                    playAgainClick={_event => sendIO(IO_Rematch)}
                     leaveClick={_event => sendIO(IO_LeaveGame)}
                   />
                 </Modal>

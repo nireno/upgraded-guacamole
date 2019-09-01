@@ -82,6 +82,7 @@ type msg =
   | TriggerEffects(list(ServerEffect.effect))
   | ReconcileSubstitution
   | IdleWithTimeout(Game.game_id, Timer.timeout)
+  | Rematch(sock_id)
   ;
 
 let stringOfMsg = fun
@@ -103,6 +104,7 @@ let stringOfMsg = fun
   | TriggerEffects(_effects) => "TriggerEffects"
   | ReconcileSubstitution => "ReconcileSubstitution"
   | IdleWithTimeout(_, _) => "IdleWithTimeout"
+  | Rematch(_sock_id) => "Rematch"
   ;
 
 
@@ -148,20 +150,15 @@ let buildClientState = (gameState, player, playerPhase) => {
       Hand.FaceUpHand(playerHand);
     };
 
-  let p1State = Quad.get(N1, gameState.players);
-  let p2State = Quad.get(N2, gameState.players);
-  let p3State = Quad.get(N3, gameState.players);
-  let p4State = Quad.get(N4, gameState.players);
   ClientGame.{
     gameId: gameState.game_id,
     phase: playerPhase,
     gamePhase: gameState.phase,
-    players: (
-      {pla_name: p1State.pla_name, pla_card: p1State.pla_card},
-      {pla_name: p2State.pla_name, pla_card: p2State.pla_card},
-      {pla_name: p3State.pla_name, pla_card: p3State.pla_card},
-      {pla_name: p4State.pla_name, pla_card: p4State.pla_card},
-    ),
+    players:
+      Quad.map(
+        ({Game.pla_name, pla_card}) => {ClientGame.pla_name, pla_card},
+        gameState.players,
+      ),
     teams: gameState.teams,
     me: player,
     maybePartnerInfo:
@@ -621,6 +618,61 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           Belt.Option.map(_, game => {...game, phase: IdlePhase(Some(timeout))})
         );
       Update({...db, db_game});
+
+    | Rematch(sock_id) =>
+      switch (db_player_game->StringMap.get(sock_id)) {
+      | None => NoUpdate(db)
+      | Some({game_id, player_id}) => 
+        let updateGame = game => {
+          switch (game.Game.phase) {
+          | GameOverPhase(rematchDecisions) =>
+            let rematchDecisions = rematchDecisions->Quad.put(player_id, SharedGame.RematchAccepted, _);
+            // When all players have chosen to rematch or leave, reinit the game with the rematching players.
+            // This may mean that the game goes into the FindPlayersPhase if some players left the game instead of
+            // rematching. Or it may go into the deal phase if all players chose to rematch.
+            
+            let numRematchingPlayers =
+              rematchDecisions->Quad.countHaving(decision => decision == RematchAccepted);
+
+            let phase =
+              if (rematchDecisions->Quad.every(decision => decision != SharedGame.RematchUnknown, _)){
+                numRematchingPlayers == 4
+                  ? SharedGame.DealPhase : FindPlayersPhase(4 - numRematchingPlayers, false);
+              } else {
+                GameOverPhase(rematchDecisions);
+              };
+
+            switch (phase) {
+            | GameOverPhase(_) => {...game, phase}
+            | phase =>
+              let rematchGame = Game.initialState();
+              {
+                ...rematchGame,
+                game_id: game.game_id,
+                players:
+                  game.players
+                  ->Quad.withId
+                  ->Quad.map(
+                      ((playerId, player)) =>
+                        {
+                          ...Game.initialPlayerState(playerId),
+                          sock_id_maybe: player.Game.sock_id_maybe,
+                          pla_name: player.pla_name,
+                        },
+                      _,
+                    ),
+                phase,
+              };
+            };
+          | _ => game
+          };
+        };
+
+        let db_game =
+          db_game->StringMap.update(game_id->SharedGame.stringOfGameId, Belt.Option.map(_, updateGame));
+          
+        updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
+      }
     };
   }
 and updateResult: (msg, update(db, ServerEffect.effect)) => update(db, ServerEffect.effect) =

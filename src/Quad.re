@@ -1,3 +1,4 @@
+[@decco]
 type t('a) = ('a, 'a, 'a, 'a);
 
 [@decco]
@@ -89,6 +90,8 @@ let rec rotateBy = (n, quad) => {
 
 let toList = ((a, b, c, d)) => [a, b, c, d];
 
+let toArray = ((a, b, c, d)) => [|a, b, c, d|];
+
 let toDict = ((a, b, c, d)) => [(N1, a), (N2, b), (N3, c), (N4, d)];
 
 let exists = (f, (a, b, c, d)) => {
@@ -105,3 +108,10 @@ let forEach: (('a => unit), ('a, 'a, 'a, 'a)) => unit = (f, (r1, r2, r3, r4)) =>
   f(r3);
   f(r4);
 };
+
+let make = f => (N1, N2, N3, N4)->map(id => f(id), _);
+
+let zip = ((x1, x2, x3, x4), (y1, y2, y3, y4)) => ((x1, y1), (x2, y2), (x3, y3), (x4, y4));
+
+let countHaving = (quad, f) => 
+  quad->toArray->Belt.Array.keep(f)->Belt.Array.length

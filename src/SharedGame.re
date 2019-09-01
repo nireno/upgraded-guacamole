@@ -10,6 +10,15 @@ type game_id =
   | Public(string)
   | Private(string);
 
+[@decco]
+type rematchDecision = 
+  | RematchUnknown
+  | RematchAccepted
+  | RematchDenied;
+
+[@decco]
+type rematchDecisions = Quad.t(rematchDecision);
+
 let stringOfGameId =
   fun
   | Public(str)
@@ -61,7 +70,7 @@ type phase =
   | RunPackPhase
   | PlayerTurnPhase(Player.id)
   | PackDepletedPhase
-  | GameOverPhase;
+  | GameOverPhase(Quad.t(rematchDecision));
 
 let isPlayerActivePhase = fun
   | DealPhase
@@ -73,7 +82,7 @@ let isPlayerActivePhase = fun
   | IdlePhase(_)
   | FindSubsPhase(_, _)
   | FindPlayersPhase(_, _)
-  | GameOverPhase => false;
+  | GameOverPhase(_) => false;
 
 let rec phase_encode =
   fun
@@ -98,7 +107,11 @@ let rec phase_encode =
   | PlayerTurnPhase(playerId) =>
     Js.Json.string("player-turn-phase-" ++ Quad.stringifyId(playerId))
   | PackDepletedPhase => Js.Json.string("pack-depleted-phase")
-  | GameOverPhase => Js.Json.string("game-over-phase");
+  | GameOverPhase(rematchDecision) => 
+      Js.Json.array([|
+        Js.Json.string("game-over-phase"),
+        rematchDecisions_encode(rematchDecision),
+      |]);
 
 
 let rec phase_decode = json => {
@@ -115,7 +128,6 @@ let rec phase_decode = json => {
     | "player-turn-phase-N3" => Belt.Result.Ok(PlayerTurnPhase(N3))
     | "player-turn-phase-N4" => Belt.Result.Ok(PlayerTurnPhase(N4))
     | "pack-depleted-phase" => Belt.Result.Ok(PackDepletedPhase)
-    | "game-over-phase" => Belt.Result.Ok(GameOverPhase)
     | _ => Decco.error("Failed to decode phase classified as string: " ++ str_phase, json)
     }
   | Js.Json.JSONArray(jsonTs) =>
@@ -136,6 +148,14 @@ let rec phase_decode = json => {
         FindSubsPhase(Js.Json.decodeNumber(n) |> Js.Option.getExn |> int_of_float, phase)
         ->Belt.Result.Ok
       }
+    | [|phaseJson, rematchDecisionsJson|]
+      when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "game-over-phase" =>
+    switch (rematchDecisions_decode(rematchDecisionsJson)) {
+    | Belt.Result.Error(_) => Decco.error("Failed to recursively decode GameOverPhase.", json)
+    | Belt.Result.Ok(rematchDecisions) =>
+      GameOverPhase(rematchDecisions)
+      ->Belt.Result.Ok
+    }
     | _ => Decco.error("Failed to decode phase classified as array.", json)
     }
   | _ => Decco.error("Failed to decode phase. Json was not classified as expected.", json)
@@ -152,7 +172,7 @@ let rec stringOfPhase = fun
   | RunPackPhase => "RunPackPhase"
   | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Quad.stringifyId(playerId) ++ ")"
   | PackDepletedPhase => "PackDepletedPhase"
-  | GameOverPhase => "GameOverPhase";
+  | GameOverPhase(_) => "GameOverPhase";
 
 
 let isFaceDownPhase = fun
