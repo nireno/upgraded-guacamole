@@ -39,3 +39,5 @@ type update('state, 'effect) =
   | Update('state)
   | UpdateWithSideEffects('state, list('effect))
   | SideEffects('state, list('effect))
+
+let daysToMillis = days => days * 24 * 60 * 60 * 1000;

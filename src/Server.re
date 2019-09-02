@@ -20,9 +20,11 @@ Express.App.useOnPath(
 
 let expressStaticOptions = Express.Static.defaultOptions();
 
-// Clients should only check for changes to /static files after 3600000 ms ( 1 day )
+// Clients should only make a request to check for changes to /static files 
+// after the maxAge has elapsed.
+let cacheMaxAgeMillis = daysToMillis(1);
 expressStaticOptions->Express.Static.immutable(true);  
-expressStaticOptions->Express.Static.maxAge(3600000); 
+expressStaticOptions->Express.Static.maxAge(cacheMaxAgeMillis); 
 
 Express.App.useOnPath(
   app,
