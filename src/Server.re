@@ -18,10 +18,16 @@ Express.App.useOnPath(
   Express.Static.(make("./build", defaultOptions()) |> asMiddleware),
 );
 
+let expressStaticOptions = Express.Static.defaultOptions();
+
+// Clients should only check for changes to /static files after 3600000 ms ( 1 day )
+expressStaticOptions->Express.Static.immutable(true);  
+expressStaticOptions->Express.Static.maxAge(3600000); 
+
 Express.App.useOnPath(
   app,
   ~path="/static",
-  Express.Static.(make("./static", defaultOptions()) |> asMiddleware),
+  Express.Static.(make("./static", expressStaticOptions) |> asMiddleware),
 );
 
 let http = Http.create(app);
