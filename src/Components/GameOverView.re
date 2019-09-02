@@ -19,26 +19,51 @@ let make =
     ->Quad.withId
     ->Quad.exists(((playerId, decision)) => decision == SharedGame.RematchAccepted && playerId == me, _);
 
-  let (outcomeText, outcomeImg) =
+  let (outcomeText, outcomeImg, outcomeClass) =
     weScore >= demScore
-      ? ("We win!", "./static/img/emoji_beaming.svg")
-      : ("We lost...", "./static/img/emoji_crying.svg");
+      ? ("We win!", "./static/img/emoji_beaming.svg", "bg-green-600")
+      : ("We lost...", "./static/img/emoji_crying.svg", "bg-blue-900");
   <>
-    <div> {outcomeText |> ReasonReact.string} </div>
-    <img src=outcomeImg style={ReactDOMRe.Style.make(~width="15%", ())} />
-    <div>
+    <div className={ outcomeClass ++ " text-white w-full flex flex-col items-center rounded"} >
+      <div className="text-3xl"> {outcomeText |> ReasonReact.string} </div>
+      <img src=outcomeImg style={ReactDOMRe.Style.make(~width="15%", ())} />
+    </div>
+    <div className="text-center my-6">
       {
-        Quad.zip(players, rematchDecisions)
-        ->Quad.toArray
-        ->Belt.Array.map((({ClientGame.pla_name}, rematchDecision)) =>
-            switch (rematchDecision) {
-            | RematchAccepted =>
-              <div> {ReasonReact.string({j|$pla_name is ready for a rematch|j})} </div>
-            | RematchDenied => <div> {ReasonReact.string({j|$pla_name has left the game|j})} </div>
-            | RematchUnknown => ReasonReact.null
-            }
+        let decisionClass = (playerId, decision) => {
+          let baseClass = "rounded mb-2 px-4 text-gray-900" ++ (playerId == me ? " py-4 border" : "");
+          switch (decision) {
+          | SharedGame.RematchAccepted => baseClass ++ " bg-blue-300 border-blue-500"
+          | RematchDenied => baseClass ++ " bg-gray-300"
+          | RematchUnknown => baseClass ++ " border border-gray-500"
+          };
+        };
+
+        players
+        ->Quad.withId
+        ->Quad.zip(rematchDecisions)
+        ->Quad.map(
+            (((playerId, player), rematchDecision)) => {
+              let {ClientGame.pla_name} = player;
+              switch (rematchDecision) {
+              | SharedGame.RematchAccepted =>
+                <div key=pla_name className={decisionClass(playerId, RematchAccepted)}>
+                  {ReasonReact.string({j|$pla_name ready|j})}
+                </div>
+              | RematchDenied =>
+                <div key=pla_name className={decisionClass(playerId, RematchDenied)}>
+                  {ReasonReact.string({j|$pla_name left|j})}
+                </div>
+              | RematchUnknown =>
+                <div key=pla_name className={decisionClass(playerId, RematchUnknown)}>
+                  {ReasonReact.string("Waiting for " ++ (playerId == me ? "you" : pla_name))}
+                </div>
+              };
+            },
+            _,
           )
-        |> ReasonReact.array;
+        ->Quad.toArray
+        ->ReasonReact.array;
       }
     </div>
     <div className="flex flex-row justify-around w-full">
@@ -46,7 +71,7 @@ let make =
         {ReasonReact.string("Back Home")}
       </button>
         <button className="btn btn-blue" onClick=playAgainClick disabled=isPlayAgainButtonDisabled>
-          {(isPlayAgainButtonDisabled ? "Please Wait..." : "PlayAgain") |> ReasonReact.string}
+          {(isPlayAgainButtonDisabled ? "Ready" : "Play Again") |> ReasonReact.string}
         </button>
     </div>
     {switch (Js.Nullable.toOption(allfours_feedback_url)) {
