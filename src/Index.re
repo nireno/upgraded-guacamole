@@ -309,34 +309,27 @@ module App = {
               | Some(allfours_rules_url) =>
                 <div
                   className="help absolute w-full flex justify-around"
-                  style={ReactDOMRe.Style.make(~bottom="5%", ())}>
-                  <div className="w-1/2 flex flex-col items-center p-4">
-                    <a className="w-full text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_rules_url>
-                      <div className="w-full text-center">
-                        <svg
-                          className="fill-current w-4"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20">
-                          <path d=Icon.question />
-                        </svg>
-                      </div>
-                      <span>{ReasonReact.string("All Fours Rules ")}</span>
+                  style={ReactDOMRe.Style.make(~bottom="5%", ~height="5%", ())}>
+                  <div className="w-1/2 flex flex-col items-center justify-center">
+                    <a
+                      className="flex flex-col items-center justify-around h-full link-blue" href=allfours_rules_url>
+                      <svg className="fill-current w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                        <path d=Icon.question />
+                      </svg>
+                      <span> {ReasonReact.string("All Fours Rules ")} </span>
                     </a>
                   </div>
                   {switch (Js.Nullable.toOption(allfours_help_url)) {
                    | None => <div className="w-1/2"></div>
                    | Some(allfours_tutorial_url) =>
-                     <div className="w-1/2 flex flex-col items-center p-4">
-                       <a className="w-full text-blue-700 hover:text-blue-500 flex-grow text-center" href=allfours_tutorial_url>
-                         <div className="w-full text-center">
-                           <svg
-                             className="fill-current w-4"
-                             xmlns="http://www.w3.org/2000/svg"
-                             viewBox="0 0 20 20">
-                             <path d=Icon.question />
-                           </svg>
-                         </div>
-                         <span>{ReasonReact.string("How to play")}</span>
+                     <div className="w-1/2 flex flex-col items-center justify-center">
+                       <a
+                         className="flex flex-col items-center justify-around h-full link-blue"
+                         href=allfours_tutorial_url>
+                         <svg className="fill-current w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                           <path d=Icon.question />
+                         </svg>
+                         <span> {ReasonReact.string("How to play")} </span>
                        </a>
                      </div>
                   }}
@@ -571,12 +564,15 @@ module App = {
                 <Modal visible=true> 
                   <FindSubsView n onLeaveClick={_event => sendIO(IO_LeaveGame)} /> 
                 </Modal>
-              | GameOverPhase =>
+              | GameOverPhase(rematchDecisions) =>
                 <Modal visible=true>
                   <GameOverView
+                    me={state.me}
+                    players={state.players}
+                    rematchDecisions
                     weScore={weTeam.team_score}
                     demScore={demTeam.team_score}
-                    playAgainClick={_event => sendIO(IO_PlayAgain(username, clientSettings |> ClientSettings.t_encode |> Js.Json.stringify))}
+                    playAgainClick={_event => sendIO(IO_Rematch)}
                     leaveClick={_event => sendIO(IO_LeaveGame)}
                   />
                 </Modal>

@@ -58,6 +58,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   | IO_JoinPrivateGame(_)
   | IO_LeaveGame
   | IO_PlayAgain(_)
+  | IO_Rematch
   | IO_Substitute(_) => Noop
   | IO_PlayCard(ioPlayerId, ioCard) => {
       switch (Player.id_decode(ioPlayerId |> Js.Json.parseExn)) {
@@ -148,6 +149,8 @@ SocketServer.onConnect(
           logger.info2(getGameStats(), "Game stats:");
 
         | IO_Substitute(username) => ServerStore.dispatch(AttachSubstitute(sock_id, username))
+
+        | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
 
         | ioAction =>
           let action = ioAction |> actionOfIO_Action;

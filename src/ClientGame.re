@@ -13,6 +13,11 @@ type playerState = {
   pla_card: option(Card.t),
 };
 
+let initPlayerState = playerId => {
+  pla_name: Player.stringOfId(playerId),
+  pla_card: None,
+};
+
 [@decco]
 type partnerInfo = {
   trumpCount: int,
@@ -40,12 +45,7 @@ let initialState = {
   gameId: Public(""),
   phase: PlayerIdlePhase,
   gamePhase: FindPlayersPhase(3, false),
-  players: (
-    {pla_name: Player.stringOfId(N1), pla_card: None},
-    {pla_name: Player.stringOfId(N2), pla_card: None},
-    {pla_name: Player.stringOfId(N3), pla_card: None},
-    {pla_name: Player.stringOfId(N4), pla_card: None},
-  ),
+  players: Quad.make(initPlayerState),
   me: N1,
   maybePartnerInfo: None,
   myTricks: [],
