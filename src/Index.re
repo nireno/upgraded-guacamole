@@ -237,7 +237,17 @@ module App = {
         ackJoinGame,
       );
     };
-    
+
+    let queryParams = My.Document.location->My.URL.makeURL->My.URL.searchParams;
+    let maybeInviteCode = queryParams->My.URL.getSearchParam("inviteCode");
+
+    // This is a workaround of sorts that makes it so that I don't have to 
+    // figure out how to handle non-root urls such as /private-games/ from the server side
+    // instead I just do the forwarding based on the query parameters I might find.
+    maybeInviteCode->My.Option.task(inviteCode =>
+      ReasonReactRouter.replace({j|/private-games?inviteCode=$inviteCode|j})
+    );
+
     /** 
       Reading the url backwords allows the app to work when it isn't served from
       the root url a website i.e. it will work whether the app is served from the
@@ -268,7 +278,9 @@ module App = {
       <div
         ref={ReactDOMRe.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
-        <MenuView> <JoinPrivateGameView sendJoinGame=sendIoJoinPrivateGame /> </MenuView>
+        <MenuView>
+          <JoinPrivateGameView sendJoinGame=sendIoJoinPrivateGame inviteCode=?maybeInviteCode />
+        </MenuView>
       </div>;
     | _ => 
     <div

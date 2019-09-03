@@ -4,8 +4,9 @@ type formState =
   | Error;
 
 [@react.component]
-let make = (~sendJoinGame) => {
-  let (inviteCode, updateInviteCode) = React.useState(() => "");
+let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
+  let (inviteCode, updateInviteCode) =
+    React.useState(() => maybeInviteCode->Belt.Option.getWithDefault(""));
   let (state, updateState) = React.useState(() => Initial);
   let (canJoin, setCanJoin) = React.useState(() => true);
 
