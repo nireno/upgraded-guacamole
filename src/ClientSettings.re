@@ -2,9 +2,19 @@
 type volume = Mute(float) | Level(float);
 
 [@decco]
+type profileType = 
+| Masculine
+| Feminine;
+
+let dicebearTypeOfProfileType = fun
+| Masculine => "male"
+| Feminine => "female";
+
+[@decco]
 type t = {
   volume,
   client_id: string,
+  client_profile_type: profileType,
 };
 
 let client_idDefault = Nanoid.nanoid();
@@ -12,4 +22,5 @@ let client_idDefault = Nanoid.nanoid();
 let defaults = {
   volume: Level(0.5),
   client_id: client_idDefault,
+  client_profile_type: Masculine,
 };

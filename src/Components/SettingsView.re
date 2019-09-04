@@ -2,6 +2,9 @@
 let make = (~onSave, ~settings) => {
   let (volume, updateVolume) = React.useState(() => settings.ClientSettings.volume);
   let (client_id, updateClientId) = React.useState(() => settings.ClientSettings.client_id);
+  let (client_profile_type, updateClientProfileType) =
+    React.useState(() => settings.ClientSettings.client_profile_type);
+
   let blipSoundRef =
     React.useRef(Howler.(makeHowl(options(~src=[|"./static/audio/blip.mp3"|], ()))));
 
@@ -41,19 +44,54 @@ let make = (~onSave, ~settings) => {
     updateVolume(_ => volume');
   };
 
+  let onClientProfileTypeChanged = event => {
+    let client_profile_type = switch(event->ReactEvent.Form.target##value){
+    | "feminine" => ClientSettings.Feminine
+    | _ => Masculine
+    };
+
+    updateClientProfileType(_ => client_profile_type);
+  };
+
   let onSaveClick = _event => {
-    onSave(ClientSettings.{volume, client_id});
+    onSave(ClientSettings.{volume, client_id, client_profile_type});
     ReasonReactRouter.replace("./");
   };
+
+  let dicebearType = ClientSettings.dicebearTypeOfProfileType(client_profile_type);
   
   <div className="bg-white shadow-md border border-solid border-gray-300 rounded px-8 pt-6 pb-8 mb-4 w-10/12">
     <div className="mb-4 text-xl text-center"> {ReasonReact.string("Settings")} </div>
-    <div>
-      <div className="mb-4 text-lg"> {ReasonReact.string("Profile")} </div>
+    <div className="mb-4 text-lg"> {ReasonReact.string("Profile")} </div>
+    <div className="flex">
       <img
-        src={"https://avatars.dicebear.com/v2/male/" ++ client_id ++ ".svg"}
+        src={j|https://avatars.dicebear.com/v2/$dicebearType/$client_id.svg|j}
         className="rounded border border-gray-300 p-2 w-1/5"
       />
+      <form className="flex flex-col justify-between ml-8">
+        <div className="flex flex-col">
+          <input
+            type_="radio"
+            id="client-profile-male"
+            name="client-profile-type"
+            value="masculine"
+            defaultChecked={client_profile_type == Masculine}
+            onChange=onClientProfileTypeChanged
+          />
+          <label htmlFor="client-profile-male"> {ReasonReact.string("Masculine")} </label>
+        </div>
+        <div className="flex flex-col">
+          <input
+            type_="radio"
+            id="client-profile-female"
+            name="client-profile-type"
+            value="feminine"
+            defaultChecked={client_profile_type == Feminine}
+            onChange=onClientProfileTypeChanged
+          />
+          <label htmlFor="client-profile-female"> {ReasonReact.string("Feminine")} </label>
+        </div>
+      </form>
     </div>
     <form className="mt-8">
       <div className="mb-4 text-lg"> {ReasonReact.string("Sound Effects Volume")} </div>
