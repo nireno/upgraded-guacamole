@@ -64,6 +64,10 @@ let make = (~onSave, ~settings) => {
     updateClientInitials(_ => inputStripped);
   };
 
+  let onChangeClientId = _event => {
+    updateClientId(_ => Nanoid.nanoid());
+  };
+
   let onSaveClick = _event => {
     onSave(ClientSettings.{volume, client_id, client_profile_type, client_initials});
     ReasonReactRouter.replace("./");
@@ -77,7 +81,8 @@ let make = (~onSave, ~settings) => {
     <div className="flex">
       <img
         src={j|https://avatars.dicebear.com/v2/$dicebearType/$client_id.svg|j}
-        className="rounded border border-gray-300 p-2 w-1/5"
+        className="rounded border border-gray-300 p-2 w-1/5 cursor-pointer"
+        onClick=onChangeClientId
       />
       <div className="flex flex-col flex-grow ml-8">
         <div className="flex">
