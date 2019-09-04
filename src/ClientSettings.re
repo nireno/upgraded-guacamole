@@ -4,11 +4,15 @@ type volume = Mute(float) | Level(float);
 [@decco]
 type profileType = 
 | Masculine
-| Feminine;
+| Feminine
+| Machine
+| Abstract;
 
 let dicebearTypeOfProfileType = fun
 | Masculine => "male"
-| Feminine => "female";
+| Feminine => "female"
+| Machine => "bottts"
+| Abstract => "jdenticon";
 
 [@decco]
 type t = {

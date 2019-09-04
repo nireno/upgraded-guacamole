@@ -49,6 +49,8 @@ let make = (~onSave, ~settings) => {
   let onClientProfileTypeChanged = event => {
     let client_profile_type = switch(event->ReactEvent.Form.target##value){
     | "feminine" => ClientSettings.Feminine
+    | "machine" => ClientSettings.Machine
+    | "abstract" => ClientSettings.Abstract
     | _ => Masculine
     };
 
@@ -85,7 +87,7 @@ let make = (~onSave, ~settings) => {
         onClick=onChangeClientId
       />
       <div className="flex flex-col flex-grow ml-8">
-        <div className="flex">
+        <div className="flex justify-between">
           <div className="flex flex-col">
             <input
               type_="radio"
@@ -97,7 +99,7 @@ let make = (~onSave, ~settings) => {
             />
             <label htmlFor="client-profile-male"> {ReasonReact.string("Masculine")} </label>
           </div>
-          <div className="flex flex-col ml-8">
+          <div className="flex flex-col">
             <input
               type_="radio"
               id="client-profile-female"
@@ -107,6 +109,28 @@ let make = (~onSave, ~settings) => {
               onChange=onClientProfileTypeChanged
             />
             <label htmlFor="client-profile-female"> {ReasonReact.string("Feminine")} </label>
+          </div>
+          <div className="flex flex-col">
+            <input
+              type_="radio"
+              id="client-profile-machine"
+              name="client-profile-type"
+              value="machine"
+              defaultChecked={client_profile_type == Machine}
+              onChange=onClientProfileTypeChanged
+            />
+            <label htmlFor="client-profile-machine"> {ReasonReact.string("Machine")} </label>
+          </div>
+          <div className="flex flex-col">
+            <input
+              type_="radio"
+              id="client-profile-abstract"
+              name="client-profile-type"
+              value="abstract"
+              defaultChecked={client_profile_type == Abstract}
+              onChange=onClientProfileTypeChanged
+            />
+            <label htmlFor="client-profile-abstract"> {ReasonReact.string("Abstract")} </label>
           </div>
         </div>
         <div className="mt-4">
