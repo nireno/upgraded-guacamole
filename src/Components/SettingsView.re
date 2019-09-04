@@ -4,6 +4,8 @@ let make = (~onSave, ~settings) => {
   let (client_id, updateClientId) = React.useState(() => settings.ClientSettings.client_id);
   let (client_profile_type, updateClientProfileType) =
     React.useState(() => settings.ClientSettings.client_profile_type);
+  let (client_initials, updateClientInitials) =
+    React.useState(() => settings.ClientSettings.client_initials);
 
   let blipSoundRef =
     React.useRef(Howler.(makeHowl(options(~src=[|"./static/audio/blip.mp3"|], ()))));
@@ -53,8 +55,17 @@ let make = (~onSave, ~settings) => {
     updateClientProfileType(_ => client_profile_type);
   };
 
+  let onChangeInitials = event => {
+    let inputVal = event->ReactEvent.Form.target##value;
+    let inputStripped = Js.String.split("", inputVal)
+    ->Belt.Array.map(Js.String.toUpperCase)
+    ->Belt.Array.keepMap(Js.String.match([%re "/[A-Za-z]/"]))
+    ->Js.Array.joinWith("", _);
+    updateClientInitials(_ => inputStripped);
+  };
+
   let onSaveClick = _event => {
-    onSave(ClientSettings.{volume, client_id, client_profile_type});
+    onSave(ClientSettings.{volume, client_id, client_profile_type, client_initials});
     ReasonReactRouter.replace("./");
   };
 
@@ -68,30 +79,48 @@ let make = (~onSave, ~settings) => {
         src={j|https://avatars.dicebear.com/v2/$dicebearType/$client_id.svg|j}
         className="rounded border border-gray-300 p-2 w-1/5"
       />
-      <form className="flex flex-col justify-between ml-8">
-        <div className="flex flex-col">
-          <input
-            type_="radio"
-            id="client-profile-male"
-            name="client-profile-type"
-            value="masculine"
-            defaultChecked={client_profile_type == Masculine}
-            onChange=onClientProfileTypeChanged
-          />
-          <label htmlFor="client-profile-male"> {ReasonReact.string("Masculine")} </label>
+      <div className="flex flex-col flex-grow ml-8">
+        <div className="flex">
+          <div className="flex flex-col">
+            <input
+              type_="radio"
+              id="client-profile-male"
+              name="client-profile-type"
+              value="masculine"
+              defaultChecked={client_profile_type == Masculine}
+              onChange=onClientProfileTypeChanged
+            />
+            <label htmlFor="client-profile-male"> {ReasonReact.string("Masculine")} </label>
+          </div>
+          <div className="flex flex-col ml-8">
+            <input
+              type_="radio"
+              id="client-profile-female"
+              name="client-profile-type"
+              value="feminine"
+              defaultChecked={client_profile_type == Feminine}
+              onChange=onClientProfileTypeChanged
+            />
+            <label htmlFor="client-profile-female"> {ReasonReact.string("Feminine")} </label>
+          </div>
         </div>
-        <div className="flex flex-col">
+        <div className="mt-4">
+          <label htmlFor="client-initials"> {ReasonReact.string("Initials: ")} </label>
           <input
-            type_="radio"
-            id="client-profile-female"
-            name="client-profile-type"
-            value="feminine"
-            defaultChecked={client_profile_type == Feminine}
-            onChange=onClientProfileTypeChanged
+            style={ReactDOMRe.Style.make(~maxWidth="10em", ())}
+            placeholder="Enter your initials"
+            id="client-initials"
+            onChange=onChangeInitials
+            className="focus:outline-0 border border-transparent focus:bg-white focus:border-gray-300
+                       placeholder-gray-600 rounded-lg bg-gray-200 p-2 ml-4 appearance-none leading-normal
+                       text-center"
+            type_="text"
+            maxLength=2
+            pattern="[A-Za-z]*"
+            value=client_initials
           />
-          <label htmlFor="client-profile-female"> {ReasonReact.string("Feminine")} </label>
         </div>
-      </form>
+      </div>
     </div>
     <form className="mt-8">
       <div className="mb-4 text-lg"> {ReasonReact.string("Sound Effects Volume")} </div>

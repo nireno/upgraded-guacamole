@@ -13,6 +13,7 @@ type key = [
   | `Muted
   | `ClientId
   | `ClientProfileType
+  | `ClientInitials
   // | [@bs.as "miniCoconut"] `Kiwi
 ];
 
@@ -47,8 +48,15 @@ let getClientSettings = () => {
       ClientSettings.defaults.client_id;
     | Some(client_id) => client_id
     };
+
+  let client_initials = 
+    switch (keyToJs(`ClientInitials)->getItem->Js.Nullable.toOption) {
+    | None =>
+      ClientSettings.defaults.client_initials;
+    | Some(client_initials) => client_initials
+    };
   
-  ClientSettings.{volume, client_id, client_profile_type};
+  ClientSettings.{volume, client_id, client_profile_type, client_initials};
 };
 
 let updateClientSettings = newSettings => {
@@ -63,5 +71,10 @@ let updateClientSettings = newSettings => {
     keyToJs(`ClientProfileType),
     ClientSettings.profileType_encode(newSettings.ClientSettings.client_profile_type)
     |> Js.Json.stringify,
+  );
+
+  setItem(
+    keyToJs(`ClientInitials),
+    newSettings.ClientSettings.client_initials,
   );
 };

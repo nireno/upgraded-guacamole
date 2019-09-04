@@ -15,6 +15,7 @@ type t = {
   volume,
   client_id: string,
   client_profile_type: profileType,
+  client_initials: string,
 };
 
 let client_idDefault = Nanoid.nanoid();
@@ -23,4 +24,5 @@ let defaults = {
   volume: Level(0.5),
   client_id: client_idDefault,
   client_profile_type: Masculine,
+  client_initials: "",
 };
