@@ -1,24 +1,49 @@
 open AppPrelude;
 include SharedGame;
 
-type playerState = {
-  sock_id_maybe: option(sock_id),
-  pla_name: string,
+type playerData = {
   pla_hand: Hand.FaceUpHand.t,
   pla_tricks: list(Trick.t),
   pla_card: option(Card.t), /* Card on board */
+};
+
+type clientData = {
+  client_socket_id: sock_id,
+  client_username: string,
   client_id: string,
   client_initials: string,
-}
+  client_connected_at: milliseconds,
+};
 
-let initialPlayerState = playerId => {
-  sock_id_maybe: None,
-  pla_name: Player.stringOfId(playerId),
+type clientMetaData = {
+  client_disconnected_at: milliseconds,
+};
+
+type clientState = 
+| Connected(clientData)
+| Disconnected(clientData, clientMetaData)
+| Vacant;
+
+let getUsername = (clients, quadId) =>
+  switch (clients->Quad.get(quadId, _)) {
+  | Connected(client)
+  | Disconnected(client, _) => client.client_username
+  | Vacant => Player.stringOfId(quadId)
+  };
+
+let countConnectedClients = clients => {
+  let clientIsConnected =
+    fun
+    | Connected(_) => true
+    | _ => false;
+
+  clients->Quad.countHaving(clientIsConnected);
+};
+
+let initPlayerData = () => {
   pla_hand: [],
   pla_tricks: [],
   pla_card: None,
-  client_id: "",
-  client_initials: "",
 };
 
 [@decco] type notis = list(Noti.t);
@@ -26,7 +51,8 @@ let initialPlayerState = playerId => {
 type state = {
   game_id,
   deck: Deck.t,
-  players: (playerState, playerState, playerState, playerState),
+  players: (playerData, playerData, playerData, playerData),
+  clients: (clientState, clientState, clientState, clientState),
   teams: (teamState, teamState),
   notis,
   maybeTrumpCard: option(Card.t),
@@ -45,15 +71,29 @@ module SockServ = BsSocket.Server.Make(SocketMessages);
 
 let debugOfState = (state) => {
   let stringOfPlayer = player => {
-    let name = player.pla_name;
-    let socket = Belt.Option.getWithDefault(player.sock_id_maybe, "None");
     let card = Card.codeOfMaybeCard(player.pla_card);
     let tricks =
       List.map(Trick.codeOfTrick, player.pla_tricks)
       |> Belt.List.toArray
       |> Js.Array.joinWith(", ");
 
-    {j|{$name, $socket, $card, [$tricks] }|j};
+    {j|{card-on-board: $card, tricks-taken: [$tricks] }|j};
+  };
+
+  let stringOfClientData = ({client_socket_id, client_username, client_id, client_initials}) => {
+    {j|{$client_socket_id, $client_username, $client_id, $client_initials}|j};
+  };
+
+  let stringOfClient = client => {
+    switch (client) {
+    | Vacant => "Vacant"
+    | Connected(clientData) =>
+      let clientDataText = clientData->stringOfClientData;
+      {j|Connected($clientDataText)|j};
+    | Disconnected(clientData, _) =>
+      let clientDataText = clientData->stringOfClientData;
+      {j|Disconnected($clientDataText)|j};
+    };
   };
 
   let stringOfTeamHigh =
@@ -75,6 +115,13 @@ let debugOfState = (state) => {
     "Player4": Quad.select(N4, stringOfPlayer, state.players),
   };
 
+  let debugOfClients = {
+    "Client 1": Quad.select(N1, stringOfClient, state.clients),
+    "Client 2": Quad.select(N2, stringOfClient, state.clients),
+    "Client 3": Quad.select(N3, stringOfClient, state.clients),
+    "Client 4": Quad.select(N4, stringOfClient, state.clients),
+  };
+
   let debugOf_game_follow_suit =
     state.game_follow_suit
     ->Belt.Option.mapWithDefault("None", (cardSuit) =>
@@ -92,6 +139,7 @@ let debugOfState = (state) => {
     "maybeTeamLow": stringOfTeamLow,
     "maybeTeamJack": stringOfTeamJack,
     "players": debugOfPlayers,
+    "clients": debugOfClients,
     "game_follow_suit": debugOf_game_follow_suit,
   };
 };
@@ -101,11 +149,12 @@ let initialState = () => {
     game_id: Public(""),
     deck: Deck.make() |> Deck.shuffle,
     players: (
-      initialPlayerState(N1),
-      initialPlayerState(N2),
-      initialPlayerState(N3),
-      initialPlayerState(N4),
+      initPlayerData(),
+      initPlayerData(),
+      initPlayerData(),
+      initPlayerData(),
     ),
+    clients: (Vacant, Vacant, Vacant, Vacant),
     teams: (initialTeamState, initialTeamState),
     notis: [],
     maybeTrumpCard: None,
@@ -136,40 +185,12 @@ let initPrivateGame = () => {
   {...initialState(), game_id: Private(strId)};
 };
 
-let getAllPlayerSockets = state => {
-  let rec f:
-    (Player.id, list((Player.id, sock_id))) =>
-    list((Player.id, sock_id)) =
-    (player, playerSockets) => {
-      let playerSockets =
-        switch (Quad.get(player, state.players).sock_id_maybe) {
-        | None => playerSockets
-        | Some(socket) => [(player, socket), ...playerSockets]
-        };
-      player == N4 ? playerSockets : f(Quad.nextId(player), playerSockets);
-    };
-  f(N1, []);
-};
-
-let playerCount = state => {
-  let (n1, n2, n3, n4) =
-    Quad.map(x => Js.Option.isSome(x.sock_id_maybe) ? 1 : 0, state.players);
-  n1 + n2 + n3 + n4;
-};
-
-let countPlayers = players => {
-  let (n1, n2, n3, n4) = 
-    Quad.map(x => Js.Option.isSome(x.sock_id_maybe) ? 1 : 0, players);
-  n1 + n2 + n3 + n4;
-};
-
 let findEmptySeat = state => {
-  switch(Quad.toDict(state.players) |> List.filter(((_k:Player.id, v:playerState)) => Js.Option.isNone(v.sock_id_maybe))){
-    | [] => None
-    | [(pla_id, _v), ..._rest] => Some(pla_id)
-  }
+  switch (state.clients->Quad.withId->Quad.find(((_, clientState)) => clientState == Vacant)) {
+  | None => None
+  | Some((seatId, _)) => Some(seatId)
+  };
 };
-
 
 let isGameOverTest = state => {
   GameTeams.get(T1, state.teams).team_score >= SharedGame.settings.winningScore
@@ -193,12 +214,6 @@ let playerOfIntUnsafe =
   | n =>
     failwith("Expected a number in [1, 4] but got: " ++ string_of_int(n));
 
-
-let hasSocket = ( socket, state ) => {
-  getAllPlayerSockets(state)
-  |> List.map(((_player, socket)) => socket)
-  |> List.mem(socket)
-}
 
 module Filter = {
   type privacy = Private | Public | PrivateOrPublic;
@@ -226,35 +241,13 @@ module Filter = {
     simplifyPhase(gameState.phase) == simplePhase;
 }
 
-let maybeGetSocketPlayer = (socket, state) => {
-  getAllPlayerSockets(state)
-  |> List.fold_left(
-       (result, (player, soc)) => soc == socket ? Some(player) : result,
-       None,
-     );
-};
-
-let removePlayerBySocket = (socketId, state) => {
-  switch(maybeGetSocketPlayer(socketId, state)){
-    | None => state
-    | Some(playerId) => 
-      {...state,
-        players: 
-          Quad.update( 
-            playerId, 
-            x => {...x, pla_name: Player.stringOfId(playerId), sock_id_maybe: None}, 
-            state.players)
-      }
-  };
-}
-
-
 /* A game is considered empty if no player slot has a socket attached. */
 let isEmpty = (state) => {
-  Quad.(
-    map(x => x.sock_id_maybe, state.players)
-    |> toList
-    |> Belt.List.every(_, Js.Option.isNone))
+  let isHeadless = fun
+  | Vacant => true
+  | Disconnected(_) => true
+  | Connected(_) => false;
+  state.clients->Quad.every(isHeadless, _)
 };
 
 let isPublic = (state) => {

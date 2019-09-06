@@ -1,6 +1,8 @@
-open Belt;
-
+// This helps with delivering notifications
+// I only want to deliver to `Connected` clients
 let mapNotiToSocketMaybe = (gameState, noti) => {
-  let player = Quad.get(noti.Noti.noti_recipient, gameState.Game.players);
-  player.sock_id_maybe->Option.map(sock_id => {ServerEffect.sock_id, toast: noti});
+  switch (gameState.Game.clients->Quad.get(noti.Noti.noti_recipient, _)) {
+  | Connected(client) => Some({ServerEffect.sock_id: client.client_socket_id, toast: noti})
+  | _ => None
+  };
 };

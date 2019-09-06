@@ -44,7 +44,10 @@ let make =
         ->Quad.zip(rematchDecisions)
         ->Quad.map(
             (((playerId, player), rematchDecision)) => {
-              let {ClientGame.pla_name} = player;
+              let pla_name = switch(player.ClientGame.pla_profile_maybe){
+              | None => Player.stringOfId(playerId)
+              | Some(profile) => profile.user_name
+              };
               switch (rematchDecision) {
               | SharedGame.RematchAccepted =>
                 <div key=pla_name className={decisionClass(playerId, RematchAccepted)}>

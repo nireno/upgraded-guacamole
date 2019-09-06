@@ -47,9 +47,12 @@ module App = {
 
     let maybeActivePlayer = ActivePlayer.find(state.gamePhase, state.dealer);
     let activePlayerName =
-      maybeActivePlayer
-      ->Belt.Option.map(activePlayer => Quad.get(activePlayer.id, state.players).pla_name)
-      ->Belt.Option.getWithDefault("");
+      maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
+        switch (state.players->Quad.get(activePlayer.ActivePlayer.id, _).pla_profile_maybe) {
+        | None => ""
+        | Some(profile) => profile.user_name
+        }
+      );
 
     let (
       (_southName, southCard, southZ, southTags),
@@ -71,7 +74,7 @@ module App = {
                    playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
                  };
 
-               (x.pla_name, x.pla_card, Player.turnDistance(state.leader, playerId), tags);
+               (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags);
              },
              state.players,
            )

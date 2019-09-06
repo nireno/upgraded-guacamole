@@ -192,16 +192,28 @@ let buildClientState = (gameState, player, playerPhase) => {
       Hand.FaceUpHand(playerHand);
     };
 
+  let getPlayerPublicState = (player: Game.playerData, client: Game.clientState) => {
+    let getUserProfileMaybe =
+      fun
+      | Game.Vacant => None
+      | Connected(client)
+      | Disconnected(client, _) =>
+        Some({
+          ClientGame.user_name: client.client_username,
+          user_identicon: client.client_id,
+          user_initials: client.client_initials,
+        });
+    ClientGame.{pla_card: player.pla_card, pla_profile_maybe: getUserProfileMaybe(client)};
+  };
+  
   ClientGame.{
     gameId: gameState.game_id,
     phase: playerPhase,
     gamePhase: gameState.phase,
     players:
-      Quad.map(
-        ({Game.pla_name, pla_card, client_id, client_initials}) =>
-          {ClientGame.pla_name, pla_card, client_id, client_initials},
-        gameState.players,
-      ),
+      gameState.clients
+      ->Quad.zip(gameState.players)
+      ->Quad.map(((client, player)) => getPlayerPublicState(player, client), _),
     teams: gameState.teams,
     me: player,
     maybePartnerInfo:
@@ -226,10 +238,14 @@ let buildSocketStatePairs: Game.state => list((option(sock_id), ClientGame.state
       [Quad.N1, N2, N3, N4]->Belt.List.map(p => p->decidePlayerPhase);
 
     let buildClientState = buildClientState(gameState);
-    playerPhasePairs->Belt.List.map(((player, playerPhase)) =>
+    playerPhasePairs->Belt.List.map(((playerId, playerPhase)) =>
       (
-        Quad.select(player, x => Game.(x.sock_id_maybe), gameState.players),
-        buildClientState(player, playerPhase),
+        switch (gameState.clients->Quad.get(playerId, _)) {
+        | Vacant
+        | Disconnected(_, _) => None
+        | Connected(client) => Some(client.client_socket_id)
+        },
+        buildClientState(playerId, playerPhase),
       )
     );
   };
@@ -312,14 +328,21 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
             StringMap.set(db_player_game, sock_id, {sock_id, player_id, game_id});
           let db' = {...db, db_player_game: db_player_game'};
 
-          let players =
+          let clients =
             Quad.update(
               player_id,
-              player => {...player, Game.pla_name, sock_id_maybe: Some(sock_id), client_id, client_initials},
-              gameState.players,
+              _ =>
+                Game.Connected({
+                  Game.client_username: username,
+                  client_socket_id: sock_id,
+                  client_id,
+                  client_initials,
+                  client_connected_at: Js.Date.now(),
+                }),
+              gameState.clients,
             );
 
-          let playersNeeded = 4 - Game.countPlayers(players);
+          let playersNeeded = clients->Quad.countHaving(clientState => clientState == Vacant); 
           let phase =
             switch (gameState.phase) {
             | FindSubsPhase(_n, IdlePhase(Some(timeout))) when playersNeeded == 0 =>
@@ -343,7 +366,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
             | _ => db'
             };
 
-          let gameAftAttach = {...gameState, players, phase};
+          let gameAftAttach = {...gameState, clients, phase};
           let playerJoinedNotis =
             Noti.playerBroadcast(
               ~from=player_id,
@@ -352,17 +375,17 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
               (),
             );
 
-          let clientToasts = 
+          let clientToasts =
             playerJoinedNotis->List.keepMap(noti =>
-              Quad.select(
-                noti.noti_recipient,
-                player =>
-                  switch (player.Game.sock_id_maybe) {
-                  | None => None
-                  | Some(sock_id) => Some({sock_id, ServerEffect.toast: noti})
-                  },
-                gameAftAttach.players,
-              )
+              gameAftAttach.clients
+              ->Quad.select(
+                  noti.noti_recipient,
+                  fun
+                  | Game.Connected(client) =>
+                    Some({sock_id: client.client_socket_id, ServerEffect.toast: noti})
+                  | _ => None,
+                  _,
+                )
             );
 
           updateMany(
@@ -391,8 +414,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           logger.debug2(
             {
               "player": {
-                "username":
-                  Quad.select(player_id, player => player.Game.pla_name, gameForLeave.players),
+                "seat_id": Player.stringOfId(player_id),
                 "playerId": Player.stringOfId(player_id),
               },
 
@@ -407,8 +429,14 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
 
           let gameAftLeave = GameReducer.reduce(ClearNotis, gameAftLeave);
 
-          if (Game.playerCount(gameAftLeave) == 0) {
-            // Remove the game if it becomes empty
+          if (gameAftLeave.clients
+              ->Quad.countHaving(
+                  fun
+                  | Connected(_) => true
+                  | _ => false,
+                )
+              == 0) {
+            // Remove the game if there are no more connected clients
             updateMany(
               [
                 RemoveGame(gameAftLeave.game_id),
@@ -538,12 +566,13 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         switch (maybeActivePlayer) {
         | None => NoUpdate(db)
         | Some(activePlayer) =>
-          switch (Quad.get(activePlayer.id, gameState.players).Game.sock_id_maybe) {
-          | None => NoUpdate(db)
-          | Some(sock_id) => update(RemovePlayerBySocket(sock_id), db)
+          switch (Quad.get(activePlayer.id, gameState.clients)) {
+          | Vacant => NoUpdate(db)
+          | Connected(client)
+          | Disconnected(client, _) => update(RemovePlayerBySocket(client.client_socket_id), db)
           }
         };
-      }
+      };
 
     | InsertKickTimeoutId(game_id, timeoutId) =>
       switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
@@ -692,18 +721,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
               {
                 ...rematchGame,
                 game_id: game.game_id,
-                players:
-                  game.players
-                  ->Quad.withId
-                  ->Quad.map(
-                      ((playerId, player)) =>
-                        {
-                          ...Game.initialPlayerState(playerId),
-                          sock_id_maybe: player.Game.sock_id_maybe,
-                          pla_name: player.pla_name,
-                        },
-                      _,
-                    ),
+                players: Quad.make(_ => Game.initPlayerData()),
                 phase,
               };
             };

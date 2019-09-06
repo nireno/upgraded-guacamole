@@ -3,6 +3,7 @@ let appLogger = Pino.make({"messageKey": "_msg", "level": "debug", "_app": "allf
 
 type str_json = string;
 type sock_id = string;
+type milliseconds = float;
 
 let teamIdtoName = (weTeamId, teamId) => {
   teamId == weTeamId ? "We" : "Dem"

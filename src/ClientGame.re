@@ -8,19 +8,19 @@ include SharedGame;
 [@decco] type maybeTeamGame = option(GameAward.gameAwardData);
 
 [@decco]
-type playerState = {
-  pla_name: string,
-  pla_card: option(Card.t),
-  client_id: string,
-  client_initials: string,
+type userProfile = {
+  user_name: string,
+  user_identicon: string,
+  user_initials: string,
 };
 
-let initPlayerState = playerId => {
-  pla_name: Player.stringOfId(playerId),
-  pla_card: None,
-  client_id: "",
-  client_initials: "",
+[@decco]
+type playerState = {
+  pla_card: option(Card.t),
+  pla_profile_maybe: option(userProfile) //optional since a user might disconnect from the game
 };
+
+let initPlayerState = () => {pla_card: None, pla_profile_maybe: None};
 
 [@decco]
 type partnerInfo = {
@@ -49,7 +49,7 @@ let initialState = {
   gameId: Public(""),
   phase: PlayerIdlePhase,
   gamePhase: FindPlayersPhase(3, false),
-  players: Quad.make(initPlayerState),
+  players: Quad.make(_ => initPlayerState()),
   me: N1,
   maybePartnerInfo: None,
   myTricks: [],

@@ -1,5 +1,5 @@
 [@react.component]
-let make = (~me, ~onLeaveClick, ~inviteCode,~n, ~players, ~onGoPublicClick, ~onSelectPartnerClick) => {
+let make = (~me, ~onLeaveClick, ~inviteCode, ~n, ~players, ~onGoPublicClick, ~onSelectPartnerClick) => {
   let rotatedPlayersWithId =  
     Player.playersAsQuad(~startFrom=me, ())
     ->Quad.map(playerId => (playerId, Quad.get(playerId, players)), _);
@@ -34,20 +34,30 @@ let make = (~me, ~onLeaveClick, ~inviteCode,~n, ~players, ~onGoPublicClick, ~onS
         let isIdenticonClickable = (~mySeatId, ~playerSeatId) =>
           mySeatId == Quad.N1 && (playerSeatId == Quad.nextId(mySeatId) || playerSeatId == Quad.prevId(mySeatId));
 
-        let (bottom, right, top, left) = rotatedPlayersWithId
-        ->Quad.map(
-            ((playerId, {ClientGame.client_id})) => {
-              let isIdenticonClickable = isIdenticonClickable(~mySeatId=me, ~playerSeatId=playerId);
-              client_id == ""
-                ? <img src="./static/img/frame50x50.svg" className="w-full border border-gray-300 rounded" />
-                : <img
-                    src={j|https://avatars.dicebear.com/v2/jdenticon/$client_id.svg|j}
-                    className={"rounded border border-gray-300 p-2 w-full rounded" ++ (isIdenticonClickable ? " cursor-pointer" : "")}
-                    onClick=?{playerId == Quad.nextId(me) || playerId == Quad.prevId(me) ? Some(_event => onSelectPartnerClick(playerId)) : None}
+        let (bottom, right, top, left) = 
+          rotatedPlayersWithId
+          ->Quad.map(
+              ((playerId, {ClientGame.pla_profile_maybe})) => {
+                let isIdenticonClickable = isIdenticonClickable(~mySeatId=me, ~playerSeatId=playerId);
+                switch (pla_profile_maybe) {
+                | None =>
+                  <img src="./static/img/frame50x50.svg" className="w-full border border-gray-300 rounded" />
+                | Some({user_identicon}) =>
+                  <img
+                    src={j|https://avatars.dicebear.com/v2/jdenticon/$user_identicon.svg|j}
+                    className={
+                      "rounded border border-gray-300 p-2 w-full rounded"
+                      ++ (isIdenticonClickable ? " cursor-pointer" : "")
+                    }
+                    onClick=?{
+                      playerId == Quad.nextId(me) || playerId == Quad.prevId(me)
+                        ? Some(_event => onSelectPartnerClick(playerId)) : None
+                    }
                   />
-            },
-            _,
-          );
+                };
+              },
+              _,
+            );
 
         <div
           className="w-1/2 my-8"
