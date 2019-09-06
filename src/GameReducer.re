@@ -599,16 +599,25 @@ let rec reduce = (action, state) =>
       };
     };
   | Beg =>
-    switch(state.phase){
+    switch (state.phase) {
     | BegPhase =>
       let beggerId = Quad.nextId(state.dealer);
-      let pla_name = beggerId->Player.stringOfId;
-      let notis = Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(pla_name ++ " begs"), ());
-      {...state, phase: GiveOnePhase, notis};
-    | _ => 
-      logger.warn("`Beg` recieved out of phase.")
-      state
-    }
+      switch (state.clients->Quad.get(beggerId, _)) {
+      | Vacant
+      | Disconnected(_, _) => state
+      | Connected(client) =>
+        let notis =
+          Noti.playerBroadcast(
+            ~from=beggerId,
+            ~msg=Noti.Text(client.client_username ++ " begs"),
+            (),
+          );
+        {...state, phase: GiveOnePhase, notis};
+      };
+    | _ =>
+      logger.warn("`Beg` recieved out of phase.");
+      state;
+    };
 
   | Stand =>
     switch(state.phase){

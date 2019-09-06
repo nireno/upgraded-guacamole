@@ -50,7 +50,7 @@ module App = {
       maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
         switch (state.players->Quad.get(activePlayer.ActivePlayer.id, _).pla_profile_maybe) {
         | None => ""
-        | Some(profile) => profile.user_name
+        | Some(profile) => profile.client_username
         }
       );
 

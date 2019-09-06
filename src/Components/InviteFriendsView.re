@@ -42,9 +42,9 @@ let make = (~me, ~onLeaveClick, ~inviteCode, ~n, ~players, ~onGoPublicClick, ~on
                 switch (pla_profile_maybe) {
                 | None =>
                   <img src="./static/img/frame50x50.svg" className="w-full border border-gray-300 rounded" />
-                | Some({user_identicon}) =>
+                | Some({client_identicon}) =>
                   <img
-                    src={j|https://avatars.dicebear.com/v2/jdenticon/$user_identicon.svg|j}
+                    src={j|https://avatars.dicebear.com/v2/jdenticon/$client_identicon.svg|j}
                     className={
                       "rounded border border-gray-300 p-2 w-full rounded"
                       ++ (isIdenticonClickable ? " cursor-pointer" : "")

@@ -199,9 +199,9 @@ let buildClientState = (gameState, player, playerPhase) => {
       | Connected(client)
       | Disconnected(client, _) =>
         Some({
-          ClientGame.user_name: client.client_username,
-          user_identicon: client.client_id,
-          user_initials: client.client_initials,
+          ClientGame.client_username: client.client_username,
+          client_identicon: client.client_id,
+          client_initials: client.client_initials,
         });
     ClientGame.{pla_card: player.pla_card, pla_profile_maybe: getUserProfileMaybe(client)};
   };

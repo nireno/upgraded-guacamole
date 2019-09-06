@@ -7,7 +7,7 @@ module PlayerState = {
       {
         switch(playerState.ClientGame.pla_profile_maybe){
           | None => "not connected"
-          | Some(profile) => profile.user_name ++ " connected"
+          | Some(profile) => profile.client_username ++ " connected"
         }
         |> ReasonReact.string
       }

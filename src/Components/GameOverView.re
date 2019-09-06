@@ -44,22 +44,22 @@ let make =
         ->Quad.zip(rematchDecisions)
         ->Quad.map(
             (((playerId, player), rematchDecision)) => {
-              let pla_name = switch(player.ClientGame.pla_profile_maybe){
+              let client_username = switch(player.ClientGame.pla_profile_maybe){
               | None => Player.stringOfId(playerId)
-              | Some(profile) => profile.user_name
+              | Some(profile) => profile.client_username
               };
               switch (rematchDecision) {
               | SharedGame.RematchAccepted =>
-                <div key=pla_name className={decisionClass(playerId, RematchAccepted)}>
-                  {ReasonReact.string({j|$pla_name ready|j})}
+                <div key=client_username className={decisionClass(playerId, RematchAccepted)}>
+                  {ReasonReact.string({j|$client_username ready|j})}
                 </div>
               | RematchDenied =>
-                <div key=pla_name className={decisionClass(playerId, RematchDenied)}>
-                  {ReasonReact.string({j|$pla_name left|j})}
+                <div key=client_username className={decisionClass(playerId, RematchDenied)}>
+                  {ReasonReact.string({j|$client_username left|j})}
                 </div>
               | RematchUnknown =>
-                <div key=pla_name className={decisionClass(playerId, RematchUnknown)}>
-                  {ReasonReact.string("Waiting for " ++ (playerId == me ? "you" : pla_name))}
+                <div key=client_username className={decisionClass(playerId, RematchUnknown)}>
+                  {ReasonReact.string("Waiting for " ++ (playerId == me ? "you" : client_username))}
                 </div>
               };
             },

@@ -8,16 +8,16 @@ include SharedGame;
 [@decco] type maybeTeamGame = option(GameAward.gameAwardData);
 
 [@decco]
-type userProfile = {
-  user_name: string,
-  user_identicon: string,
-  user_initials: string,
+type clientProfile = {
+  client_username: string,
+  client_identicon: string,
+  client_initials: string,
 };
 
 [@decco]
 type playerState = {
   pla_card: option(Card.t),
-  pla_profile_maybe: option(userProfile) //optional since a user might disconnect from the game
+  pla_profile_maybe: option(clientProfile) //optional since a user might disconnect from the game
 };
 
 let initPlayerState = () => {pla_card: None, pla_profile_maybe: None};
