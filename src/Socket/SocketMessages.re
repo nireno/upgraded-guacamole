@@ -23,7 +23,9 @@ type clientToServer =
   | IO_LeaveGame
   | IO_PlayAgain(ioUsername, ioClientSettings)
   | IO_Rematch
-  | IO_Substitute(ioUsername);
+  | IO_Substitute(ioUsername, ioClientSettings)
+  | IO_PrivateToPublic
+  | IO_SelectPartner(ioPlayerId);
 
 let stringOfClientToServer = fun
   | IO_JoinGame(ioUsername, _) => "JoinGame(" ++ (ioUsername == "" ? "--blank-username--" : ioUsername) ++ ")"
@@ -40,7 +42,9 @@ let stringOfClientToServer = fun
   | IO_LeaveGame => "LeaveGame"
   | IO_PlayAgain(ioUsername, _ioClientSettings) => {j|PlayAgain($ioUsername)|j}
   | IO_Rematch => "Rematch"
-  | IO_Substitute(ioUsername) => {j|Substitute($ioUsername)|j};
+  | IO_Substitute(ioUsername, _ioClientSettings) => {j|Substitute($ioUsername)|j}
+  | IO_PrivateToPublic => "PrivateToPublic"
+  | IO_SelectPartner(_) => "SelectPartner";
 
 type serverToClient =
   | SetState(ioClientState)

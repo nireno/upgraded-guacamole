@@ -11,11 +11,15 @@ include SharedGame;
 type playerState = {
   pla_name: string,
   pla_card: option(Card.t),
+  client_id: string,
+  client_initials: string,
 };
 
 let initPlayerState = playerId => {
   pla_name: Player.stringOfId(playerId),
   pla_card: None,
+  client_id: "",
+  client_initials: "",
 };
 
 [@decco]

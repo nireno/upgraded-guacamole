@@ -566,9 +566,24 @@ module App = {
                         n
                         canSub
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
-                        onSubClick={_event => sendIO(IO_Substitute(username))}
+                        onSubClick={_event =>
+                          sendIO(
+                            IO_Substitute(username, clientSettings->ClientSettings.t_encode->Js.Json.stringify),
+                          )
+                        }
                       />
-                    | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id onLeaveClick={_event => sendIO(IO_LeaveGame)}/>
+                    | Private(str_game_id) => 
+                      <InviteFriendsView
+                        me=state.me
+                        n
+                        inviteCode=str_game_id
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        players=state.players
+                        onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
+                        onSelectPartnerClick={seatId =>
+                          sendIO(IO_SelectPartner(seatId->Quad.id_encode->Js.Json.stringify))
+                        }
+                      />;
                     };
                   }
                 </Modal>

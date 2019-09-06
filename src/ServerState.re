@@ -62,18 +62,58 @@ let getGamesWhere: (~phase: Game.Filter.phase=?, ~privacy: Game.Filter.privacy=?
 
 type sock_id = string;
 type username = string;
+type inviteCode = string
+
+type attachPlayerData = {
+  game_id: Game.game_id,
+  sock_id: string,
+  username: string,
+  client_id: string,
+  client_initials: string,
+};
+
+type attachPublicPlayerData = {
+  sock_id: string,
+  username: string,
+  ack: SocketMessages.ack,
+  client_id: string,
+  client_initials: string,
+};
+
+type attachPrivatePlayerData = {
+  sock_id: string,
+  username: string,
+  client_id: string,
+  client_initials: string,
+  invite_code: string,
+  ack: SocketMessages.ack,
+};
+
+type createPrivateGameData = {
+  sock_id: string,
+  username: string,
+  client_id: string,
+  client_initials: string,
+};
+
+type attachSubstituteData = {
+  sock_id: string,
+  username: string,
+  client_id: string,
+  client_initials: string,
+};
 
 type msg = 
   | AddGame(Game.state)
   | AddPlayerGame(sock_id, Player.id, Game.game_id)
   | RemoveGame(Game.game_id)
   | ReplaceGame(Game.game_id, Game.state)
-  | AttachPlayer(Game.game_id, sock_id, username )
-  | AttachPublicPlayer(sock_id, username, SocketMessages.ack)
-  | CreatePrivateGame(sock_id, username)
-  | AttachPrivatePlayer(sock_id, username, string, SocketMessages.ack)
+  | AttachPlayer(attachPlayerData)
+  | AttachPublicPlayer(attachPublicPlayerData)
+  | CreatePrivateGame(createPrivateGameData)
+  | AttachPrivatePlayer(attachPrivatePlayerData)
   | RemovePlayerBySocket(sock_id)
-  | AttachSubstitute(sock_id, username)
+  | AttachSubstitute(attachSubstituteData)
   | KickActivePlayer(Game.game_id)
   | InsertKickTimeoutId(Game.game_id, Js.Global.timeoutId)
   | DeleteKickTimeoutId(Game.game_id)
@@ -83,6 +123,7 @@ type msg =
   | ReconcileSubstitution
   | IdleWithTimeout(Game.game_id, Timer.timeout)
   | Rematch(sock_id)
+  | SelectPartner(sock_id, Quad.id)
   ;
 
 let stringOfMsg = fun
@@ -90,12 +131,12 @@ let stringOfMsg = fun
   | AddPlayerGame(_sock_id, _player_id, _game_id) => "AddPlayerGame"
   | RemoveGame(_game_id) => "RemoveGame"
   | ReplaceGame(_game_id, _state) => "ReplaceGame"
-  | AttachPlayer(_game_id, _sock_id, _username ) => "AttachPlayer"
-  | AttachPublicPlayer(_sock_id, _username, _ack) => "AttachPublicPlayer"
-  | CreatePrivateGame(sock_id, username) => "CreatePrivateGame(" ++ sock_id ++ "," ++ username ++ ")"
-  | AttachPrivatePlayer(_sock_id, _username, _invite_code, _ack) => "AttachPrivatePlayer"
+  | AttachPlayer(_data) => "AttachPlayer"
+  | AttachPublicPlayer(_data) => "AttachPublicPlayer"
+  | CreatePrivateGame({sock_id, username}) => "CreatePrivateGame(" ++ sock_id ++ "," ++ username ++ ")"
+  | AttachPrivatePlayer(_data) => "AttachPrivatePlayer"
   | RemovePlayerBySocket(_sock_id) => "RemovePlayerBySocket"
-  | AttachSubstitute(_sock_id, _username) => "AttachSubstitute"
+  | AttachSubstitute(_data) => "AttachSubstitute"
   | KickActivePlayer(_game_id) => "KickActivePlayer"
   | InsertKickTimeoutId(_game_id, _timeoutId) => "InsertKickTimeoutId"
   | DeleteKickTimeoutId(_game_id) => "DeleteKickTimeoutId"
@@ -105,6 +146,7 @@ let stringOfMsg = fun
   | ReconcileSubstitution => "ReconcileSubstitution"
   | IdleWithTimeout(_, _) => "IdleWithTimeout"
   | Rematch(_sock_id) => "Rematch"
+  | SelectPartner(_sock_id, _seatId) => "RotatePartner"
   ;
 
 
@@ -156,7 +198,8 @@ let buildClientState = (gameState, player, playerPhase) => {
     gamePhase: gameState.phase,
     players:
       Quad.map(
-        ({Game.pla_name, pla_card}) => {ClientGame.pla_name, pla_card},
+        ({Game.pla_name, pla_card, client_id, client_initials}) =>
+          {ClientGame.pla_name, pla_card, client_id, client_initials},
         gameState.players,
       ),
     teams: gameState.teams,
@@ -256,7 +299,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         NoUpdate(db),
       )
 
-    | AttachPlayer(game_id, sock_id, username) =>
+    | AttachPlayer({game_id, sock_id, username, client_id, client_initials}) =>
       let str_game_id = Game.(stringOfGameId(game_id));
       switch (db_game->StringMap.get(str_game_id)) {
       | None => NoUpdate(db)
@@ -272,7 +315,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           let players =
             Quad.update(
               player_id,
-              player => Game.{...player, pla_name, sock_id_maybe: Some(sock_id)},
+              player => {...player, Game.pla_name, sock_id_maybe: Some(sock_id), client_id, client_initials},
               gameState.players,
             );
 
@@ -390,7 +433,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           };
         };
       };
-    | AttachPublicPlayer(sock_id, username, ack) =>
+    | AttachPublicPlayer({sock_id, username, ack, client_id, client_initials}) =>
       let logger =
         logger.makeChild({"_context": "AttachPublicPlayer", "sock_id": sock_id, "username": username});
 
@@ -405,7 +448,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           [
             AddGame(gameState),
             RemovePlayerBySocket(sock_id),
-            AttachPlayer(gameState.game_id, sock_id, username),
+            AttachPlayer({game_id: gameState.game_id, sock_id, username, client_id, client_initials}),
             ReconcileSubstitution,
             TriggerEffects([ServerEffect.EmitAck(ack, SocketMessages.AckOk)]),
           ],
@@ -416,23 +459,23 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         updateMany(
           [
             RemovePlayerBySocket(sock_id), 
-            AttachPlayer(gameState.game_id, sock_id, username),
+            AttachPlayer({game_id: gameState.game_id, sock_id, username, client_id, client_initials}),
             TriggerEffects([ServerEffect.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           NoUpdate(db),
         );
       };
-    | CreatePrivateGame(sock_id, username) =>
+    | CreatePrivateGame({sock_id, username, client_id, client_initials}) =>
       let db' = {...db, db_private_games_created: db.db_private_games_created + 1};
       let gameState = initPrivateGame(db.db_game);
       updateMany(
         [
           AddGame(gameState), 
-          AttachPlayer(gameState.game_id, sock_id, username)
+          AttachPlayer({game_id: gameState.game_id, sock_id, username, client_id, client_initials})
         ],
         Update(db'),
       );
-    | AttachPrivatePlayer(sock_id, username, inviteCode, ack) =>
+    | AttachPrivatePlayer({sock_id, username, client_id, client_initials, invite_code, ack}) =>
       /** Find game having the provided invite code */
       let gameMatchesCode = (inviteCode, gameState) => {
         let normalizeCode = code =>
@@ -446,7 +489,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
 
       let matchingGames =
         StringMap.valuesToArray(db_game)
-        |> Belt.Array.keep(_, gameMatchesCode(inviteCode))
+        |> Belt.Array.keep(_, gameMatchesCode(invite_code))
         |> Belt.List.fromArray;
 
       switch (matchingGames) {
@@ -454,7 +497,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         updateMany(
           [
             RemovePlayerBySocket(sock_id),
-            AttachPlayer(gameState.game_id, sock_id, username),
+            AttachPlayer({game_id: gameState.game_id, sock_id, username, client_id, client_initials}),
             TriggerEffects([ServerEffect.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           NoUpdate(db),
@@ -466,7 +509,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
         )
       };
 
-    | AttachSubstitute(sock_id, username) =>
+    | AttachSubstitute({sock_id, username, client_id, client_initials}) =>
         switch (
           db_game
           ->StringMap.valuesToArray
@@ -480,7 +523,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           updateMany(
             [
               RemovePlayerBySocket(sock_id),
-              AttachPlayer(gameState.game_id, sock_id, username),
+              AttachPlayer({game_id: gameState.game_id, sock_id, username, client_id, client_initials}),
               ReconcileSubstitution,
             ],
             NoUpdate(db),
@@ -673,6 +716,28 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           
         updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
       }
+    | SelectPartner(sock_id, seatId) =>
+      switch (db_player_game->StringMap.get(sock_id)) {
+      | None => NoUpdate(db)
+      | Some({game_id, player_id}) =>
+        if (player_id == N1) {
+          let selectPartner = ({Game.players: (p1, p2, p3, p4)} as game) =>
+            switch (seatId) {
+            | N1 => game
+            | N2 => {...game, players: (p1, p3, p2, p4)}
+            | N3 => game
+            | N4 => {...game, players: (p1, p2, p4, p3)}
+            };
+          let db_game =
+            db_game->StringMap.update(game_id->SharedGame.stringOfGameId, __x =>
+              Belt.Option.map(__x, selectPartner)
+            );
+
+          updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
+        } else {
+          NoUpdate(db);
+        }
+      };
     };
   }
 and updateResult: (msg, update(db, ServerEffect.effect)) => update(db, ServerEffect.effect) =

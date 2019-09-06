@@ -7,6 +7,8 @@ type playerState = {
   pla_hand: Hand.FaceUpHand.t,
   pla_tricks: list(Trick.t),
   pla_card: option(Card.t), /* Card on board */
+  client_id: string,
+  client_initials: string,
 }
 
 let initialPlayerState = playerId => {
@@ -15,6 +17,8 @@ let initialPlayerState = playerId => {
   pla_hand: [],
   pla_tricks: [],
   pla_card: None,
+  client_id: "",
+  client_initials: "",
 };
 
 [@decco] type notis = list(Noti.t);

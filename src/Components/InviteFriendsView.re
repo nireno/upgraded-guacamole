@@ -1,5 +1,9 @@
 [@react.component]
-let make = (~onLeaveClick, ~inviteCode, ~n) => {
+let make = (~me, ~onLeaveClick, ~inviteCode,~n, ~players, ~onGoPublicClick, ~onSelectPartnerClick) => {
+  let rotatedPlayersWithId =  
+    Player.playersAsQuad(~startFrom=me, ())
+    ->Quad.map(playerId => (playerId, Quad.get(playerId, players)), _);
+
   let initialCopyText = "copy invite code";
   let (copyText, updateCopyText) = React.useState(() => initialCopyText);
   let friends = Grammar.byNumber(n, "friend");
@@ -22,9 +26,44 @@ let make = (~onLeaveClick, ~inviteCode, ~n) => {
     clipboard->Clipboard.on("error", onCopyFailure);
     None;
   });
+  <>
+   <div className="text-center text-xl">{ReasonReact.string({j|Invite friends|j})}</div>
+        {
+        // The identicons of your current oppenents are clickable to allow you to switch one of them
+        // with your current partner.
+        let isIdenticonClickable = (~mySeatId, ~playerSeatId) =>
+          mySeatId == Quad.N1 && (playerSeatId == Quad.nextId(mySeatId) || playerSeatId == Quad.prevId(mySeatId));
 
+        let (bottom, right, top, left) = rotatedPlayersWithId
+        ->Quad.map(
+            ((playerId, {ClientGame.client_id})) => {
+              let isIdenticonClickable = isIdenticonClickable(~mySeatId=me, ~playerSeatId=playerId);
+              client_id == ""
+                ? <img src="./static/img/frame50x50.svg" className="w-full border border-gray-300 rounded" />
+                : <img
+                    src={j|https://avatars.dicebear.com/v2/jdenticon/$client_id.svg|j}
+                    className={"rounded border border-gray-300 p-2 w-full rounded" ++ (isIdenticonClickable ? " cursor-pointer" : "")}
+                    onClick=?{playerId == Quad.nextId(me) || playerId == Quad.prevId(me) ? Some(_event => onSelectPartnerClick(playerId)) : None}
+                  />
+            },
+            _,
+          );
+
+        <div
+          className="w-1/2 my-8"
+          style={ReactDOMRe.Style.make(
+            ~display="grid",
+            ~gridTemplateColumns="repeat(3, 1fr)",
+            ~gridGap="10px",
+            (),
+          )}>
+          <div style={ReactDOMRe.Style.make(~gridColumn="2/3", ~gridRow="1", ())}> top </div>
+          <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
+          <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
+          <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
+        </div>
+        }
   <div className="text-center">
-    <div> {ReasonReact.string({j|Invite friends|j})} </div>
     <div className="text-xl">
       {ReasonReact.string({j|Tell your friends to join a private game with this invite code:|j})}
     </div>
@@ -36,8 +75,14 @@ let make = (~onLeaveClick, ~inviteCode, ~n) => {
     <div className="text-xl mt-6">
       {ReasonReact.string({j|Waiting for $n more $friends...|j})}
     </div>
-    <button className="btn btn-blue mt-4" onClick=onLeaveClick>
+    <div className="flex justify-around">
+    <button className="btn btn-grey mt-4" onClick=onLeaveClick>
       {ReasonReact.string("Cancel")}
     </button>
-  </div>;
+    <button className="btn btn-blue mt-4" onClick=onGoPublicClick>
+      {ReasonReact.string("Go Public")}
+    </button>
+    </div>
+  </div>
+  </>
 };
