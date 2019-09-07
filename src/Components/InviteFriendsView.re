@@ -9,7 +9,8 @@ let make = (~me, ~onLeaveClick, ~inviteCode, ~emptySeatsCount, ~players, ~onGoPu
   let friends = Grammar.byNumber(emptySeatsCount, "friend");
   let emptySeatsText = string_of_int(emptySeatsCount);
 
-
+  /* To aid in cleaning up remnants of `useEffect` when the component unmounts 
+     There must be better ways to do this. See My__ReactHooks for an example wrt setInterval */
   let maybeCopySuccessTimeout = ref(None);
   let maybeClipboard = ref(None);
 
