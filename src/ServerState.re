@@ -123,7 +123,7 @@ type msg =
   | ReconcileSubstitution
   | IdleWithTimeout(Game.game_id, Timer.timeout)
   | Rematch(sock_id)
-  | SelectPartner(sock_id, Quad.id)
+  | SelectPartner(sock_id)
   ;
 
 let stringOfMsg = fun
@@ -146,7 +146,7 @@ let stringOfMsg = fun
   | ReconcileSubstitution => "ReconcileSubstitution"
   | IdleWithTimeout(_, _) => "IdleWithTimeout"
   | Rematch(_sock_id) => "Rematch"
-  | SelectPartner(_sock_id, _seatId) => "RotatePartner"
+  | SelectPartner(_sock_id) => "RotatePartner"
   ;
 
 
@@ -735,18 +735,15 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           
         updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
       }
-    | SelectPartner(sock_id, seatId) =>
+    | SelectPartner(sock_id) =>
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
       | Some({game_id, player_id}) =>
         if (player_id == N1) {
-          let selectPartner = ({Game.players: (p1, p2, p3, p4)} as game) =>
-            switch (seatId) {
-            | N1 => game
-            | N2 => {...game, players: (p1, p3, p2, p4)}
-            | N3 => game
-            | N4 => {...game, players: (p1, p2, p4, p3)}
-            };
+          let selectPartner = ({Game.clients: (p1, p2, p3, p4)} as game) => {
+            ...game,
+            clients: (p1, p4, p2, p3),
+          };
           let db_game =
             db_game->StringMap.update(game_id->SharedGame.stringOfGameId, __x =>
               Belt.Option.map(__x, selectPartner)

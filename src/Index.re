@@ -578,14 +578,12 @@ module App = {
                     | Private(str_game_id) => 
                       <InviteFriendsView
                         me=state.me
-                        n
+                        emptySeatsCount=n
                         inviteCode=str_game_id
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
                         players=state.players
                         onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
-                        onSelectPartnerClick={seatId =>
-                          sendIO(IO_SelectPartner(seatId->Quad.id_encode->Js.Json.stringify))
-                        }
+                        onSelectPartnerClick={_event => sendIO(IO_SelectPartner)}
                       />;
                     };
                   }

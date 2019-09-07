@@ -60,7 +60,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   | IO_PlayAgain(_)
   | IO_Rematch
   | IO_PrivateToPublic
-  | IO_SelectPartner(_)
+  | IO_SelectPartner
   | IO_Substitute(_) => Noop
   | IO_PlayCard(ioPlayerId, ioCard) => {
       switch (Player.id_decode(ioPlayerId |> Js.Json.parseExn)) {
@@ -160,11 +160,8 @@ SocketServer.onConnect(
           ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials}));
 
         | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
-        | IO_SelectPartner(ioSeatId) => 
-          // I'm selecting N3 as the default since I'm assuming only N1 is ever the game master 
-          // so by default his partner is N3.
-          let seatId = decodeWithDefault(Quad.id_decode, N3, ioSeatId);
-          ServerStore.dispatch(SelectPartner(sock_id, seatId))
+        | IO_SelectPartner => 
+          ServerStore.dispatch(SelectPartner(sock_id))
 
         | ioAction =>
           let action = ioAction |> actionOfIO_Action;
