@@ -9,22 +9,52 @@ let make = (~me, ~onLeaveClick, ~inviteCode, ~n, ~players, ~onGoPublicClick, ~on
   let friends = Grammar.byNumber(n, "friend");
   let n = string_of_int(n);
 
-  let onCopySuccess = _event => {
-    updateCopyText(_ => "Copied!");
-    Js.Global.setTimeout(() => updateCopyText(_ => initialCopyText), 2000) |> ignore;
-  };
+
+  let maybeCopySuccessTimeout = ref(None);
+  let maybeClipboard = ref(None);
 
   let onCopyFailure = _event => {
     updateCopyText(_ => "Sorry. Please manually copy the invite code.");
   };
 
+  let rec onCopySuccess = _event => {
+    switch (maybeClipboard^) {
+    | None => ()
+    | Some(clipboard) =>
+      updateCopyText(_ => "Copied!");
+      clipboard->Clipboard.off("success");
+      clipboard->Clipboard.off("error");
+
+      let timeoutId =
+        Js.Global.setTimeout(
+          () => {
+            updateCopyText(_ => initialCopyText);
+            clipboard->Clipboard.on("success", onCopySuccess);
+            clipboard->Clipboard.on("error", onCopyFailure);
+          },
+          2000,
+        );
+      maybeCopySuccessTimeout := Some(timeoutId);
+    };
+  };
+
+
   React.useEffect0(() => {
     let stringOfTrigger = _ => inviteCode;
-    let clipboard =
-      Clipboard.make(".copy-invite-code", Clipboard.options(~text=stringOfTrigger));
+    let clipboard = Clipboard.make(".copy-invite-code", Clipboard.options(~text=stringOfTrigger));
     clipboard->Clipboard.on("success", onCopySuccess);
     clipboard->Clipboard.on("error", onCopyFailure);
-    None;
+    maybeClipboard := Some(clipboard);
+    Some(
+      () => {
+        switch (maybeCopySuccessTimeout^) {
+        | None => ()
+        | Some(timeoutId) => Js.Global.clearTimeout(timeoutId)
+        };
+        clipboard->Clipboard.off("success");
+        clipboard->Clipboard.off("error");
+      },
+    );
   });
   <>
    <div className="text-center text-xl">{ReasonReact.string({j|Invite friends|j})}</div>
