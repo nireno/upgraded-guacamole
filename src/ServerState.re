@@ -692,6 +692,8 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
       Update({...db, db_game});
 
     | Rematch(sock_id) =>
+      let logger = logger.makeChild({"_context": "Rematch", "sock_id": sock_id});
+      logger.info("Got rematch signal");
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
       | Some({game_id, player_id}) => 
@@ -702,12 +704,12 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
             // When all players have chosen to rematch or leave, reinit the game with the rematching players.
             // This may mean that the game goes into the FindPlayersPhase if some players left the game instead of
             // rematching. Or it may go into the deal phase if all players chose to rematch.
-            
+
             let numRematchingPlayers =
               rematchDecisions->Quad.countHaving(decision => decision == RematchAccepted);
 
             let phase =
-              if (rematchDecisions->Quad.every(decision => decision != SharedGame.RematchUnknown, _)){
+              if (rematchDecisions->Quad.every(decision => decision != SharedGame.RematchUnknown, _)) {
                 numRematchingPlayers == 4
                   ? SharedGame.DealPhase : FindPlayersPhase(4 - numRematchingPlayers, false);
               } else {
@@ -716,16 +718,15 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
 
             switch (phase) {
             | GameOverPhase(_) => {...game, phase}
-            | phase =>
-              let rematchGame = Game.initialState();
-              {
-                ...rematchGame,
+            | phase => {
+                ...Game.initialState(),
                 game_id: game.game_id,
                 players: Quad.make(_ => Game.initPlayerData()),
+                clients: game.clients,
                 phase,
-              };
+              }
             };
-          | _ => game
+            | _ => game
           };
         };
 
