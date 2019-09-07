@@ -49,11 +49,8 @@ let make = (~me, ~onLeaveClick, ~inviteCode, ~n, ~players, ~onGoPublicClick, ~on
                       "rounded border border-gray-300 p-2 w-full rounded"
                       ++ (isIdenticonClickable ? " cursor-pointer" : "")
                     }
-                    onClick=?{
-                      playerId == Quad.nextId(me) || playerId == Quad.prevId(me)
-                        ? Some(_event => onSelectPartnerClick(playerId)) : None
-                    }
-                  />
+                    onClick=?{isIdenticonClickable ? Some(_event => onSelectPartnerClick(playerId)) : None}
+                  />;
                 };
               },
               _,
