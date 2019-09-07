@@ -86,17 +86,21 @@ let make = (~me, ~onLeaveClick, ~inviteCode, ~emptySeatsCount, ~players, ~onGoPu
           )}>
           <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
           <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
-          <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}>
-            <img
-              style={ReactDOMRe.Style.make(~opacity=(emptySeatsCount == 3 ? "0.5" : "1.0"), ())}
-              src="./static/img/rotate_tri.svg"
-              className={
-                "rounded border border-gray-300 p-2 w-full rounded"
-                ++ (me == Quad.N1 ? " cursor-pointer" : "")
-              }
-              onClick=?{me == Quad.N1 ? Some(onSelectPartnerClick) : None}
-            />
-          </div>
+          {
+            me == Quad.N1
+              ? <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}>
+                  <img
+                    style={ReactDOMRe.Style.make(~opacity=emptySeatsCount == 3 ? "0.5" : "1.0", ())}
+                    src="./static/img/rotate_tri.svg"
+                    className={
+                      "w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full"
+                      ++ (emptySeatsCount == 3 ? " cursor-not-allowed" : " cursor-pointer")
+                    }
+                    onClick=?{emptySeatsCount == 3 ? None : Some(onSelectPartnerClick)}
+                  />
+                </div>
+              : ReasonReact.null;
+          }
           <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
           <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
         </div>;
