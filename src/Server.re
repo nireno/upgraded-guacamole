@@ -62,6 +62,8 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   | IO_PrivateToPublic
   | IO_SelectPartner
   | IO_Substitute(_) => Noop
+  | IO_StartGameNow => Noop
+  
   | IO_PlayCard(ioPlayerId, ioCard) => {
       switch (Player.id_decode(ioPlayerId |> Js.Json.parseExn)) {
       | Belt.Result.Error(_) => Noop
@@ -162,6 +164,8 @@ SocketServer.onConnect(
         | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
         | IO_SelectPartner => 
           ServerStore.dispatch(SelectPartner(sock_id))
+        | IO_StartGameNow =>
+          ServerStore.dispatch(StartGameNow(sock_id))
 
         | ioAction =>
           let action = ioAction |> actionOfIO_Action;

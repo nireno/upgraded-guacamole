@@ -584,6 +584,7 @@ module App = {
                         players=state.players
                         onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
                         onSelectPartnerClick={_event => sendIO(IO_SelectPartner)}
+                        onStartGameClick={_event => sendIO(IO_StartGameNow)}
                       />;
                     };
                   }

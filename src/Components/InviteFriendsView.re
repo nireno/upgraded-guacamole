@@ -1,5 +1,15 @@
 [@react.component]
-let make = (~me, ~onLeaveClick, ~inviteCode, ~emptySeatsCount, ~players, ~onGoPublicClick, ~onSelectPartnerClick) => {
+let make =
+    (
+      ~me,
+      ~onLeaveClick,
+      ~inviteCode,
+      ~emptySeatsCount,
+      ~players,
+      ~onGoPublicClick,
+      ~onSelectPartnerClick,
+      ~onStartGameClick,
+    ) => {
   let rotatedPlayers =  
     Player.playersAsQuad(~startFrom=me, ())
     ->Quad.map(playerId => Quad.get(playerId, players), _);
@@ -122,9 +132,15 @@ let make = (~me, ~onLeaveClick, ~inviteCode, ~emptySeatsCount, ~players, ~onGoPu
     <button className="btn btn-grey mt-4" onClick=onLeaveClick>
       {ReasonReact.string("Cancel")}
     </button>
-    <button className="btn btn-blue mt-4" onClick=onGoPublicClick>
-      {ReasonReact.string("Go Public")}
-    </button>
+    {
+      emptySeatsCount == 0
+        ? <button className="btn btn-blue mt-4" onClick=onStartGameClick>
+            {ReasonReact.string("Start Now")}
+          </button>
+        : <button className="btn btn-blue mt-4" onClick=onGoPublicClick>
+            {ReasonReact.string("Go Public")}
+          </button>;
+    }
     </div>
   </div>
   </>

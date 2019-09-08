@@ -2,6 +2,7 @@ open AppPrelude;
 open Game;
 
 let logger = appLogger.makeChild({"_context": "GameReducer"})
+
 type action =
   | Noop
   | PlayCard(Player.id, Card.t)
@@ -16,7 +17,9 @@ type action =
   | DealAgain
   | LeaveGame(Player.id)
   | UpdateSubbing(bool)
-  | ClearNotis;
+  | ClearNotis
+  | StartGame;
+  // | TransitionNow;
 
 let getTeamHighAndLowMaybes:
   ((Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t), option(Card.t)) =>
@@ -954,4 +957,12 @@ let rec reduce = (action, state) =>
     {...state, phase};
   | ClearNotis => 
     {...state, notis: []};
+  | StartGame => {...state, phase: DealPhase}
+  // | TransitionNow => 
+  //   switch (state.phase) {
+  //   | DelayedTransitionPhase({from_phase, game_reducer_action, timeout}) =>
+  //     Timer.clearTimeout(timeout);
+  //     reduce(action, state);
+  //   | _ => state
+  //   };
   };

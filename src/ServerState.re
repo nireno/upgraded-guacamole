@@ -124,6 +124,7 @@ type msg =
   | IdleWithTimeout(Game.game_id, Timer.timeout)
   | Rematch(sock_id)
   | SelectPartner(sock_id)
+  | StartGameNow(sock_id) //short circuits the usual delay before game starts
   ;
 
 let stringOfMsg = fun
@@ -147,6 +148,7 @@ let stringOfMsg = fun
   | IdleWithTimeout(_, _) => "IdleWithTimeout"
   | Rematch(_sock_id) => "Rematch"
   | SelectPartner(_sock_id) => "RotatePartner"
+  | StartGameNow(_sock_id) => "StartGameNow"
   ;
 
 
@@ -349,8 +351,7 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
                 SharedGame.IdlePhase(Some(Timer.restartTimeout(timeout)))
             | FindSubsPhase(_n, subPhase) =>
               playersNeeded == 0 ? subPhase : FindSubsPhase(playersNeeded, subPhase)
-            | FindPlayersPhase(_n, canSub) =>
-              playersNeeded == 0 ? DealPhase : FindPlayersPhase(playersNeeded, canSub)
+            | FindPlayersPhase(_n, canSub) => FindPlayersPhase(playersNeeded, canSub)
             | otherPhase => otherPhase
             };
 
@@ -387,15 +388,28 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
                   _,
                 )
             );
+          
+          let effects =
+            [
+              Some(ServerEffect.EmitClientToasts(clientToasts))
+            , gameAftAttach.phase->SharedGame.isPlayerActivePhase
+                ? Some(ServerEffect.ResetKickTimeout(game_id)) : None
+            , playersNeeded == 0
+                ? Some(
+                    ServerEffect.IdleThenUpdateGame({
+                      game_id,
+                      game_reducer_action: StartGame,
+                      idle_milliseconds: 12->secondsToMillis,
+                    }),
+                  )
+                : None,
+            ]
+            ->Belt.List.keepMap(identity);
 
           updateMany(
             [
               ReplaceGame(gameState.game_id, gameAftAttach),
-              TriggerEffects([EmitClientToasts(clientToasts)]),
-              TriggerEffects(
-                gameAftAttach.phase->SharedGame.isPlayerActivePhase
-                  ? [ServerEffect.ResetKickTimeout(game_id)] : [],
-              ),
+              TriggerEffects(effects),
             ],
             Update(db'),
           );
@@ -754,6 +768,30 @@ let rec update: (msg, db) => update(db, ServerEffect.effect) =
           NoUpdate(db);
         }
       };
+    | StartGameNow(sock_id) =>
+      // Start game now preflight
+      // Check that player is in a game
+      //   and that game is in the Findplayers(0, _) state
+      // Clear any pending timers meant to fire StartGame
+      logger.info("Recieved StartGameNow");
+      switch(db_player_game->StringMap.get(sock_id)){
+      | None => NoUpdate(db)
+      | Some({game_id}) =>
+        switch(db_game->StringMap.get(game_id->Game.stringOfGameId)){
+        | None => NoUpdate(db)
+        | Some(game) =>
+          switch(game.phase){
+          | IdlePhase(Some(timeout)) => 
+            switch(timeout){
+            | PausedTimeout(task, _, _)
+            | RunningTimeout(_, task, _, _) => 
+              task()
+              NoUpdate(db)
+            }
+          | _ => NoUpdate(db)
+          }
+        }
+      }
     };
   }
 and updateResult: (msg, update(db, ServerEffect.effect)) => update(db, ServerEffect.effect) =

@@ -88,6 +88,14 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
       let timeout = Timer.startTimeout(() => dispatch(UpdateGame(game_id, AdvanceRound)), 2750);
       dispatch(IdleWithTimeout(game_id, timeout));
 
+    | IdleThenUpdateGame({game_id, game_reducer_action, idle_milliseconds}) =>
+      let timeout =
+        Timer.startTimeout(
+          () => dispatch(UpdateGame(game_id, game_reducer_action)),
+          idle_milliseconds,
+        );
+      dispatch(IdleWithTimeout(game_id, timeout));
+
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 
       SocketServer.emit(Reset, sock_id);
