@@ -5,10 +5,6 @@ type str_json = string;
 type sock_id = string;
 type milliseconds = float;
 
-let teamIdtoName = (weTeamId, teamId) => {
-  teamId == weTeamId ? "We" : "Dem"
-};
-
 let leftPad = (s, ~n=0, ~c="\t", ()) => {
   let tabs = Js.String.repeat(n, c); 
   Js.String.split("\n", s)
