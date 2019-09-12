@@ -3,6 +3,7 @@ type t = {
   nCardsToRun: int,
   winningScore: int,
   kickPlayerMillis: int,
+  gameStartingCountdownSeconds: int,
 }
 
 let default = {
@@ -10,6 +11,7 @@ let default = {
   nCardsToRun: 3,
   winningScore: 14,
   kickPlayerMillis: 60 * 1000,
+  gameStartingCountdownSeconds: 7
 };
 
 let debug = {

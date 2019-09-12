@@ -330,12 +330,16 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           
           let effects =
             [
-              Some(ServerEvent.EmitClientToasts(clientToasts))
-            , gameAftAttach.phase->Game.isPlayerActivePhase
-                ? Some(ServerEvent.ResetKickTimeout(game_id)) : None
-            , playersNeeded == 0
+              Some(ServerEvent.EmitClientToasts(clientToasts)),
+              gameAftAttach.phase->Game.isPlayerActivePhase
+                ? Some(ServerEvent.ResetKickTimeout(game_id)) : None,
+              playersNeeded == 0
                 ? Some(
-                  ServerEvent.IdleThenUpdateGame({game_id, game_reducer_action: StartGame, idle_milliseconds: 5->secondsToMillis})
+                    ServerEvent.IdleThenUpdateGame({
+                      game_id,
+                      game_reducer_action: StartGame,
+                      idle_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
+                    }),
                   )
                 : None,
             ]

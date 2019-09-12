@@ -126,9 +126,17 @@ let make =
       className="copy-invite-code block text-base text-blue-700 hover:text-blue-500 underline cursor-pointer">
       {ReasonReact.string(copyText)}
     </a>
+    {
+      emptySeatsCount == 0 
+        ? <div>
+           <span>{ ReasonReact.string("Game starting in: ") }</span>
+           <CountdownView from=SharedGame.settings.gameStartingCountdownSeconds />
+          </div>
+        :
     <div className="text-xl mt-6">
       {ReasonReact.string({j|Waiting for $emptySeatsText more $friends...|j})}
     </div>
+    }
     <div className="flex justify-around">
     <button className="btn btn-grey mt-4" onClick=onLeaveClick>
       {ReasonReact.string("Cancel")}
