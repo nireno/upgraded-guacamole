@@ -71,10 +71,17 @@ let reducer = (prevState, action) => {
       Howler.play(sound);
     };
 
-    /** "Game in progress" sound effect */
-    if (prevHasEmptySeats && currNumEmptySeats == 0) {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ())));
-      Howler.play(sound);
+    /** "Game started" sound effect */
+    switch (prevState.gamePhase) {
+    | FindPlayersPhase(_) 
+    | FindSubsPhase(_) =>
+      switch (nextState.gamePhase) {
+      | DealPhase =>
+        let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ())));
+        Howler.play(sound);
+      | _ => ()
+      }
+    | _ => ()
     };
 
     let wasActivePlayer =

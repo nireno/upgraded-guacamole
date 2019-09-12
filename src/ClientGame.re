@@ -86,3 +86,14 @@ let initialState = {
   maybeTrumpCard: None,
 };
 
+let stringOfPhase = fun
+  | IdlePhase => "IdlePhase"
+  | FindSubsPhase(_) => "FindSubsPhase"
+  | FindPlayersPhase(_) => "FindPlayersPhase"
+  | DealPhase => "DealPhase"
+  | BegPhase => "BegPhase"
+  | GiveOnePhase => "GiveOnePhase"
+  | RunPackPhase => "RunPackPhase"
+  | PlayerTurnPhase(_) => "PlayerTurnPhase"
+  | PackDepletedPhase => "PackDepletedPhase"
+  | GameOverPhase(_) => "GameOverPhase";
