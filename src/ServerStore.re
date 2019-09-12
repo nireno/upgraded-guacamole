@@ -90,7 +90,11 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
           () => dispatch(UpdateGame(game_id, game_reducer_action)),
           idle_milliseconds,
         );
-      dispatch(IdleWithTimeout(game_id, timeout, UpdateGameIdle));
+      let idleReason = switch(game_reducer_action){
+      | StartGame => Game.StartGameIdle
+      | _ => UpdateGameIdle
+      }
+      dispatch(IdleWithTimeout(game_id, timeout,idleReason));
 
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 

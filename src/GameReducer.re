@@ -924,6 +924,9 @@ let rec reduce = (action, state) =>
             GameOverPhase(rematchDecisions);
           };
 
+        | IdlePhase(Some(timeout), StartGameIdle) =>
+          Timer.clearTimeout(timeout);
+          FindPlayersPhase({emptySeatCount: nPlayersToFind, canSub: false})
         | IdlePhase(Some(timeout), reason) =>
           FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: IdlePhase(Some(timeout->Timer.pauseTimeout), reason) })
         | phase => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase })
