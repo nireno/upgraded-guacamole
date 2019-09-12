@@ -12,6 +12,7 @@ type clientData = {
   client_username: string,
   client_id: string,
   client_initials: string,
+  client_profile_type: ClientSettings.profileType,
   client_connected_at: milliseconds,
 };
 

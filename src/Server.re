@@ -122,9 +122,9 @@ SocketServer.onConnect(
         logger.debug2("Handling `%s` event. ", stringOfEvent);
         switch (io) {
         | IO_StartPrivateGame(client_username, ioClientSettingsJson) =>
-          let {ClientSettings.client_id, client_initials} =
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
             decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
-          ServerStore.dispatch(CreatePrivateGame({sock_id, client_username, client_id, client_initials}));
+          ServerStore.dispatch(CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type}));
           logger.info2(getGameStats(), "Game stats:");
 
         | IO_JoinPrivateGame(_inviteCode, _client_username, _ioClientSettings) => () // handled later by Socket.onWithAck
@@ -136,7 +136,7 @@ SocketServer.onConnect(
           logger.info2(getGameStats(), "Game stats:");
 
         | IO_PlayAgain(client_username, ioClientSettingsJson) =>
-          let {ClientSettings.client_id, client_initials} =
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
             decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
           switch (ServerStore.getGameBySocket(sock_id)) {
           | None => ServerStore.dispatch(TriggerEffects([ServerEvent.ResetClient(sock_id)]))
@@ -146,20 +146,20 @@ SocketServer.onConnect(
               let noAck = _ => ()
               ServerStore.dispatchMany([
                 RemovePlayerBySocket(sock_id),
-                AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack: noAck}),
+                AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack: noAck, client_profile_type}),
               ])
             | Private(_) =>
               ServerStore.dispatchMany([
                 RemovePlayerBySocket(sock_id),
-                CreatePrivateGame({sock_id, client_username, client_id, client_initials})]);
+                CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type})]);
             }
           };
           logger.info2(getGameStats(), "Game stats:");
 
         | IO_Substitute(client_username, ioClientSettings) => 
-          let {ClientSettings.client_id, client_initials} =
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
             decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
-          ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials}));
+          ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials, client_profile_type}));
 
         | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
         | IO_SelectPartner => 
@@ -185,18 +185,18 @@ SocketServer.onConnect(
 
         switch (io) {
         | IO_JoinPrivateGame(invite_code, client_username, ioClientSettings) =>
-          let {ClientSettings.client_id, client_initials} =
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
             decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
           logger.info("Invite code: " ++ invite_code);
 
           ServerStore.dispatch(
-            AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack}),
+            AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack, client_profile_type}),
           );
         
         | IO_JoinGame(client_username, ioClientSettings) =>
-          let {ClientSettings.client_id, client_initials} =
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
             decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
-          ServerStore.dispatch(AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack}));
+          ServerStore.dispatch(AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack, client_profile_type}));
           logger.info2(getGameStats(), "Game stats:");
         | _ => 
           // todo: merge on and onWith ack so I don't have to ignore other messages like this

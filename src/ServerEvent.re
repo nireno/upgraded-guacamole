@@ -6,6 +6,7 @@ type attachPlayerData = {
   client_username: string,
   client_id: string,
   client_initials: string,
+  client_profile_type: ClientSettings.profileType,
 };
 
 type attachPublicPlayerData = {
@@ -14,6 +15,7 @@ type attachPublicPlayerData = {
   ack: SocketMessages.ack,
   client_id: string,
   client_initials: string,
+  client_profile_type: ClientSettings.profileType,
 };
 
 type attachPrivatePlayerData = {
@@ -21,6 +23,7 @@ type attachPrivatePlayerData = {
   client_username: string,
   client_id: string,
   client_initials: string,
+  client_profile_type: ClientSettings.profileType,
   invite_code: string,
   ack: SocketMessages.ack,
 };
@@ -30,6 +33,7 @@ type createPrivateGameData = {
   client_username: string,
   client_id: string,
   client_initials: string,
+  client_profile_type: ClientSettings.profileType,
 };
 
 type attachSubstituteData = {
@@ -37,6 +41,7 @@ type attachSubstituteData = {
   client_username: string,
   client_id: string,
   client_initials: string,
+  client_profile_type: ClientSettings.profileType,
 };
 
 type event = 

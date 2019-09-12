@@ -12,6 +12,7 @@ type clientProfile = {
   client_username: string,
   client_identicon: string,
   client_initials: string,
+  client_profile_type: ClientSettings.profileType,
 };
 
 [@decco]

@@ -141,6 +141,7 @@ let buildClientState = (gameState, player, playerPhase) => {
           ClientGame.client_username: client.client_username,
           client_identicon: client.client_id,
           client_initials: client.client_initials,
+          client_profile_type: client.client_profile_type,
         });
     ClientGame.{pla_card: player.pla_card, pla_profile_maybe: getUserProfileMaybe(client)};
   };
@@ -254,7 +255,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         NoUpdate(db),
       )
 
-    | AttachPlayer({game_id, sock_id, client_username, client_id, client_initials}) =>
+    | AttachPlayer({game_id, sock_id, client_username, client_id, client_initials, client_profile_type}) =>
       let str_game_id = Game.(stringOfGameId(game_id));
       switch (db_game->StringMap.get(str_game_id)) {
       | None => NoUpdate(db)
@@ -276,6 +277,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
                   client_socket_id: sock_id,
                   client_id,
                   client_initials,
+                  client_profile_type,
                   client_connected_at: Js.Date.now(),
                 }),
               gameState.clients,
@@ -408,7 +410,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           };
         };
       };
-    | AttachPublicPlayer({sock_id, client_username, ack, client_id, client_initials}) =>
+    | AttachPublicPlayer({sock_id, client_username, ack, client_id, client_initials, client_profile_type}) =>
       let logger =
         logger.makeChild({"_context": "AttachPublicPlayer", "sock_id": sock_id, "client_username": client_username});
 
@@ -423,7 +425,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           [
             AddGame(gameState),
             RemovePlayerBySocket(sock_id),
-            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials}),
+            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
             ReconcileSubstitution,
             TriggerEffects([ServerEvent.EmitAck(ack, SocketMessages.AckOk)]),
           ],
@@ -434,23 +436,23 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         updateMany(
           [
             RemovePlayerBySocket(sock_id), 
-            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials}),
+            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
             TriggerEffects([ServerEvent.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           NoUpdate(db),
         );
       };
-    | CreatePrivateGame({sock_id, client_username, client_id, client_initials}) =>
+    | CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type}) =>
       let db' = {...db, db_private_games_created: db.db_private_games_created + 1};
       let gameState = initPrivateGame(db.db_game);
       updateMany(
         [
           AddGame(gameState), 
-          AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials})
+          AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type})
         ],
         Update(db'),
       );
-    | AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack}) =>
+    | AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack, client_profile_type}) =>
       /** Find game having the provided invite code */
       let gameMatchesCode = (inviteCode, gameState) => {
         let normalizeCode = code =>
@@ -472,7 +474,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         updateMany(
           [
             RemovePlayerBySocket(sock_id),
-            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials}),
+            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
             TriggerEffects([ServerEvent.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           NoUpdate(db),
@@ -484,7 +486,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         )
       };
 
-    | AttachSubstitute({sock_id, client_username, client_id, client_initials}) =>
+    | AttachSubstitute({sock_id, client_username, client_id, client_initials, client_profile_type}) =>
         switch (
           db_game
           ->StringMap.valuesToArray
@@ -498,7 +500,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           updateMany(
             [
               RemovePlayerBySocket(sock_id),
-              AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials}),
+              AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
               ReconcileSubstitution,
             ],
             NoUpdate(db),
