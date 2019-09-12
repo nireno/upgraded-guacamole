@@ -139,7 +139,7 @@ SocketServer.onConnect(
           let {ClientSettings.client_id, client_initials} =
             decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
           switch (ServerStore.getGameBySocket(sock_id)) {
-          | None => ServerStore.dispatch(TriggerEffects([ServerEffect.ResetClient(sock_id)]))
+          | None => ServerStore.dispatch(TriggerEffects([ServerEvent.ResetClient(sock_id)]))
           | Some(gameState) =>
             switch (gameState.game_id) {
             | Public(_) =>

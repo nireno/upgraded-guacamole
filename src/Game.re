@@ -48,6 +48,61 @@ let initPlayerData = () => {
 
 [@decco] type notis = list(Noti.t);
 
+type findPlayersContext = { emptySeatCount: int, canSub: bool };
+
+type idleReason = 
+| UpdateGameIdle
+| StartGameIdle;
+
+type phase =
+  | IdlePhase(option(Timer.timeout), idleReason)
+  | FindSubsPhase(findSubsContext)
+  | FindPlayersPhase(findPlayersContext)
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase(Player.id)
+  | PackDepletedPhase
+  | GameOverPhase(Quad.t(rematchDecision))
+and findSubsContext = { emptySeatCount: int, phase}
+and idlePhaseContext = { maybeTimer: option(Timer.timeout), fromPhase: phase, toPhase: phase};
+
+let rec stringOfPhase =
+  fun
+  | IdlePhase(_) => "IdlePhase"
+  | FindSubsPhase({emptySeatCount, phase}) =>
+    "FindSubsPhase(" ++ string_of_int(emptySeatCount) ++ ", " ++ stringOfPhase(phase) ++ ")"
+  | FindPlayersPhase({emptySeatCount, canSub}) =>
+    "FindPlayersPhase(" ++ string_of_int(emptySeatCount) ++ ", " ++ string_of_bool(canSub) ++ ")"
+  | DealPhase => "DealPhase"
+  | BegPhase => "BegPhase"
+  | GiveOnePhase => "GiveOnePhase"
+  | RunPackPhase => "RunPackPhase"
+  | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Quad.stringifyId(playerId) ++ ")"
+  | PackDepletedPhase => "PackDepletedPhase"
+  | GameOverPhase(_) => "GameOverPhase";
+
+let isPlayerActivePhase = fun
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase(_) 
+  | PackDepletedPhase => true
+  | IdlePhase(_)
+  | FindSubsPhase(_)
+  | FindPlayersPhase(_)
+  | GameOverPhase(_) => false;
+
+let isFaceDownPhase =
+  fun
+  | FindSubsPhase({ phase: BegPhase })
+  | BegPhase
+  | FindSubsPhase({ phase: GiveOnePhase })
+  | GiveOnePhase => true
+  | _ => false;
+
 type state = {
   game_id,
   deck: Deck.t,
@@ -164,7 +219,7 @@ let initialState = () => {
     maybeTeamHigh: None,
     maybeTeamLow: None,
     maybeTeamJack: None,
-    phase: FindPlayersPhase(4, false),
+    phase: FindPlayersPhase({ emptySeatCount: 4, canSub: false }),
     maybeKickTimeoutId: None,
     game_follow_suit: None,
   };
@@ -217,14 +272,14 @@ let playerOfIntUnsafe =
 
 module Filter = {
   type privacy = Private | Public | PrivateOrPublic;
-  type phase = FindPlayersPhase | FindSubsPhase | Other;
+  type simplePhase = FindPlayersPhase | FindSubsPhase | Other;
 
 
-  let simplifyPhase: SharedGame.phase => phase =
+  let simplifyPhase: phase => simplePhase =
     gamePhase => {
       switch (gamePhase) {
-      | FindPlayersPhase(_, _) => FindPlayersPhase
-      | FindSubsPhase(_, _) => FindSubsPhase
+      | FindPlayersPhase(_) => FindPlayersPhase
+      | FindSubsPhase(_) => FindSubsPhase
       | _ => Other
       };
     };
@@ -265,11 +320,11 @@ let isPrivate = (state) => {
 };
 
 let isFindPlayersPhase = fun
-| FindPlayersPhase(_, _) => true
+| FindPlayersPhase(_) => true
 | _ => false;
 
 let isFindSubsPhase = fun
-| FindSubsPhase(_, _) => true
+| FindSubsPhase(_) => true
 | _ => false;
 
 

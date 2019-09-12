@@ -1,5 +1,5 @@
 [@react.component]
-let make = (~myPlayerId, ~maybeActivePlayer: option(ActivePlayer.t), ~activePlayerName, ()) => {
+let make = (~myPlayerId, ~maybeActivePlayer: option(Shared.ActivePlayer.t), ~activePlayerName, ()) => {
   let (amIActive, activePlayerPhase: Player.phase) =
     switch (maybeActivePlayer) {
     | None => (false, PlayerIdlePhase)

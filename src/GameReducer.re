@@ -18,8 +18,9 @@ type action =
   | LeaveGame(Player.id)
   | UpdateSubbing(bool)
   | ClearNotis
-  | StartGame;
-  // | TransitionNow;
+  | StartGame
+  | SkipIdling
+  ;
 
 let getTeamHighAndLowMaybes:
   ((Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t), option(Card.t)) =>
@@ -328,7 +329,7 @@ let rec reduce = (action, state) =>
             if the player who wins the trick is the last player in the trick.
             */
           let nextPlayer = Quad.nextId(playerId);
-          let phase' = nextPlayer == state.leader ? IdlePhase(None) : PlayerTurnPhase(nextPlayer);
+          let phase' = nextPlayer == state.leader ? IdlePhase(None, UpdateGameIdle) : PlayerTurnPhase(nextPlayer);
           let nextPlayers =
             Quad.update(playerId, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players);
 
@@ -911,21 +912,21 @@ let rec reduce = (action, state) =>
     | Disconnected(client, _) =>
       let getNextPhase = (nPlayersToFind, currentPhase) => {
         switch (currentPhase) {
-        | FindSubsPhase(_n, subPhase) => FindSubsPhase(nPlayersToFind, subPhase)
-        | FindPlayersPhase(_n, canSub) => FindPlayersPhase(nPlayersToFind, canSub)
+        | FindSubsPhase({phase: subPhase}) => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: subPhase })
+        | FindPlayersPhase({ canSub }) => FindPlayersPhase({ emptySeatCount: nPlayersToFind, canSub })
         | GameOverPhase(rematchDecisions) =>
           let rematchDecisions = rematchDecisions->Quad.put(leavingPlayerId, RematchDenied, _);
           let numRematchUnknowns =
             rematchDecisions->Quad.countHaving(_, decision => decision == RematchUnknown);
           if (numRematchUnknowns == 0) {
-            FindPlayersPhase(nPlayersToFind, false);
+            FindPlayersPhase({ emptySeatCount: nPlayersToFind, canSub: false });
           } else {
             GameOverPhase(rematchDecisions);
           };
 
-        | IdlePhase(Some(timeout)) =>
-          FindSubsPhase(nPlayersToFind, IdlePhase(Some(timeout->Timer.pauseTimeout)))
-        | phase => FindSubsPhase(nPlayersToFind, phase)
+        | IdlePhase(Some(timeout), reason) =>
+          FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: IdlePhase(Some(timeout->Timer.pauseTimeout), reason) })
+        | phase => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase })
         };
       };
       
@@ -951,18 +952,27 @@ let rec reduce = (action, state) =>
   | UpdateSubbing(canSub) => 
     let phase =
       switch (state.phase) {
-      | FindPlayersPhase(n, _) => FindPlayersPhase(n, canSub)
+      | FindPlayersPhase({ emptySeatCount }) => FindPlayersPhase({ emptySeatCount, canSub })
       | phase => phase
       };
     {...state, phase};
   | ClearNotis => 
     {...state, notis: []};
   | StartGame => {...state, phase: DealPhase}
-  // | TransitionNow => 
-  //   switch (state.phase) {
-  //   | DelayedTransitionPhase({from_phase, game_reducer_action, timeout}) =>
-  //     Timer.clearTimeout(timeout);
-  //     reduce(action, state);
-  //   | _ => state
-  //   };
+  | SkipIdling => 
+    switch (state.phase) {
+    // | IdlePhase({idle_from_phase, timeout}) when idle_from_phase == fromPhase =>
+    | IdlePhase(Some(timeout), _) =>
+      switch(timeout){
+      | RunningTimeout(_, task, _, _) => 
+        Timer.clearTimeout(timeout);
+        let timeout = Timer.startTimeout(task, 0);
+        {
+          ...state,
+          phase: IdlePhase(Some(timeout), UpdateGameIdle),
+        }
+      | _ => state
+      }
+    | _ => state
+    };
   };

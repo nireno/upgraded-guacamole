@@ -12,12 +12,12 @@ let getGameBySocket: sock_id => option(Game.state) =
   sock_id => ServerState.getGameBySocket(sock_id, getState());
 
 
-let getGamesWhere: (~phase: Game.Filter.phase=?, ~privacy: Game.Filter.privacy=?, unit) => list(Game.state) =
+let getGamesWhere: (~phase: Game.Filter.simplePhase=?, ~privacy: Game.Filter.privacy=?, unit) => list(Game.state) =
   (~phase=?, ~privacy=PrivateOrPublic, ()) => {
     ServerState.getGamesWhere(~phase?, ~privacy, getState());
   };
 
-let rec dispatch: ServerState.msg => unit =
+let rec dispatch: ServerEvent.event => unit =
   msg => {
     let state = getState();
     switch (ServerState.update(msg, state)) {
@@ -31,7 +31,7 @@ let rec dispatch: ServerState.msg => unit =
       effects->List.forEach(perform(stateAftUpdate));
     };
   }
-and perform: (ServerState.db, ServerEffect.effect) => unit =
+and perform: (ServerState.db, ServerEvent.effect) => unit =
   ({db_game} as db, effect) => {
     switch (effect) {
     | EmitClientState(sock_id, clientState) =>
@@ -51,7 +51,7 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
         ->Belt.List.forEach(((sock_id_maybe, clientState)) =>
             switch (sock_id_maybe) {
             | None => ()
-            | Some(sock_id) => perform(db, ServerEffect.EmitClientState(sock_id, clientState))
+            | Some(sock_id) => perform(db, ServerEvent.EmitClientState(sock_id, clientState))
             }
           )
       };
@@ -64,7 +64,7 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
       })
 
     | ResetKickTimeout(game_id) =>
-      perform(db, ServerEffect.ClearKickTimeout(game_id));
+      perform(db, ServerEvent.ClearKickTimeout(game_id));
       let timeoutId =
         Js.Global.setTimeout(
           () => dispatch(KickActivePlayer(game_id)),
@@ -84,24 +84,35 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
         }
       }
 
-    | DelayThenAdvanceRound(game_id) =>
-      let timeout = Timer.startTimeout(() => dispatch(UpdateGame(game_id, AdvanceRound)), 2750);
-      dispatch(IdleWithTimeout(game_id, timeout));
-
     | IdleThenUpdateGame({game_id, game_reducer_action, idle_milliseconds}) =>
       let timeout =
         Timer.startTimeout(
           () => dispatch(UpdateGame(game_id, game_reducer_action)),
           idle_milliseconds,
         );
-      dispatch(IdleWithTimeout(game_id, timeout));
+      dispatch(IdleWithTimeout(game_id, timeout, UpdateGameIdle));
 
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 
       SocketServer.emit(Reset, sock_id);
+    // | DelayedEvent({event, delay_milliseconds}) =>
+    //   /* TODO: I use DelayedEvent to add a countdown before the game starts. 
+    //      At the moment, the timer it creates is unstoppable. So if a player leaves
+    //      before the game starts the timer will still fire. This won't have any effect
+    //      because the GameReducer event ensures the game is in a valid state before
+    //      attempting to start the game. However it should be the case that, either the
+    //      ServerStore or GameReducer should keep track of running timers and clear them
+    //      if the game is no longer in a valid state to carry out the DelayedEvent.
+    //   */
+
+    //     Timer.startTimeout(
+    //       () => dispatch(event),
+    //       delay_milliseconds,
+    //     ) |> ignore;
+      
     };
   };
 
-let dispatchMany: list(ServerState.msg) => unit = msgs => {
+let dispatchMany: list(ServerEvent.event) => unit = msgs => {
   msgs->List.forEach(dispatch);
 }

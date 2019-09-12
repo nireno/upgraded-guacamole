@@ -22,7 +22,7 @@ module App = {
   [@react.component]
   let make = () => {
     let url = ReasonReactRouter.useUrl();
-    let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
+    let (state, dispatch) = React.useReducer(Client.GameReducer.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
     let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
@@ -45,10 +45,10 @@ module App = {
       None;
     });
 
-    let maybeActivePlayer = ActivePlayer.find(state.gamePhase, state.dealer);
+    let maybeActivePlayer = Shared.ActivePlayer.find(state.gamePhase, state.dealer);
     let activePlayerName =
       maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
-        switch (state.players->Quad.get(activePlayer.ActivePlayer.id, _).pla_profile_maybe) {
+        switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
         | None => ""
         | Some(profile) => profile.client_username
         }
@@ -560,7 +560,7 @@ module App = {
                </div>
              </div>
              {switch (state.gamePhase) {
-              | FindPlayersPhase(n, canSub) =>
+              | FindPlayersPhase({ emptySeatCount: n, canSub }) =>
                 <Modal visible=true>
                   {
                     switch (state.gameId) {
@@ -589,7 +589,7 @@ module App = {
                     };
                   }
                 </Modal>
-              | FindSubsPhase(n, _) => 
+              | FindSubsPhase({ emptySeatCount: n }) => 
                 <Modal visible=true> 
                   <FindSubsView n onLeaveClick={_event => sendIO(IO_LeaveGame)} /> 
                 </Modal>
