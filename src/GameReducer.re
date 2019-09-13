@@ -20,6 +20,7 @@ type action =
   | ClearNotis
   | StartGame
   | SkipIdling
+  | PrivateToPublic
   ;
 
 let getTeamHighAndLowMaybes:
@@ -978,4 +979,9 @@ let rec reduce = (action, state) =>
       }
     | _ => state
     };
+  | PrivateToPublic => 
+    switch(state.game_id){
+    | Public(_) => state
+    | Private(id) => {...state, game_id: Public(id)}
+    }
   };

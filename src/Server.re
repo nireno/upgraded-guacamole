@@ -162,11 +162,9 @@ SocketServer.onConnect(
           ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials, client_profile_type}));
 
         | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
-        | IO_SelectPartner => 
-          ServerStore.dispatch(SelectPartner(sock_id))
-        | IO_StartGameNow =>
-          ServerStore.dispatch(StartGameNow(sock_id))
-
+        | IO_SelectPartner => ServerStore.dispatch(SelectPartner(sock_id))
+        | IO_StartGameNow => ServerStore.dispatch(StartGameNow(sock_id))
+        | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
         | ioAction =>
           let action = ioAction |> actionOfIO_Action;
           ServerStore.dispatch(UpdateGameBySocket(sock_id, action));

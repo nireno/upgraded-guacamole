@@ -86,6 +86,7 @@ let stringOfMsg = fun
   | Rematch(_sock_id) => "Rematch"
   | SelectPartner(_sock_id) => "RotatePartner"
   | StartGameNow(_sock_id) => "StartGameNow"
+  | PrivateToPublic(_sock_id) => "PrivateToPublic"
   ;
 
 
@@ -719,6 +720,17 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         let db_game = db_game->StringMap.update(game_id->Game.stringOfGameId, Belt.Option.map(_, GameReducer.reduce(SkipIdling)))
         updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
       }
+
+    | PrivateToPublic(sock_id) => 
+      switch (db_player_game->StringMap.get(sock_id)) {
+      | None => NoUpdate(db)
+      | Some({game_id}) =>
+        let db_game =
+          db_game->StringMap.update(game_id->Game.stringOfGameId, __x =>
+            Belt.Option.map(__x, GameReducer.reduce(PrivateToPublic))
+          );
+        updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
+      };
     };
   }
 and updateResult: (ServerEvent.event, update(db, ServerEvent.effect)) => update(db, ServerEvent.effect) =
