@@ -142,13 +142,15 @@ let make =
       {ReasonReact.string("Cancel")}
     </button>
     {
-      emptySeatsCount == 0
-        ? <button className="btn btn-blue mt-4" onClick=onStartGameClick>
-            {ReasonReact.string("Start Now")}
-          </button>
-        : <button className="btn btn-blue mt-4" onClick=onGoPublicClick>
-            {ReasonReact.string("Go Public")}
-          </button>;
+      me == Quad.N1
+        ? emptySeatsCount == 0
+            ? <button className="btn btn-blue mt-4" onClick=onStartGameClick>
+                {ReasonReact.string("Start Now")}
+              </button>
+            : <button className="btn btn-blue mt-4" onClick=onGoPublicClick>
+                {ReasonReact.string("Go Public")}
+              </button>
+        : ReasonReact.null;
     }
     </div>
   </div>
