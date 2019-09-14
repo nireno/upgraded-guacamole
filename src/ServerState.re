@@ -212,10 +212,10 @@ let reconcileKickTimeout = (prevGameState, nextGameState) => {
 }
 
 let rec initPrivateGame = (db_game) => {
-  let gameIdExists = (searchId, gameState) =>
+  let gameIdExists = (searchKey, gameState) =>
     switch (gameState.Game.game_id) {
     | Public(_) => false
-    | Private(id) => searchId == id
+    | Private({private_game_key: key}) => searchKey == key
     };
   let newGameState = Game.initPrivateGame();
   let stringOfGameId = newGameState.game_id->Game.stringOfGameId;
@@ -466,7 +466,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           Js.String.toLowerCase(code) |> Js.String.replaceByRe([%re "/ /g"], "");
         switch (gameState.Game.game_id) {
         | Public(_) => false
-        | Private(code) => normalizeCode(code) == normalizeCode(inviteCode)
+        | Private({private_game_key: key}) => normalizeCode(key) == normalizeCode(inviteCode)
         };
       };
 

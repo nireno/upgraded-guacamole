@@ -6,9 +6,15 @@ let settings =
   |> Js.Option.getWithDefault("default"));
 
 [@decco]
+type privateGameContext = {
+  private_game_key: string,
+  private_game_master: Quad.id
+};
+
+[@decco]
 type game_id =
   | Public(string)
-  | Private(string);
+  | Private(privateGameContext);
 
 [@decco]
 type rematchDecision = 
@@ -21,8 +27,8 @@ type rematchDecisions = Quad.t(rematchDecision);
 
 let stringOfGameId =
   fun
-  | Public(str)
-  | Private(str) => str;
+  | Public(key)
+  | Private({private_game_key: key}) => key;
 
 
 let kickPoints =

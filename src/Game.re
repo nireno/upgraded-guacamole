@@ -123,6 +123,14 @@ type state = {
   game_follow_suit: option(Card.Suit.t),
 };
 
+let isSeatTaken = clientState =>
+  switch (clientState) {
+  | Vacant => false
+  | Connected(_)
+  | Disconnected(_, _) => true
+  };
+
+
 module SockServ = BsSocket.Server.Make(SocketMessages);
 
 let debugOfState = (state) => {
@@ -229,7 +237,7 @@ let initialState = () => {
 let initPrivateGame = () => {
   // Generate a random string based on the string representation of
   // cards selected from the deck
-  let strId =
+  let key =
     Deck.make()
     |> Deck.shuffle
     |> Belt.List.take(_, 4)
@@ -238,7 +246,7 @@ let initPrivateGame = () => {
     |> Belt.List.toArray
     |> Js.Array.joinWith(" ");
 
-  {...initialState(), game_id: Private(strId)};
+  {...initialState(), game_id: Private({private_game_key: key, private_game_master: Quad.N1})};
 };
 
 let findEmptySeat = state => {

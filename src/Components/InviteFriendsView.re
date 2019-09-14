@@ -9,6 +9,7 @@ let make =
       ~onGoPublicClick,
       ~onSelectPartnerClick,
       ~onStartGameClick,
+      ~private_game_master,
     ) => {
   let rotatedPlayers =  
     Player.playersAsQuad(~startFrom=me, ())
@@ -99,7 +100,7 @@ let make =
           <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
           <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
           {
-            me == Quad.N1
+            me == private_game_master
               ? <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}>
                   <img
                     style={ReactDOMRe.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
@@ -142,7 +143,7 @@ let make =
       {ReasonReact.string("Cancel")}
     </button>
     {
-      me == Quad.N1
+      me == private_game_master
         ? emptySeatCount == 0
             ? <button className="btn btn-blue mt-4" onClick=onStartGameClick>
                 {ReasonReact.string("Start Now")}

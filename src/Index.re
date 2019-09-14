@@ -577,16 +577,17 @@ module App = {
                           )
                         }
                       />
-                    | Private(str_game_id) => 
+                    | Private({private_game_key: key, private_game_master}) => 
                       <InviteFriendsView
                         me=state.me
                         emptySeatCount
-                        inviteCode=str_game_id
+                        inviteCode=key
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
                         players=state.players
                         onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
                         onSelectPartnerClick={_event => sendIO(IO_SelectPartner)}
                         onStartGameClick={_event => sendIO(IO_StartGameNow)}
+                        private_game_master
                       />;
                     };
                   }
