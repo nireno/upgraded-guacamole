@@ -566,6 +566,8 @@ module App = {
                     switch (state.gameId) {
                     | Public(_) =>
                       <FindPlayersView
+                        me=state.me
+                        players=state.players
                         emptySeatCount
                         canSub
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
