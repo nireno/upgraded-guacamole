@@ -64,7 +64,7 @@ type event =
   | ReconcileSubstitution
   | IdleWithTimeout(Game.game_id, Timer.timeout, Game.idleReason)
   | Rematch(sock_id)
-  | SelectPartner(sock_id)
+  | RotateGuests(sock_id)
   | StartGameNow(sock_id) //short circuits the usual delay before game starts
   | PrivateToPublic(sock_id)
 and effect = 

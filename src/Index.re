@@ -585,7 +585,7 @@ module App = {
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
                         players=state.players
                         onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
-                        onSelectPartnerClick={_event => sendIO(IO_SelectPartner)}
+                        onRotateGuestsClick={_event => sendIO(IO_RotateGuests)}
                         onStartGameClick={_event => sendIO(IO_StartGameNow)}
                         private_game_master
                       />;

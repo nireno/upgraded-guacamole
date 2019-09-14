@@ -84,7 +84,7 @@ let stringOfMsg = fun
   | ReconcileSubstitution => "ReconcileSubstitution"
   | IdleWithTimeout(_, _, _) => "IdleWithTimeout"
   | Rematch(_sock_id) => "Rematch"
-  | SelectPartner(_sock_id) => "RotatePartner"
+  | RotateGuests(_sock_id) => "RotateGuests"
   | StartGameNow(_sock_id) => "StartGameNow"
   | PrivateToPublic(_sock_id) => "PrivateToPublic"
   ;
@@ -691,7 +691,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
       }
 
-    | SelectPartner(sock_id) =>
+    | RotateGuests(sock_id) => /* The game "host" is not part of the rotation */
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
       | Some({game_id, player_id}) =>

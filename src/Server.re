@@ -60,7 +60,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   | IO_PlayAgain(_)
   | IO_Rematch
   | IO_PrivateToPublic
-  | IO_SelectPartner
+  | IO_RotateGuests
   | IO_Substitute(_) => Noop
   | IO_StartGameNow => Noop
   
@@ -162,7 +162,7 @@ SocketServer.onConnect(
           ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials, client_profile_type}));
 
         | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
-        | IO_SelectPartner => ServerStore.dispatch(SelectPartner(sock_id))
+        | IO_RotateGuests => ServerStore.dispatch(RotateGuests(sock_id))
         | IO_StartGameNow => ServerStore.dispatch(StartGameNow(sock_id))
         | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
         | ioAction =>

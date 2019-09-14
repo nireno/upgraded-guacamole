@@ -7,7 +7,7 @@ let make =
       ~emptySeatCount,
       ~players,
       ~onGoPublicClick,
-      ~onSelectPartnerClick,
+      ~onRotateGuestsClick,
       ~onStartGameClick,
       ~private_game_master,
     ) => {
@@ -109,7 +109,7 @@ let make =
                       "w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full"
                       ++ (emptySeatCount == 3 ? " cursor-not-allowed" : " cursor-pointer")
                     }
-                    onClick=?{emptySeatCount == 3 ? None : Some(onSelectPartnerClick)}
+                    onClick=?{emptySeatCount == 3 ? None : Some(onRotateGuestsClick)}
                   />
                 </div>
               : ReasonReact.null;

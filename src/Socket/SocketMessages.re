@@ -25,7 +25,7 @@ type clientToServer =
   | IO_Rematch
   | IO_Substitute(ioUsername, ioClientSettings)
   | IO_PrivateToPublic
-  | IO_SelectPartner
+  | IO_RotateGuests
   | IO_StartGameNow;
 
 let stringOfClientToServer = fun
@@ -45,7 +45,7 @@ let stringOfClientToServer = fun
   | IO_Rematch => "Rematch"
   | IO_Substitute(ioUsername, _ioClientSettings) => {j|Substitute($ioUsername)|j}
   | IO_PrivateToPublic => "PrivateToPublic"
-  | IO_SelectPartner => "SelectPartner"
+  | IO_RotateGuests => "RotateGuests"
   | IO_StartGameNow => "SelectPartner"
   ;
 
