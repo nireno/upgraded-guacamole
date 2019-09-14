@@ -45,7 +45,7 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
                type_="text"
                autoFocus=true
                minLength=8
-               maxLength=12
+               maxLength=15
                placeholder="Enter your invite code"
                defaultValue=inviteCode
                onChange=handleInputChanged
