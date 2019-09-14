@@ -76,7 +76,7 @@ let make =
               ({ClientGame.pla_profile_maybe}) => {
                 switch (pla_profile_maybe) {
                 | None =>
-                  <img src="./static/img/frame50x50.svg" className="w-full border border-gray-300 rounded" />
+                  <EmptySeatAvatarView />
                 | Some({client_identicon, client_profile_type}) =>
                   let identicon_style = ClientSettings.dicebearTypeOfProfileType(client_profile_type);
                   <img
