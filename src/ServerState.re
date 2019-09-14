@@ -356,7 +356,8 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         }
       };
     | RemovePlayerBySocket(sock_id) =>
-      let logger = logger.makeChild({"_context": "LeaveGame", "sock_id": sock_id});
+      // #LeaveGame
+      let logger = logger.makeChild({"_context": "RemovePlayerBySocket", "sock_id": sock_id});
       switch (StringMap.get(db_player_game, sock_id)) {
       | None => NoUpdate(db)
       | Some({player_id, game_id}) =>
