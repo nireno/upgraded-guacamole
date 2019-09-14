@@ -74,7 +74,8 @@ let reducer = (prevState, action) => {
     /** "Game started" sound effect */
     switch (prevState.gamePhase) {
     | FindPlayersPhase(_) 
-    | FindSubsPhase(_) =>
+    | FindSubsPhase(_) 
+    | IdlePhase =>
       switch (nextState.gamePhase) {
       | DealPhase =>
         let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ())));
