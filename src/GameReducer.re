@@ -965,15 +965,14 @@ let rec reduce = (action, state) =>
   | StartGame => {...state, phase: DealPhase}
   | SkipIdling => 
     switch (state.phase) {
-    // | IdlePhase({idle_from_phase, timeout}) when idle_from_phase == fromPhase =>
-    | IdlePhase(Some(timeout), _) =>
+    | IdlePhase(Some(timeout), idleReason) =>
       switch(timeout){
       | RunningTimeout(_, task, _, _) => 
         Timer.clearTimeout(timeout);
         let timeout = Timer.startTimeout(task, 0);
         {
           ...state,
-          phase: IdlePhase(Some(timeout), UpdateGameIdle),
+          phase: IdlePhase(Some(timeout), idleReason),
         }
       | _ => state
       }
