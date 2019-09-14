@@ -4,7 +4,7 @@ let make =
       ~me,
       ~onLeaveClick,
       ~inviteCode,
-      ~emptySeatsCount,
+      ~emptySeatCount,
       ~players,
       ~onGoPublicClick,
       ~onSelectPartnerClick,
@@ -16,8 +16,8 @@ let make =
 
   let initialCopyText = "copy invite code";
   let (copyText, updateCopyText) = React.useState(() => initialCopyText);
-  let friends = Grammar.byNumber(emptySeatsCount, "friend");
-  let emptySeatsText = string_of_int(emptySeatsCount);
+  let friends = Grammar.byNumber(emptySeatCount, "friend");
+  let emptySeatText = string_of_int(emptySeatCount);
 
   /* To aid in cleaning up remnants of `useEffect` when the component unmounts 
      There must be better ways to do this. See My__ReactHooks for an example wrt setInterval */
@@ -102,13 +102,13 @@ let make =
             me == Quad.N1
               ? <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}>
                   <img
-                    style={ReactDOMRe.Style.make(~opacity=emptySeatsCount == 3 ? "0.5" : "1.0", ())}
+                    style={ReactDOMRe.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
                     src="./static/img/rotate_tri.svg"
                     className={
                       "w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full"
-                      ++ (emptySeatsCount == 3 ? " cursor-not-allowed" : " cursor-pointer")
+                      ++ (emptySeatCount == 3 ? " cursor-not-allowed" : " cursor-pointer")
                     }
-                    onClick=?{emptySeatsCount == 3 ? None : Some(onSelectPartnerClick)}
+                    onClick=?{emptySeatCount == 3 ? None : Some(onSelectPartnerClick)}
                   />
                 </div>
               : ReasonReact.null;
@@ -127,14 +127,14 @@ let make =
       {ReasonReact.string(copyText)}
     </a>
     {
-      emptySeatsCount == 0 
+      emptySeatCount == 0 
         ? <div>
            <span>{ ReasonReact.string("Game starting in: ") }</span>
            <CountdownView from=SharedGame.settings.gameStartingCountdownSeconds />
           </div>
         :
     <div className="text-xl mt-6">
-      {ReasonReact.string({j|Waiting for $emptySeatsText more $friends...|j})}
+      {ReasonReact.string({j|Waiting for $emptySeatText more $friends...|j})}
     </div>
     }
     <div className="flex justify-around">
@@ -143,7 +143,7 @@ let make =
     </button>
     {
       me == Quad.N1
-        ? emptySeatsCount == 0
+        ? emptySeatCount == 0
             ? <button className="btn btn-blue mt-4" onClick=onStartGameClick>
                 {ReasonReact.string("Start Now")}
               </button>

@@ -1,10 +1,9 @@
 [@react.component]
-let make = (~n, ~canSub, ~onLeaveClick, ~onSubClick) => {
-  let playersText = Grammar.byNumber(n, "player");
-  let n = string_of_int(n);
+let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick) => {
+  let playersText = Grammar.byNumber(emptySeatCount, "player");
+  let emptySeatText = string_of_int(emptySeatCount);
 
   <div className="text-center">
-    <div> {ReasonReact.string({j|Finding $n more $playersText. Please wait...|j})} </div>
     {canSub
        ? <div className="bg-green-600 text-white text-base m-4 p-4 rounded">
            <div>
@@ -17,6 +16,16 @@ let make = (~n, ~canSub, ~onLeaveClick, ~onSubClick) => {
            </button>
          </div>
        : ReasonReact.null}
+       {
+         emptySeatCount == 0
+           ? <div>
+               <span> {ReasonReact.string("Game starting in: ")} </span>
+               <CountdownView from={SharedGame.settings.gameStartingCountdownSeconds} />
+             </div>
+           : <div className="text-xl mt-6">
+               {ReasonReact.string({j|Finding $emptySeatText more $playersText. Please wait...|j})}
+             </div>;
+       }
     <button className="btn btn-blue mt-4" onClick=onLeaveClick>
       {ReasonReact.string("Cancel")}
     </button>

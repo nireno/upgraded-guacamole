@@ -560,13 +560,13 @@ module App = {
                </div>
              </div>
              {switch (state.gamePhase) {
-              | FindPlayersPhase({ emptySeatCount: n, canSub }) =>
+              | FindPlayersPhase({ emptySeatCount, canSub }) =>
                 <Modal visible=true>
                   {
                     switch (state.gameId) {
                     | Public(_) =>
                       <FindPlayersView
-                        n
+                        emptySeatCount
                         canSub
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
                         onSubClick={_event =>
@@ -578,7 +578,7 @@ module App = {
                     | Private(str_game_id) => 
                       <InviteFriendsView
                         me=state.me
-                        emptySeatsCount=n
+                        emptySeatCount
                         inviteCode=str_game_id
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
                         players=state.players
