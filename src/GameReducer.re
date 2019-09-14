@@ -952,12 +952,12 @@ let rec reduce = (action, state) =>
        */
       let game_id =
         switch (state.game_id) {
-        | Private({private_game_key, private_game_master}) when private_game_master == leavingPlayerId =>
+        | Private({private_game_key, private_game_host}) when private_game_host == leavingPlayerId =>
           switch(clients->Quad.withId->Quad.find(((_quadId, client)) => client->Game.isSeatTaken)){
           /* None means no taken seats were found => no players in the game => this game will be discarded by the ServerStore 
              So I just leave the id as it is. */
           | None => state.game_id 
-          | Some((idOfTakenSeat, _client)) => Private({private_game_key, private_game_master: idOfTakenSeat})
+          | Some((idOfTakenSeat, _client)) => Private({private_game_key, private_game_host: idOfTakenSeat})
           }
         | game_id => game_id
         };

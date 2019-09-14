@@ -577,7 +577,7 @@ module App = {
                           )
                         }
                       />
-                    | Private({private_game_key: key, private_game_master}) => 
+                    | Private({private_game_key: key, private_game_host}) => 
                       <InviteFriendsView
                         me=state.me
                         emptySeatCount
@@ -587,7 +587,7 @@ module App = {
                         onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
                         onRotateGuestsClick={_event => sendIO(IO_RotateGuests)}
                         onStartGameClick={_event => sendIO(IO_StartGameNow)}
-                        private_game_master
+                        private_game_host
                       />;
                     };
                   }

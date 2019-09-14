@@ -246,7 +246,7 @@ let initPrivateGame = () => {
     |> Belt.List.toArray
     |> Js.Array.joinWith(" ");
 
-  {...initialState(), game_id: Private({private_game_key: key, private_game_master: Quad.N1})};
+  {...initialState(), game_id: Private({private_game_key: key, private_game_host: Quad.N1})};
 };
 
 let findEmptySeat = state => {

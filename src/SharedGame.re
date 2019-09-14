@@ -8,7 +8,7 @@ let settings =
 [@decco]
 type privateGameContext = {
   private_game_key: string,
-  private_game_master: Quad.id
+  private_game_host: Quad.id
 };
 
 [@decco]
