@@ -690,21 +690,50 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           
         updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
       }
+
     | SelectPartner(sock_id) =>
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
       | Some({game_id, player_id}) =>
         if (player_id == N1) {
+          let stringOfGameId = game_id->Game.stringOfGameId;
           let selectPartner = ({Game.clients: (p1, p2, p3, p4)} as game) => {
             ...game,
             clients: (p1, p4, p2, p3),
           };
-          let db_game =
-            db_game->StringMap.update(game_id->SharedGame.stringOfGameId, __x =>
-              Belt.Option.map(__x, selectPartner)
-            );
 
-          updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
+          /* db_player_game caches the seat_id/player_id of players attached to a game.
+             When players are rotated, this cache needs to be updated as well. */
+          let updatePlayerSeating = (db_player_game, clients) =>
+            clients
+            ->Quad.withId
+            ->Quad.reduce(
+                ((quadId, clientState), db_player_game) =>
+                  switch (clientState) {
+                  | Game.Vacant => db_player_game
+                  | Connected({Game.client_socket_id})
+                  | Disconnected({Game.client_socket_id}, _) =>
+                    db_player_game->StringMap.set(
+                      client_socket_id,
+                      {sock_id: client_socket_id, player_id: quadId, game_id},
+                    )
+                  },
+                db_player_game,
+              );
+
+          let db_game =
+            db_game->StringMap.update(stringOfGameId, __x => Belt.Option.map(__x, selectPartner));
+
+          let db_player_game =
+            switch (db_game->StringMap.get(stringOfGameId)) {
+            | None => db_player_game
+            | Some({Game.clients}) => db_player_game->updatePlayerSeating(clients)
+            };
+
+          updateMany(
+            [TriggerEffects([EmitStateByGame(game_id)])],
+            Update({...db, db_game, db_player_game}),
+          );
         } else {
           NoUpdate(db);
         }
