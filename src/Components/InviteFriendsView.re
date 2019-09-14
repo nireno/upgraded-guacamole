@@ -81,7 +81,7 @@ let make =
                   let identicon_style = ClientSettings.dicebearTypeOfProfileType(client_profile_type);
                   <img
                     src={j|https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg|j}
-                    className="rounded border border-gray-300 p-2 w-full rounded"
+                    className="rounded border border-gray-300 w-full rounded"
                   />;
                 };
               },
