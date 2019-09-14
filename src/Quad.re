@@ -80,6 +80,9 @@ let foldLeft = (reduce, (r1, r2, r3, r4)) => {
   f(r1, r2) |> f(r3) |> f(r4);
 };
 
+let reduce = ((r1, r2, r3, r4), f, initialValue) =>
+  f(r1, initialValue) |> f(r2) |> f(r3) |> f(r4);
+
 let foldLeftUntil = (f, test, acc, (r1, r2, r3, r4)) => {
   let fns = [f(r1), f(r2), f(r3), f(r4)];
   Util.updateUntil(fns, test, acc);
