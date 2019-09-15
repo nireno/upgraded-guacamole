@@ -4,6 +4,7 @@ let appLogger = Pino.make({"messageKey": "_msg", "level": "debug", "_app": "allf
 type str_json = string;
 type sock_id = string;
 type milliseconds = float;
+type game_key = string;
 
 let leftPad = (s, ~n=0, ~c="\t", ()) => {
   let tabs = Js.String.repeat(n, c); 

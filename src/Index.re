@@ -598,9 +598,25 @@ module App = {
                     };
                   }
                 </Modal>
-              | FindSubsPhase({ emptySeatCount: n }) => 
+              | FindSubsPhase({ emptySeatCount }) => 
                 <Modal visible=true> 
-                  <FindSubsView n onLeaveClick={_event => sendIO(IO_LeaveGame)} /> 
+                  {
+                    switch (state.gameId) {
+                    | Private({private_game_key: key, private_game_host}) =>
+                      <InviteFriendsView
+                        me={state.me}
+                        emptySeatCount
+                        inviteCode=key
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        players={state.players}
+                        onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
+                        onStartGameClick={_event => sendIO(IO_StartGameNow)}
+                        private_game_host
+                      />
+                    | Public(_) => <FindSubsView n=emptySeatCount onLeaveClick={_event => sendIO(IO_LeaveGame)} />
+                    };
+                  }
+                  
                 </Modal>
               | GameOverPhase(rematchDecisions) =>
                 <Modal visible=true>

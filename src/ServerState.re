@@ -14,7 +14,7 @@ let logger = appLogger.makeChild({"_context": "ServerState"})
 type playerGame = {
   sock_id: string,
   player_id: Player.id,
-  game_id: Game.game_id,
+  game_key,
 }
 
 type db = {
@@ -31,7 +31,7 @@ let getGameBySocket: (sock_id, db) => option(Game.state) =
   (sock_id, {db_game, db_player_game}) => {
     switch (db_player_game->StringMap.get(sock_id)) {
     | None => None
-    | Some({game_id}) => db_game->StringMap.get(game_id->Game.stringOfGameId)
+    | Some({game_key}) => db_game->StringMap.get(game_key)
     };
   };
 
@@ -235,30 +235,28 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       | Some(_) => NoUpdate(db)
       };
 
-    | AddPlayerGame(sock_id, player_id, game_id) =>
+    | AddPlayerGame(sock_id, player_id, game_key) =>
       let db = {
         ...db,
-        db_player_game: db_player_game->StringMap.set(sock_id, {sock_id, player_id, game_id}),
+        db_player_game: db_player_game->StringMap.set(sock_id, {sock_id, player_id, game_key}),
       };
       Update(db);
 
-    | RemoveGame(game_id) =>
-      let key = game_id->Game.stringOfGameId;
-      switch (db_game->StringMap.get(key)) {
+    | RemoveGame(game_key) =>
+      switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
-      | Some(_) => Update({...db, db_game: db_game->StringMap.remove(key)})
+      | Some(_) => Update({...db, db_game: db_game->StringMap.remove(game_key)})
       };
 
-    | ReplaceGame(game_id, game) =>
+    | ReplaceGame(game_key, game) =>
       logger.debug2(Game.debugOfState(game), "Updating game");
       updateMany(
-        [ServerEvent.RemoveGame(game_id), AddGame(game), TriggerEffects([EmitStateByGame(game_id)])],
+        [ServerEvent.RemoveGame(game_key), AddGame(game), TriggerEffects([EmitStateByGame(game_key)])],
         NoUpdate(db),
       )
 
-    | AttachPlayer({game_id, sock_id, client_username, client_id, client_initials, client_profile_type}) =>
-      let str_game_id = Game.(stringOfGameId(game_id));
-      switch (db_game->StringMap.get(str_game_id)) {
+    | AttachPlayer({game_key, sock_id, client_username, client_id, client_initials, client_profile_type}) =>
+      switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some({game_id} as gameState) =>
         switch (Game.findEmptySeat(gameState)) {
@@ -266,7 +264,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         | Some(player_id) =>
           let client_username = client_username == "" ? Player.stringOfId(player_id) : client_username;
           let db_player_game' =
-            StringMap.set(db_player_game, sock_id, {sock_id, player_id, game_id});
+            StringMap.set(db_player_game, sock_id, {sock_id, player_id, game_key});
           let db' = {...db, db_player_game: db_player_game'};
 
           let clients =
@@ -333,11 +331,11 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
             [
               Some(ServerEvent.EmitClientToasts(clientToasts)),
               gameAftAttach.phase->Game.isPlayerActivePhase
-                ? Some(ServerEvent.ResetKickTimeout(game_id)) : None,
+                ? Some(ServerEvent.ResetKickTimeout(game_key)) : None,
               playersNeeded == 0
                 ? Some(
                     ServerEvent.IdleThenUpdateGame({
-                      game_id,
+                      game_key,
                       game_reducer_action: StartGame,
                       idle_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
                     }),
@@ -348,7 +346,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
 
           updateMany(
             [
-              ReplaceGame(gameState.game_id, gameAftAttach),
+              ReplaceGame(game_key, gameAftAttach),
               TriggerEffects(effects),
             ],
             Update(db'),
@@ -360,10 +358,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       let logger = logger.makeChild({"_context": "RemovePlayerBySocket", "sock_id": sock_id});
       switch (StringMap.get(db_player_game, sock_id)) {
       | None => NoUpdate(db)
-      | Some({player_id, game_id}) =>
+      | Some({player_id, game_key}) =>
         let db_player_game' = db_player_game->StringMap.remove(sock_id);
         let dbAftRemove_player_game = {...db, db_player_game: db_player_game'};
-        switch (StringMap.get(db_game, game_id->SharedGame.stringOfGameId)) {
+        switch (StringMap.get(db_game, game_key)) {
         | None => Update(dbAftRemove_player_game)
         | Some(gameForLeave) =>
           logger.debug2(
@@ -394,7 +392,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
             // Remove the game if there are no more connected clients
             updateMany(
               [
-                RemoveGame(gameAftLeave.game_id),
+                RemoveGame(game_key),
                 TriggerEffects([ServerEvent.ResetClient(sock_id)]),
                 ReconcileSubstitution,
               ],
@@ -403,10 +401,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           } else {
             updateMany(
               [
-                ReplaceGame(gameAftLeave.game_id, gameAftLeave),
+                ReplaceGame(game_key, gameAftLeave),
                 TriggerEffects([
                   ServerEvent.ResetClient(sock_id),
-                  ServerEvent.EmitStateByGame(gameAftLeave.game_id),
+                  ServerEvent.EmitStateByGame(game_key),
                   ServerEvent.EmitClientToasts(playerLeftToasts),
                 ]),
                 ReconcileSubstitution,
@@ -431,7 +429,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           [
             AddGame(gameState),
             RemovePlayerBySocket(sock_id),
-            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
+            AttachPlayer({game_key: gameState.game_id->SharedGame.stringOfGameId, sock_id, client_username, client_id, client_initials, client_profile_type}),
             ReconcileSubstitution,
             TriggerEffects([ServerEvent.EmitAck(ack, SocketMessages.AckOk)]),
           ],
@@ -442,7 +440,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         updateMany(
           [
             RemovePlayerBySocket(sock_id), 
-            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
+            AttachPlayer({game_key: gameState.game_id->SharedGame.stringOfGameId, sock_id, client_username, client_id, client_initials, client_profile_type}),
             TriggerEffects([ServerEvent.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           NoUpdate(db),
@@ -454,7 +452,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       updateMany(
         [
           AddGame(gameState), 
-          AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type})
+          AttachPlayer({game_key: gameState.game_id->SharedGame.stringOfGameId, sock_id, client_username, client_id, client_initials, client_profile_type})
         ],
         Update(db'),
       );
@@ -480,7 +478,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         updateMany(
           [
             RemovePlayerBySocket(sock_id),
-            AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
+            AttachPlayer({game_key: gameState.game_id->SharedGame.stringOfGameId, sock_id, client_username, client_id, client_initials, client_profile_type}),
             TriggerEffects([ServerEvent.EmitAck(ack, SocketMessages.AckOk)]),
           ],
           NoUpdate(db),
@@ -506,15 +504,15 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           updateMany(
             [
               RemovePlayerBySocket(sock_id),
-              AttachPlayer({game_id: gameState.game_id, sock_id, client_username, client_id, client_initials, client_profile_type}),
+              AttachPlayer({game_key: gameState.game_id->SharedGame.stringOfGameId, sock_id, client_username, client_id, client_initials, client_profile_type}),
               ReconcileSubstitution,
             ],
             NoUpdate(db),
           )
         };
 
-    | KickActivePlayer(game_id) =>
-      switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
+    | KickActivePlayer(game_key) =>
+      switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some(gameState) =>
         let maybeActivePlayer = ActivePlayer.find(gameState.Game.phase, gameState.dealer);
@@ -529,25 +527,25 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         };
       };
 
-    | InsertKickTimeoutId(game_id, timeoutId) =>
-      switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
+    | InsertKickTimeoutId(game_key, timeoutId) =>
+      switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some(gameState) =>
         let db_game =
           db_game->StringMap.set(
-            game_id->Game.stringOfGameId,
+            game_key,
             {...gameState, maybeKickTimeoutId: Some(timeoutId)},
           );
         Update({...db, db_game});
       }
 
-    | DeleteKickTimeoutId(game_id) =>
-      switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
+    | DeleteKickTimeoutId(game_key) =>
+      switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some(gameState) =>
         let db_game =
           db_game->StringMap.set(
-            game_id->Game.stringOfGameId,
+            game_key,
             {...gameState, maybeKickTimeoutId: None},
           );
         Update({...db, db_game});
@@ -556,10 +554,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
     | UpdateGameBySocket(sock_id, action) =>
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_id}) => update(UpdateGame(game_id, action), db)
+      | Some({game_key}) => update(UpdateGame(game_key, action), db)
       }
-    | UpdateGame(game_id, action) =>
-      switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
+    | UpdateGame(game_key, action) =>
+      switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some(gameState) =>
         let {Game.game_id} as gameAftAction = GameReducer.reduce(action, gameState);
@@ -567,8 +565,8 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         let maybeKickEffect =
           switch (reconcileKickTimeout(gameState, gameAftAction)) {
           | Keep => None
-          | Clear => Some(ServerEvent.ClearKickTimeout(game_id))
-          | Reset => Some(ResetKickTimeout(game_id))
+          | Clear => Some(ServerEvent.ClearKickTimeout(game_key))
+          | Reset => Some(ResetKickTimeout(game_key))
           };
 
 
@@ -585,7 +583,15 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
                  wePlayed => !wePlayed,
                  true,
                );
-          isEndTrick ? Some(ServerEvent.IdleThenUpdateGame({game_id, game_reducer_action: AdvanceRound, idle_milliseconds: 2750})) : None;
+          isEndTrick
+            ? Some(
+                ServerEvent.IdleThenUpdateGame({
+                  game_key,
+                  game_reducer_action: AdvanceRound,
+                  idle_milliseconds: 2750,
+                }),
+              )
+            : None;
         };
         
         let toasts = gameAftAction.notis->List.keepMap(Join.mapNotiToSocketMaybe(gameAftAction));
@@ -600,8 +606,8 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
 
         updateMany(
           [
-            ReplaceGame(gameState.game_id, gameAftAction'clearNotis),
-            TriggerEffects([EmitStateByGame(game_id), ...someEffects]),
+            ReplaceGame(game_key, gameAftAction'clearNotis),
+            TriggerEffects([EmitStateByGame(game_key), ...someEffects]),
           ],
           NoUpdate(db),
         );
@@ -627,7 +633,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
                 | FindPlayersPhase({ emptySeatCount, canSub }) when canSub != currCanSub =>
                   Some(
                     ServerEvent.ReplaceGame(
-                      game.game_id,
+                      game.game_id->SharedGame.stringOfGameId,
                       {...game, phase: FindPlayersPhase({ emptySeatCount, canSub:currCanSub })},
                     ),
                   )
@@ -638,10 +644,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         ->List.fromArray;
 
       updateMany(updates, NoUpdate(db));
-    | IdleWithTimeout(game_id, timeout, idleReason) => 
+    | IdleWithTimeout(game_key, timeout, idleReason) => 
       let db_game =
         db_game->StringMap.update(
-          game_id->SharedGame.stringOfGameId, 
+          game_key, 
           Belt.Option.map(_, game => {...game, phase: IdlePhase(Some(timeout), idleReason)})
         );
       Update({...db, db_game});
@@ -651,7 +657,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       logger.info("Got rematch signal");
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_id, player_id}) => 
+      | Some({game_key, player_id}) => 
         let updateGame = game => {
           switch (game.Game.phase) {
           | GameOverPhase(rematchDecisions) =>
@@ -686,54 +692,69 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         };
 
         let db_game =
-          db_game->StringMap.update(game_id->SharedGame.stringOfGameId, Belt.Option.map(_, updateGame));
+          db_game->StringMap.update(game_key, Belt.Option.map(_, updateGame));
           
-        updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
+        updateMany([TriggerEffects([EmitStateByGame(game_key)])], Update({...db, db_game}));
       }
 
     | RotateGuests(sock_id) => /* The game "host" is not part of the rotation */
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_id}) =>
-        let stringOfGameId = game_id->Game.stringOfGameId;
-        let selectPartner = ({Game.clients: (p1, p2, p3, p4)} as game) => {
-          ...game,
-          clients: (p1, p4, p2, p3),
-        };
+      | Some({game_key}) =>
+        switch (db_game->StringMap.get(game_key)) {
+        | None => NoUpdate(db)
+        | Some(game) =>
 
-        /* db_player_game caches the seat_id/player_id of players attached to a game.
-           When players are rotated, this cache needs to be updated as well. */
-        let updatePlayerSeating = (db_player_game, clients) =>
-          clients
-          ->Quad.withId
-          ->Quad.reduce(
-              ((quadId, clientState), db_player_game) =>
-                switch (clientState) {
-                | Game.Vacant => db_player_game
-                | Connected({Game.client_socket_id})
-                | Disconnected({Game.client_socket_id}, _) =>
-                  db_player_game->StringMap.set(
-                    client_socket_id,
-                    {sock_id: client_socket_id, player_id: quadId, game_id},
-                  )
-                },
-              db_player_game,
-            );
-
-        let db_game =
-          db_game->StringMap.update(stringOfGameId, __x => Belt.Option.map(__x, selectPartner));
-
-        let db_player_game =
-          switch (db_game->StringMap.get(stringOfGameId)) {
-          | None => db_player_game
-          | Some({Game.clients}) => db_player_game->updatePlayerSeating(clients)
+          let rotateGuests = ({Game.game_id, clients: (p1, p2, p3, p4)} as game) => {
+            switch (game_id) {
+            | Private({private_game_host}) =>
+              logger.debug(private_game_host->Quad.stringifyId);
+              let rotateByHost = (
+                fun
+                | Quad.N1 => (p1, p4, p2, p3)
+                | Quad.N2 => (p4, p2, p1, p3)
+                | Quad.N3 => (p4, p1, p3, p2)
+                | Quad.N4 => (p3, p1, p2, p4)
+              );
+              {...game, clients: rotateByHost(private_game_host)};
+            | Public(_) => game
+            };
           };
 
-        updateMany(
-          [TriggerEffects([EmitStateByGame(game_id)])],
-          Update({...db, db_game, db_player_game}),
-        );
+          /* db_player_game caches the seat_id/player_id of players attached to a game.
+             When players are rotated, this cache needs to be updated as well. */
+          let updatePlayerSeating = (db_player_game, clients) =>
+            clients
+            ->Quad.withId
+            ->Quad.reduce(
+                ((quadId, clientState), db_player_game) =>
+                  switch (clientState) {
+                  | Game.Vacant => db_player_game
+                  | Connected({Game.client_socket_id})
+                  | Disconnected({Game.client_socket_id}, _) =>
+                    db_player_game->StringMap.set(
+                      client_socket_id,
+                      {sock_id: client_socket_id, player_id: quadId, game_key},
+                    )
+                  },
+                db_player_game,
+              );
+
+          let (db_game, gameMaybe) = db_game->My.StringMap.update(game_key, rotateGuests);
+
+          switch (gameMaybe) {
+          | None => NoUpdate(db)
+          | Some(game) =>
+            let db_player_game = db_player_game->updatePlayerSeating(game.clients);
+
+            updateMany(
+              [TriggerEffects([EmitStateByGame(game_key)])],
+              Update({...db, db_game, db_player_game}),
+            );
+          };
+        }
       };
+
     | StartGameNow(sock_id) =>
       // Start game now preflight
       // Check that player is in a game
@@ -742,20 +763,20 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       logger.info("Recieved StartGameNow");
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_id}) =>
-        let db_game = db_game->StringMap.update(game_id->Game.stringOfGameId, Belt.Option.map(_, GameReducer.reduce(SkipIdling)))
-        updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
+      | Some({game_key}) =>
+        let db_game = db_game->StringMap.update(game_key, Belt.Option.map(_, GameReducer.reduce(SkipIdling)))
+        updateMany([TriggerEffects([EmitStateByGame(game_key)])], Update({...db, db_game}));
       }
 
     | PrivateToPublic(sock_id) => 
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_id}) =>
+      | Some({game_key}) =>
         let db_game =
-          db_game->StringMap.update(game_id->Game.stringOfGameId, __x =>
+          db_game->StringMap.update(game_key, __x =>
             Belt.Option.map(__x, GameReducer.reduce(PrivateToPublic))
           );
-        updateMany([TriggerEffects([EmitStateByGame(game_id)])], Update({...db, db_game}));
+        updateMany([TriggerEffects([EmitStateByGame(game_key)])], Update({...db, db_game}));
       };
     };
   }

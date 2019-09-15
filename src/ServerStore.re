@@ -41,8 +41,8 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
       let msg: SocketMessages.serverToClient = SetState(clientStateJson |> Js.Json.stringify);
       SocketServer.emit(msg, sock_id);
     
-    | EmitStateByGame(game_id) => 
-      switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
+    | EmitStateByGame(game_key) => 
+      switch (db_game->StringMap.get(game_key)) {
       | None => 
         logger.debug("EmitStatByGame: game not found")
       | Some(gameState) =>
@@ -63,38 +63,38 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
         SocketServer.emit(msg, clientToast.sock_id);
       })
 
-    | ResetKickTimeout(game_id) =>
-      perform(db, ServerEvent.ClearKickTimeout(game_id));
+    | ResetKickTimeout(game_key) =>
+      perform(db, ServerEvent.ClearKickTimeout(game_key));
       let timeoutId =
         Js.Global.setTimeout(
-          () => dispatch(KickActivePlayer(game_id)),
+          () => dispatch(KickActivePlayer(game_key)),
           SharedGame.settings.kickPlayerMillis,
         );
-      dispatch(InsertKickTimeoutId(game_id, timeoutId))
+      dispatch(InsertKickTimeoutId(game_key, timeoutId))
 
-    | ClearKickTimeout(game_id) =>
-      switch(db_game->StringMap.get(game_id->Game.stringOfGameId)){
+    | ClearKickTimeout(game_key) =>
+      switch(db_game->StringMap.get(game_key)){
       | None => ()
       | Some(gameState) => 
         switch(gameState.maybeKickTimeoutId){
         | None => ()
         | Some(kickTimeoutId) =>
           Js.Global.clearTimeout(kickTimeoutId)
-          dispatch(DeleteKickTimeoutId(game_id));
+          dispatch(DeleteKickTimeoutId(game_key));
         }
       }
 
-    | IdleThenUpdateGame({game_id, game_reducer_action, idle_milliseconds}) =>
+    | IdleThenUpdateGame({game_key, game_reducer_action, idle_milliseconds}) =>
       let timeout =
         Timer.startTimeout(
-          () => dispatch(UpdateGame(game_id, game_reducer_action)),
+          () => dispatch(UpdateGame(game_key, game_reducer_action)),
           idle_milliseconds,
         );
       let idleReason = switch(game_reducer_action){
       | StartGame => Game.StartGameIdle
       | _ => UpdateGameIdle
       }
-      dispatch(IdleWithTimeout(game_id, timeout,idleReason));
+      dispatch(IdleWithTimeout(game_key, timeout,idleReason));
 
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 

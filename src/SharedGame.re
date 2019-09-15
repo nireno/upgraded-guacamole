@@ -30,6 +30,13 @@ let stringOfGameId =
   | Public(key)
   | Private({private_game_key: key}) => key;
 
+let debugOfGameId =
+  fun
+  | Public(key) => {j|Public($key)|j}
+  | Private({private_game_key: key, private_game_host: quadId}) => {
+      let quadIdText = quadId->Quad.stringifyId;
+      {j|Private($key, $quadIdText)|j};
+    };
 
 let kickPoints =
   Card.Rank.(

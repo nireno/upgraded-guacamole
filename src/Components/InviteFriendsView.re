@@ -7,7 +7,7 @@ let make =
       ~emptySeatCount,
       ~players,
       ~onGoPublicClick,
-      ~onRotateGuestsClick,
+      ~onRotateGuestsClick=?, 
       ~onStartGameClick,
       ~private_game_host,
     ) => {
@@ -101,17 +101,21 @@ let make =
           <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
           {
             me == private_game_host
-              ? <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}>
-                  <img
-                    style={ReactDOMRe.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
-                    src="./static/img/rotate_tri.svg"
-                    className={
-                      "w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full"
-                      ++ (emptySeatCount == 3 ? " cursor-not-allowed" : " cursor-pointer")
-                    }
-                    onClick=?{emptySeatCount == 3 ? None : Some(onRotateGuestsClick)}
-                  />
-                </div>
+              ? switch (onRotateGuestsClick) {
+                | None => ReasonReact.null
+                | Some(onRotateGuestsClick) =>
+                  <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}>
+                    <img
+                      style={ReactDOMRe.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
+                      src="./static/img/rotate_tri.svg"
+                      className={
+                        "w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full"
+                        ++ (emptySeatCount == 3 ? " cursor-not-allowed" : " cursor-pointer")
+                      }
+                      onClick=?{emptySeatCount == 3 ? None : Some(onRotateGuestsClick)}
+                    />
+                  </div>
+                }
               : ReasonReact.null;
           }
           <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
