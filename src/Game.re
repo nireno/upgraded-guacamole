@@ -51,10 +51,6 @@ let initPlayerData = () => {
 
 type findPlayersContext = { emptySeatCount: int, canSub: bool };
 
-type idleReason = 
-| UpdateGameIdle
-| StartGameIdle;
-
 type phase =
   | IdlePhase(option(Timer.timeout), idleReason)
   | FindSubsPhase(findSubsContext)

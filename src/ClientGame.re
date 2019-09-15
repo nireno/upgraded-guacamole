@@ -42,7 +42,7 @@ type findPlayersContext = {
 
 [@decco]
 type phase =
-  | IdlePhase
+  | IdlePhase(idleReason)
   | FindSubsPhase(findSubsContext)
   | FindPlayersPhase(findPlayersContext)
   | DealPhase
@@ -87,7 +87,7 @@ let initialState = {
 };
 
 let stringOfPhase = fun
-  | IdlePhase => "IdlePhase"
+  | IdlePhase(_reason) => "IdlePhase"
   | FindSubsPhase(_) => "FindSubsPhase"
   | FindPlayersPhase(_) => "FindPlayersPhase"
   | DealPhase => "DealPhase"

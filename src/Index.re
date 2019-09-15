@@ -560,7 +560,13 @@ module App = {
                </div>
              </div>
              {switch (state.gamePhase) {
-              | FindPlayersPhase({ emptySeatCount, canSub }) =>
+              | FindPlayersPhase(_)
+              | IdlePhase(StartGameIdle) =>
+                let (emptySeatCount, canSub) =
+                  switch (state.gamePhase) {
+                  | FindPlayersPhase({emptySeatCount, canSub}) => (emptySeatCount, canSub)
+                  | _ => (0, false)
+                  };
                 <Modal visible=true>
                   {
                     switch (state.gameId) {

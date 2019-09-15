@@ -58,3 +58,8 @@ let teamOfPlayer =
   | N3 => Team.T1
   | N2
   | N4 => Team.T2;
+
+[@decco]
+type idleReason =
+  | UpdateGameIdle
+  | StartGameIdle;
