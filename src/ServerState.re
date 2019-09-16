@@ -701,58 +701,53 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       switch (db_player_game->StringMap.get(sock_id)) {
       | None => NoUpdate(db)
       | Some({game_key}) =>
-        switch (db_game->StringMap.get(game_key)) {
+        let rotateGuests = ({Game.game_id, clients: (p1, p2, p3, p4)} as game) => {
+          switch (game_id) {
+          | Private({private_game_host}) =>
+            logger.debug(private_game_host->Quad.stringifyId);
+            let rotateByHost = (
+              fun
+              | Quad.N1 => (p1, p4, p2, p3)
+              | Quad.N2 => (p4, p2, p1, p3)
+              | Quad.N3 => (p4, p1, p3, p2)
+              | Quad.N4 => (p3, p1, p2, p4)
+            );
+            {...game, clients: rotateByHost(private_game_host)};
+          | Public(_) => game
+          };
+        };
+
+        /* db_player_game caches the seat_id/player_id of players attached to a game.
+            When players are rotated, this cache needs to be updated as well. */
+        let updatePlayerSeating = (db_player_game, clients) =>
+          clients
+          ->Quad.withId
+          ->Quad.reduce(
+              ((quadId, clientState), db_player_game) =>
+                switch (clientState) {
+                | Game.Vacant => db_player_game
+                | Connected({Game.client_socket_id})
+                | Disconnected({Game.client_socket_id}, _) =>
+                  db_player_game->StringMap.set(
+                    client_socket_id,
+                    {sock_id: client_socket_id, player_id: quadId, game_key},
+                  )
+                },
+              db_player_game,
+            );
+
+        let (db_game, gameMaybe) = db_game->My.StringMap.update(game_key, rotateGuests);
+
+        switch (gameMaybe) {
         | None => NoUpdate(db)
         | Some(game) =>
+          let db_player_game = db_player_game->updatePlayerSeating(game.clients);
 
-          let rotateGuests = ({Game.game_id, clients: (p1, p2, p3, p4)} as game) => {
-            switch (game_id) {
-            | Private({private_game_host}) =>
-              logger.debug(private_game_host->Quad.stringifyId);
-              let rotateByHost = (
-                fun
-                | Quad.N1 => (p1, p4, p2, p3)
-                | Quad.N2 => (p4, p2, p1, p3)
-                | Quad.N3 => (p4, p1, p3, p2)
-                | Quad.N4 => (p3, p1, p2, p4)
-              );
-              {...game, clients: rotateByHost(private_game_host)};
-            | Public(_) => game
-            };
-          };
-
-          /* db_player_game caches the seat_id/player_id of players attached to a game.
-             When players are rotated, this cache needs to be updated as well. */
-          let updatePlayerSeating = (db_player_game, clients) =>
-            clients
-            ->Quad.withId
-            ->Quad.reduce(
-                ((quadId, clientState), db_player_game) =>
-                  switch (clientState) {
-                  | Game.Vacant => db_player_game
-                  | Connected({Game.client_socket_id})
-                  | Disconnected({Game.client_socket_id}, _) =>
-                    db_player_game->StringMap.set(
-                      client_socket_id,
-                      {sock_id: client_socket_id, player_id: quadId, game_key},
-                    )
-                  },
-                db_player_game,
-              );
-
-          let (db_game, gameMaybe) = db_game->My.StringMap.update(game_key, rotateGuests);
-
-          switch (gameMaybe) {
-          | None => NoUpdate(db)
-          | Some(game) =>
-            let db_player_game = db_player_game->updatePlayerSeating(game.clients);
-
-            updateMany(
-              [TriggerEffects([EmitStateByGame(game_key)])],
-              Update({...db, db_game, db_player_game}),
-            );
-          };
-        }
+          updateMany(
+            [TriggerEffects([EmitStateByGame(game_key)])],
+            Update({...db, db_game, db_player_game}),
+          );
+        };
       };
 
     | StartGameNow(sock_id) =>
