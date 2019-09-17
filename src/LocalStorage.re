@@ -1,6 +1,6 @@
 open AppPrelude;
-[@bs.val] [@bs.scope "localStorage"] external getItem: string => Js.Nullable.t(string) = "";
-[@bs.val] [@bs.scope "localStorage"] external setItem: (string, string) => unit = "";
+[@bs.val] [@bs.scope "localStorage"] external getItem: string => Js.Nullable.t(string) = "getItem";
+[@bs.val] [@bs.scope "localStorage"] external setItem: (string, string) => unit = "setItem";
 
 /**
  Sticking to a polymorphic variant to represent LocalStorage keys provides a

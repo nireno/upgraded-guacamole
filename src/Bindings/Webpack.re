@@ -10,7 +10,7 @@ type pathConfig = {publicPath: string};
 [@bs.deriving abstract]
 type configuration = { output: pathConfig};
 
-[@bs.module] external webpack: configuration => compiler = "";
+[@bs.module] external webpack: configuration => compiler = "webpack";
 
 [@bs.module]
 external webpackDevMiddleware: (compiler, 'options) => Express.Middleware.t =

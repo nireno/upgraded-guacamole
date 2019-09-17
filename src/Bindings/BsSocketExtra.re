@@ -4,8 +4,8 @@ type socketId = roomKey;
 module AdapterRoom = {
   type t;
 
-  [@bs.get] external sockets: t => Js.Dict.t(bool) = "";
-  [@bs.get] external length: t => int = "";
+  [@bs.get] external sockets: t => Js.Dict.t(bool) = "sockets";
+  [@bs.get] external length: t => int = "length";
 
   let contains: (socketId, t) => bool =
     (socketId, room) => {

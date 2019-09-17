@@ -6,7 +6,7 @@ open AppPrelude;
 [@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.allfours_port";
 [@bs.val] external adminPasswordEnv: Js.Nullable.t(string) = "process.env.allfours_admin_password";
 
-[@bs.module] external nanoid: unit => string = "";
+[@bs.module] external nanoid: unit => string = "nanoid";
 
 let logger = appLogger.makeChild({"_module": "Server"});
 

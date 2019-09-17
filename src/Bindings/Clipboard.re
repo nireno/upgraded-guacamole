@@ -9,5 +9,5 @@ type options = {
 };
 
 [@bs.module][@bs.new] external make: (string, options) => t = "clipboard";
-[@bs.send] external on: (t, string, event => unit) => unit = "";
-[@bs.send] external off: (t, string) => unit = "";
+[@bs.send] external on: (t, string, event => unit) => unit = "on";
+[@bs.send] external off: (t, string) => unit = "off";

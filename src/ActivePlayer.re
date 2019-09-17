@@ -13,6 +13,7 @@ let find: (Game.phase, Player.id) => option(Shared.ActivePlayer.t) = (gamePhase,
   | FindPlayersPhase(_)
   | FindSubsPhase(_) 
   | IdlePhase(_)
-  | GameOverPhase(_) => None
+  | GameOverPhase(_)
+    => None
   }
 };

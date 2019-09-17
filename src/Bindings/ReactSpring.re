@@ -7,12 +7,12 @@ module Common = {
   };
 
   module Presets = {
-    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external default: config = "";
-    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external gentle: config = "";
-    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external wobbly: config = "";
-    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external stiff: config = "";
-    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external slow: config = "";
-    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external molasses: config = "";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external default: config = "default";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external gentle: config = "gentle";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external wobbly: config = "wobbly";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external stiff: config = "stiff";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external slow: config = "slow";
+    [@bs.module "react-spring"] [@bs.scope "config"] [@bs.val] external molasses: config = "molasses";
   };
 }
 
@@ -70,7 +70,7 @@ module MakeTransition = (Conf: TransitionConfig):
   };
 
   [@bs.module "react-spring"]
-  external useTransition: ( array(item), item => string, options) => array(transition) = "";
+  external useTransition: ( array(item), item => string, options) => array(transition) = "useTransition";
   
   let useTransition = (items, options) => useTransition(items, Conf.getKey, options);
 };
@@ -100,4 +100,4 @@ module AnimatedImg = {
 
 
 [@bs.module "react-spring"]
-external animated: 'a => 'a = ""
+external animated: 'a => 'a = "animated"

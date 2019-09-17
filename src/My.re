@@ -93,14 +93,14 @@ module Option = {
 
 module Document = {
   type location;
-  [@bs.val] [@bs.scope "document"] external location: location = "";
+  [@bs.val] [@bs.scope "document"] external location: location = "location";
 };
 
 module URL = {
   type url;
   type searchParams;
   [@bs.new] external makeURL: Document.location => url = "URL";
-  [@bs.get] external searchParams: url => searchParams = "";
+  [@bs.get] external searchParams: url => searchParams = "searchParams";
   [@bs.send] external getSearchParam: (searchParams, string) => Js.Nullable.t(string) = "get";
 
   let getSearchParam = (searchParams, param) => {
