@@ -21,7 +21,12 @@ type action =
   | StartGame
   | SkipIdling
   | PrivateToPublic
-  ;
+  | Transition(transitionContext)
+and transitionContext = {
+  fromPhase: phase,
+  toPhase: phase
+}
+;
 
 let getTeamHighAndLowMaybes:
   ((Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t), option(Card.t)) =>
@@ -1001,5 +1006,10 @@ let rec reduce = (action, state) =>
     switch(state.game_id){
     | Public(_) => state
     | Private({private_game_key: key}) => {...state, game_id: Public(key)}
+    }
+  | Transition({fromPhase, toPhase}) =>
+    {
+      ...state, 
+      phase: state.phase == fromPhase ? toPhase : state.phase,
     }
   };

@@ -7,14 +7,17 @@ let mapNotiToSocketMaybe = (gameState, noti) => {
   };
 };
 
-let clientGamePhaseOfGamePhase = fun
+let clientGamePhaseOfGamePhase =
+  fun
   | Game.IdlePhase(_maybeTimeout, idleReason) => ClientGame.IdlePhase(idleReason)
-  | FindSubsPhase({ emptySeatCount}) => ClientGame.(FindSubsPhase({emptySeatCount: emptySeatCount}))
-  | FindPlayersPhase({ emptySeatCount, canSub }) => FindPlayersPhase({emptySeatCount, canSub})
+  | FindSubsPhase({emptySeatCount}) =>
+    ClientGame.(FindSubsPhase({emptySeatCount: emptySeatCount}))
+  | FindPlayersPhase({emptySeatCount, canSub}) => FindPlayersPhase({emptySeatCount, canSub})
   | DealPhase => DealPhase
   | BegPhase => BegPhase
   | GiveOnePhase => GiveOnePhase
   | RunPackPhase => RunPackPhase
   | PlayerTurnPhase(seatId) => PlayerTurnPhase(seatId)
   | PackDepletedPhase => PackDepletedPhase
-  | GameOverPhase(rematchDecisionQuad) => GameOverPhase(rematchDecisionQuad);
+  | GameOverPhase(rematchDecisionQuad) => GameOverPhase(rematchDecisionQuad)
+  ;

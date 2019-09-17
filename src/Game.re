@@ -78,7 +78,8 @@ let rec stringOfPhase =
   | RunPackPhase => "RunPackPhase"
   | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Quad.stringifyId(playerId) ++ ")"
   | PackDepletedPhase => "PackDepletedPhase"
-  | GameOverPhase(_) => "GameOverPhase";
+  | GameOverPhase(_) => "GameOverPhase"
+  ;
 
 let isPlayerActivePhase = fun
   | DealPhase
@@ -90,7 +91,9 @@ let isPlayerActivePhase = fun
   | IdlePhase(_)
   | FindSubsPhase(_)
   | FindPlayersPhase(_)
-  | GameOverPhase(_) => false;
+  | GameOverPhase(_) 
+    => false
+  ;
 
 let isFaceDownPhase =
   fun

@@ -62,7 +62,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   | IO_PrivateToPublic
   | IO_RotateGuests
   | IO_Substitute(_) => Noop
-  | IO_StartGameNow => Noop
+  | IO_TransitionGameNow => Noop
   
   | IO_PlayCard(ioPlayerId, ioCard) => {
       switch (Player.id_decode(ioPlayerId |> Js.Json.parseExn)) {
@@ -163,7 +163,7 @@ SocketServer.onConnect(
 
         | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
         | IO_RotateGuests => ServerStore.dispatch(RotateGuests(sock_id))
-        | IO_StartGameNow => ServerStore.dispatch(StartGameNow(sock_id))
+        | IO_TransitionGameNow => ServerStore.dispatch(FireGameTimer(sock_id))
         | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
         | ioAction =>
           let action = ioAction |> actionOfIO_Action;

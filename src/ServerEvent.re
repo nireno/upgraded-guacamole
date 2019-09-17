@@ -65,8 +65,11 @@ type event =
   | IdleWithTimeout(game_key, Timer.timeout, Game.idleReason)
   | Rematch(sock_id)
   | RotateGuests(sock_id)
-  | StartGameNow(sock_id) //short circuits the usual delay before game starts
   | PrivateToPublic(sock_id)
+  | FireGameTimer(sock_id)
+  | AddGameTimeout(addGameTimeoutContext)
+  | RemoveGameTimeout(game_key)
+  | TransitionGame(transitionGameContext)
 and effect = 
   // affecting socketio
   | ResetClient(sock_id)
@@ -79,7 +82,7 @@ and effect =
   | ClearKickTimeout(game_key)
   // | DelayThenAdvanceRound(Game.game_id)
   | IdleThenUpdateGame(idleThenUpdateGame)
-  // | DelayedEvent(delayedEvent)
+  | AddDelayedEvent(addGameDelayedEventContext)
 and clientToast = {
   sock_id,
   toast: Noti.t,
@@ -88,8 +91,31 @@ and idleThenUpdateGame = {
   game_key,
   game_reducer_action: GameReducer.action,
   idle_milliseconds: int,
-};
-// and delayedEvent = {
-//   event: event,
-//   delay_milliseconds: int,
-// };
+}
+and transitionGameContext = {
+  game_key,
+  fromPhase: Game.phase,
+  toPhase: Game.phase,
+}
+and addGameDelayedEventContext = {
+  game_key, 
+  event: event,
+  delay_milliseconds: int,
+}
+and addGameTimeoutContext = {
+  game_key, 
+  timeout: Timer.timeout
+}
+;
+
+let debugOfEffect = fun
+  | ResetClient(_) => {j|ResetClient|j}
+  | EmitClientState(_, _) => {j|EmitClientState|j}
+  | EmitStateByGame(_) => {j|EmitStateByGame|j}
+  | EmitAck(_, _) => {j|EmitAck|j}
+  | EmitClientToasts(_) => {j|EmitClientToasts|j}
+  | ResetKickTimeout(_) => {j|ResetKickTimeout|j}
+  | ClearKickTimeout(_) => {j|ClearKickTimeout|j}
+  | IdleThenUpdateGame(_) => {j|IdleThenUpdateGame|j}
+  | AddDelayedEvent(_) => {j|IdleThenUpdateGame|j}
+  ;

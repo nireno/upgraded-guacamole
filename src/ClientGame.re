@@ -51,7 +51,8 @@ type phase =
   | RunPackPhase
   | PlayerTurnPhase(Player.id)
   | PackDepletedPhase
-  | GameOverPhase(Quad.t(rematchDecision));
+  | GameOverPhase(Quad.t(rematchDecision))
+  ;
 
 [@decco]
 type state = {
@@ -96,4 +97,5 @@ let stringOfPhase = fun
   | RunPackPhase => "RunPackPhase"
   | PlayerTurnPhase(_) => "PlayerTurnPhase"
   | PackDepletedPhase => "PackDepletedPhase"
-  | GameOverPhase(_) => "GameOverPhase";
+  | GameOverPhase(_) => "GameOverPhase"
+  ;

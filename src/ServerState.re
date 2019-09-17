@@ -20,6 +20,7 @@ type playerGame = {
 type db = {
   db_game: Map.String.t(Game.state), /* game_id -> Game.state */ 
   db_player_game: Map.String.t(playerGame), /* sock_id -> playerGame */
+  db_game_timer: Map.String.t(Timer.timeout), /* game_key -> Timer.timeout */
   db_server_started_at: Js.Date.t,
   db_public_games_created: int,
   db_private_games_created: int,
@@ -85,14 +86,18 @@ let stringOfMsg = fun
   | IdleWithTimeout(_, _, _) => "IdleWithTimeout"
   | Rematch(_sock_id) => "Rematch"
   | RotateGuests(_sock_id) => "RotateGuests"
-  | StartGameNow(_sock_id) => "StartGameNow"
   | PrivateToPublic(_sock_id) => "PrivateToPublic"
+  | TransitionGame(_) => "TransitionGame"
+  | FireGameTimer(_) => "FireGameTimer"
+  | AddGameTimeout(_) => "AddGameTimeout"
+  | RemoveGameTimeout(_) => "RemoveGameTimeout"
   ;
 
 
 let empty = () => {
   db_game: Map.String.empty,
   db_player_game: Map.String.empty,
+  db_game_timer: Map.String.empty,
   db_server_started_at: Js.Date.make(),
   db_public_games_created: 0,
   db_private_games_created: 0,
@@ -224,7 +229,7 @@ let rec initPrivateGame = (db_game) => {
 };
 
 let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
-  (msg, {db_game, db_player_game} as db) => {
+  (msg, {db_game, db_player_game, db_game_timer} as db) => {
     let logger = logger.makeChild({"_context": "ServerState.update", "update_msg": stringOfMsg(msg)});
     switch (msg) {
     | AddGame(game) =>
@@ -256,9 +261,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       )
 
     | AttachPlayer({game_key, sock_id, client_username, client_id, client_initials, client_profile_type}) =>
+      // let logger = logger.makeChild({"_context": "AttachPlayer", "sock_id"});
       switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
-      | Some({game_id} as gameState) =>
+      | Some(gameState) =>
         switch (Game.findEmptySeat(gameState)) {
         | None => NoUpdate(db)
         | Some(player_id) =>
@@ -285,10 +291,14 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           let playersNeeded = clients->Quad.countHaving(clientState => clientState == Vacant); 
           let phase =
             switch (gameState.phase) {
+              /* Suppose a player left during the delay before advancing the round, then this new player joins
+                 I need to put the game back into the idling phase with the delay restarted. */
             | FindSubsPhase({ phase: IdlePhase(Some(timeout), idleReason) }) when playersNeeded == 0 =>
                 Game.IdlePhase(Some(Timer.restartTimeout(timeout)), idleReason)
+            // | FindSubsPhase({phase: subPhase}) when playersNeeded == 0 =>
+            //   let timeout = Timer.startTimeout(() => update(ResumeGame(sock_id))
             | FindSubsPhase({phase: subPhase}) =>
-              playersNeeded == 0 ? subPhase : FindSubsPhase({ emptySeatCount: playersNeeded, phase: subPhase })
+              FindSubsPhase({ emptySeatCount: playersNeeded, phase: subPhase })
             | FindPlayersPhase({  canSub }) => FindPlayersPhase({ emptySeatCount:playersNeeded, canSub })
             | otherPhase => otherPhase
             };
@@ -326,21 +336,22 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
                   _,
                 )
             );
-          
+
+
+          let delayedStartEffect = switch(gameAftAttach.phase){
+          | FindPlayersPhase({ emptySeatCount }) when emptySeatCount == 0 => 
+            Some(ServerEvent.AddDelayedEvent({game_key, event: ServerEvent.TransitionGame({game_key, fromPhase: gameAftAttach.phase, toPhase: DealPhase}), delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis}))
+          | FindSubsPhase({phase: subPhase}) =>
+            Some(ServerEvent.AddDelayedEvent({game_key, event: ServerEvent.TransitionGame({game_key, fromPhase: gameAftAttach.phase, toPhase: subPhase}), delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis}))
+          | _ => None
+          }
+
           let effects =
             [
               Some(ServerEvent.EmitClientToasts(clientToasts)),
               gameAftAttach.phase->Game.isPlayerActivePhase
                 ? Some(ServerEvent.ResetKickTimeout(game_key)) : None,
-              playersNeeded == 0
-                ? Some(
-                    ServerEvent.IdleThenUpdateGame({
-                      game_key,
-                      game_reducer_action: StartGame,
-                      idle_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
-                    }),
-                  )
-                : None,
+              delayedStartEffect,
             ]
             ->Belt.List.keepMap(identity);
 
@@ -457,6 +468,8 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         Update(db'),
       );
     | AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack, client_profile_type}) =>
+      // let logger = logger.makeChild({"_context": "AttachPrivatePlayer", "sock_id"});
+
       /** Find game having the provided invite code */
       let gameMatchesCode = (inviteCode, gameState) => {
         let normalizeCode = code =>
@@ -557,10 +570,11 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       | Some({game_key}) => update(UpdateGame(game_key, action), db)
       }
     | UpdateGame(game_key, action) =>
+      // let logger = logger.makeChild({"_context": {j|UpdateGame($game_key, ...)|j}});
       switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some(gameState) =>
-        let {Game.game_id} as gameAftAction = GameReducer.reduce(action, gameState);
+        let gameAftAction = GameReducer.reduce(action, gameState);
 
         let maybeKickEffect =
           switch (reconcileKickTimeout(gameState, gameAftAction)) {
@@ -750,18 +764,6 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         };
       };
 
-    | StartGameNow(sock_id) =>
-      // Start game now preflight
-      // Check that player is in a game
-      //   and that game is in the Findplayers(0, _) state
-      // Clear any pending timers meant to fire StartGame
-      logger.info("Recieved StartGameNow");
-      switch (db_player_game->StringMap.get(sock_id)) {
-      | None => NoUpdate(db)
-      | Some({game_key}) =>
-        let db_game = db_game->StringMap.update(game_key, Belt.Option.map(_, GameReducer.reduce(SkipIdling)))
-        updateMany([TriggerEffects([EmitStateByGame(game_key)])], Update({...db, db_game}));
-      }
 
     | PrivateToPublic(sock_id) => 
       switch (db_player_game->StringMap.get(sock_id)) {
@@ -772,6 +774,57 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
             Belt.Option.map(__x, GameReducer.reduce(PrivateToPublic))
           );
         updateMany([TriggerEffects([EmitStateByGame(game_key)])], Update({...db, db_game}));
+      };
+    | FireGameTimer(sock_id) =>
+      switch(db_player_game->StringMap.get(sock_id)){
+      | None => NoUpdate(db)
+      | Some({game_key}) =>
+        switch (db_game_timer->StringMap.get(game_key)) {
+        | None => NoUpdate(db)
+        | Some(timeout) =>
+          switch (timeout) {
+          | RunningTimeout(_, task, _, _)
+          | PausedTimeout(task, _, _) =>
+            task();
+            NoUpdate(db);
+          }
+        };
+      }
+
+    | AddGameTimeout({ServerEvent.game_key, timeout}) =>
+      // let timeout = Timer.startTimeout(() => update(event), delay_milliseconds);
+      let update =
+        fun
+        | None => Some(timeout)
+        | Some(prevTimeout) => {
+            Timer.clearTimeout(prevTimeout);
+            Some(timeout);
+          };
+      let db_game_timerNext =
+        db_game_timer->StringMap.update( game_key, update);
+      Update({...db, db_game_timer: db_game_timerNext});
+
+    | RemoveGameTimeout(game_key) =>
+      let update =
+        fun
+        | None => None
+        | Some(timeout) => {
+            Timer.clearTimeout(timeout);
+            None;
+          };
+      let db_game_timerNext = db_game_timer->StringMap.update(game_key, update);
+      Update({...db, db_game_timer: db_game_timerNext});
+    
+    | TransitionGame({game_key, fromPhase, toPhase}) =>
+      let update = game => game->GameReducer.reduce(GameReducer.Transition({fromPhase, toPhase}), _)
+      let (db_gameNext, gameNext) = db_game->My.StringMap.update(game_key, update);
+      switch (gameNext) {
+      | None => NoUpdate(db)
+      | Some(_) =>
+        updateMany(
+          [TriggerEffects([EmitStateByGame(game_key)])],
+          Update({...db, db_game: db_gameNext}),
+        )
       };
     };
   }

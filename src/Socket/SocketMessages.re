@@ -26,7 +26,8 @@ type clientToServer =
   | IO_Substitute(ioUsername, ioClientSettings)
   | IO_PrivateToPublic
   | IO_RotateGuests
-  | IO_StartGameNow;
+  | IO_TransitionGameNow
+  ;
 
 let stringOfClientToServer = fun
   | IO_JoinGame(ioUsername, _) => "JoinGame(" ++ (ioUsername == "" ? "--blank-username--" : ioUsername) ++ ")"
@@ -46,7 +47,7 @@ let stringOfClientToServer = fun
   | IO_Substitute(ioUsername, _ioClientSettings) => {j|Substitute($ioUsername)|j}
   | IO_PrivateToPublic => "PrivateToPublic"
   | IO_RotateGuests => "RotateGuests"
-  | IO_StartGameNow => "SelectPartner"
+  | IO_TransitionGameNow => "SelectPartner"
   ;
 
 type serverToClient =

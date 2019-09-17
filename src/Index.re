@@ -592,7 +592,7 @@ module App = {
                         players=state.players
                         onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
                         onRotateGuestsClick={_event => sendIO(IO_RotateGuests)}
-                        onStartGameClick={_event => sendIO(IO_StartGameNow)}
+                        onStartGameClick={_event => sendIO(IO_TransitionGameNow)}
                         private_game_host
                       />;
                     };
@@ -610,7 +610,7 @@ module App = {
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
                         players={state.players}
                         onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
-                        onStartGameClick={_event => sendIO(IO_StartGameNow)}
+                        onStartGameClick={_event => sendIO(IO_TransitionGameNow)}
                         private_game_host
                       />
                     | Public(_) => <FindSubsView n=emptySeatCount onLeaveClick={_event => sendIO(IO_LeaveGame)} />

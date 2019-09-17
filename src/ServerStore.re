@@ -25,8 +25,12 @@ let rec dispatch: ServerEvent.event => unit =
     | Update(stateAftUpdate) => 
       store := stateAftUpdate
     | SideEffects(_, effects) => 
+      // let effectNames = effects->Belt.List.map(effect => effect->ServerEvent.debugOfEffect);
+      // logger.debug2("Performing effects", effectNames);
       List.forEach(effects, perform(getState()))
     | UpdateWithSideEffects(stateAftUpdate, effects) =>
+      // let effectNames = effects->Belt.List.map(effect => effect->ServerEvent.debugOfEffect);
+      // logger.debug2("Performing effects", effectNames);
       store := stateAftUpdate;
       effects->List.forEach(perform(stateAftUpdate));
     };
@@ -99,24 +103,23 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 
       SocketServer.emit(Reset, sock_id);
-    // | DelayedEvent({event, delay_milliseconds}) =>
-    //   /* TODO: I use DelayedEvent to add a countdown before the game starts. 
-    //      At the moment, the timer it creates is unstoppable. So if a player leaves
-    //      before the game starts the timer will still fire. This won't have any effect
-    //      because the GameReducer event ensures the game is in a valid state before
-    //      attempting to start the game. However it should be the case that, either the
-    //      ServerStore or GameReducer should keep track of running timers and clear them
-    //      if the game is no longer in a valid state to carry out the DelayedEvent.
-    //   */
+    | AddDelayedEvent({game_key, event, delay_milliseconds}) =>
+      /* TODO: I use DelayedEvent to add a countdown before the game starts. 
+         At the moment, the timer it creates is unstoppable. So if a player leaves
+         before the game starts the timer will still fire. This won't have any effect
+         because the GameReducer event ensures the game is in a valid state before
+         attempting to start the game. However it should be the case that, either the
+         ServerStore or GameReducer should keep track of running timers and clear them
+         if the game is no longer in a valid state to carry out the DelayedEvent. */
 
-    //     Timer.startTimeout(
-    //       () => dispatch(event),
-    //       delay_milliseconds,
-    //     ) |> ignore;
+        let timeout = Timer.startTimeout(
+          () => dispatchMany([event, RemoveGameTimeout(game_key)]),
+          delay_milliseconds,
+        );
+        dispatch(AddGameTimeout({game_key, timeout}))
       
     };
-  };
-
-let dispatchMany: list(ServerEvent.event) => unit = msgs => {
+  }
+  and dispatchMany: list(ServerEvent.event) => unit = msgs => {
   msgs->List.forEach(dispatch);
 }
