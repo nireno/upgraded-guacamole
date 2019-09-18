@@ -13,7 +13,6 @@ type clientToServer =
   | IO_StartPrivateGame(ioUsername, ioClientSettings)
   | IO_JoinPrivateGame(ioInviteCode, ioUsername, ioClientSettings)
   | IO_PlayCard(ioPlayerId, ioCard)
-  | IO_EndTrick
   | IO_Beg
   | IO_Stand
   | IO_GiveOne
@@ -34,7 +33,6 @@ let stringOfClientToServer = fun
   | IO_StartPrivateGame(ioUsername, _) => "StartPrivateGame(" ++ (ioUsername == "" ? "--blank-username--" : ioUsername) ++ ")"
   | IO_JoinPrivateGame(inviteCode, username, _) => "JoinPrivateGame(" ++ inviteCode ++ ", " ++ (username == "" ? "--blank-username--" : username) ++ ")"
   | IO_PlayCard(ioPlayerId, ioCard) => {j|PlayCard($ioPlayerId, $ioCard)|j}
-  | IO_EndTrick => "EndTrick"
   | IO_Beg => "Beg"
   | IO_Stand => "Stand"
   | IO_GiveOne => "GiveOne"

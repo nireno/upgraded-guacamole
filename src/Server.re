@@ -74,7 +74,6 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
         }
       };
     }
-  | IO_EndTrick => EndTrick
   | IO_Beg => Beg
   | IO_Stand => Stand
   | IO_GiveOne => GiveOne

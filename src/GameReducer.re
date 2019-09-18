@@ -6,7 +6,6 @@ let logger = appLogger.makeChild({"_context": "GameReducer"})
 type action =
   | Noop
   | PlayCard(Player.id, Card.t)
-  | EndTrick
   | AdvanceRound
   | NewRound
   | Beg
