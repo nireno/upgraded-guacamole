@@ -331,7 +331,10 @@ let rec reduce = (action, state) =>
             is the lead player), it means this current player will end the trick. There
             is no need to advance the turn since The true next player will be determined
             later by computing the trick winner. This test keeps the ui more consistent
-            if the player who wins the trick is the last player in the trick.
+            if the player who wins the trick is the last player in the trick. I can't keep
+            the game in the PlayerTurnPhase since the client needs to know its in a State
+            where the player is not allowed to trigger any events until the timer transitions 
+            the game into another active phase.
             */
           let nextPlayer = Quad.nextId(playerId);
           let phase' = nextPlayer == state.leader ? IdlePhase(None, UpdateGameIdle) : PlayerTurnPhase(nextPlayer);
