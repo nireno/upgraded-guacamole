@@ -80,7 +80,6 @@ and effect =
   // affecting node timers
   | ResetKickTimeout(game_key)
   | ClearKickTimeout(game_key)
-  // | DelayThenAdvanceRound(Game.game_id)
   | IdleThenUpdateGame(idleThenUpdateGame)
   | AddDelayedEvent(addGameDelayedEventContext)
 and clientToast = {
