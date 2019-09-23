@@ -491,12 +491,6 @@ let rec reduce = (action, state) =>
       state
     }
 
-  | EndTrick => state
-    // TODO: Endtrick is practically a noop at this point. 
-    // It is probably unecessary and can be removed.
-    // let updatePlayers = state => {...state, maybePlayerTurn: None};
-    // state |> updatePlayers;
-
   | AdvanceRound => 
     let (p1CardMaybe, p2CardMaybe, p3CardMaybe, p4CardMaybe) =
       state.players->Quad.map(p => p.pla_card, _);
