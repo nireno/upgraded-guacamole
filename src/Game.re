@@ -103,6 +103,16 @@ let isFaceDownPhase =
   | GiveOnePhase => true
   | _ => false;
 
+type timerType = 
+| AdvanceRoundDelay
+| GameStartingCountdown
+| KickInactiveClientCountdown;
+
+/* The string here is a nanoid */
+type timerRequest = 
+| CreateTimer(timerType)
+| DiscardTimer(timerType);
+
 type state = {
   game_id,
   deck: Deck.t,
