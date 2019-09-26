@@ -119,7 +119,6 @@ type state = {
   players: (playerData, playerData, playerData, playerData),
   clients: (clientState, clientState, clientState, clientState),
   teams: (teamState, teamState),
-  notis,
   maybeTrumpCard: option(Card.t),
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
@@ -229,7 +228,6 @@ let initialState = () => {
     ),
     clients: (Vacant, Vacant, Vacant, Vacant),
     teams: (initialTeamState, initialTeamState),
-    notis: [],
     maybeTrumpCard: None,
     maybeLeadCard: None,
     dealer: N1,
@@ -362,6 +360,28 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
       (playerId, playerPhase);
     };
 
+type event =
+  | Noop
+  | PlayCard(Player.id, Card.t)
+  | AdvanceRound
+  | NewRound
+  | Beg
+  | Stand
+  | GiveOne
+  | Deal
+  | RunPack
+  | DealAgain
+  | LeaveGame(Player.id)
+  | UpdateSubbing(bool)
+  | StartGame
+  | SkipIdling
+  | PrivateToPublic
+  | Transition(transitionContext)
+and transitionContext = {
+  fromPhase: phase,
+  toPhase: phase
+}
+;
 // module TestState = {
 //   // State initializers for testing specific functionality.
 

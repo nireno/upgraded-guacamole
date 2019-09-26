@@ -3,29 +3,6 @@ open Game;
 
 let logger = appLogger.makeChild({"_context": "GameReducer"});
 
-type action =
-  | Noop
-  | PlayCard(Player.id, Card.t)
-  | AdvanceRound
-  | NewRound
-  | Beg
-  | Stand
-  | GiveOne
-  | Deal
-  | RunPack
-  | DealAgain
-  | LeaveGame(Player.id)
-  | UpdateSubbing(bool)
-  | ClearNotis
-  | StartGame
-  | SkipIdling
-  | PrivateToPublic
-  | Transition(transitionContext)
-and transitionContext = {
-  fromPhase: phase,
-  toPhase: phase
-}
-;
 
 let getTeamHighAndLowMaybes:
   ((Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t, Hand.FaceUpHand.t), option(Card.t)) =>
@@ -206,10 +183,6 @@ module ValidatePlay = {
   };
 };
 
-type effects = {
-  notis: list(Noti.t),
-  timers: list(timerRequest)
-};
 
 /* 
   This module should probably be called GameMachine and this function should
@@ -217,7 +190,11 @@ type effects = {
   produces some (after) state state.
 */
 let reduce = (action, state) => {
-  let rec reduceRec = (action, state, effects) => {
+  let game_key = state.game_id->SharedGame.stringOfGameId;
+
+  let rec reduceRec: 
+    (Game.event, Game.state, list(ServerEvent.effect)) => (Game.state, list(ServerEvent.effect)) = 
+    (action, state, effects) => {
     switch (action) {
     | Noop => (state, effects)
     | NewRound =>
@@ -287,6 +264,24 @@ let reduce = (action, state) => {
 
       let nextDealer = Quad.nextId(state.dealer);
 
+      let notiEffects =
+        Noti.broadcast(
+          ~msg=RoundSummary(
+            { noti_maybeTeamHigh: h
+            , noti_maybeTeamLow: l
+            , noti_maybeTeamJack: j
+            , noti_maybeTeamGame: g
+            }
+          ),
+          ~kind=Confirm,
+          (),
+        )->Belt.List.map(noti =>
+             ServerEvent.NotifyPlayer(state.game_id->SharedGame.stringOfGameId, noti)
+           );
+
+      let effects =
+        effects->Belt.List.concat(notiEffects);
+
       ({...state, 
         phase: isGameOverTest(state) ? GameOverPhase(Quad.make(_ => RematchUnknown)) : DealPhase,
         deck: Deck.make() |> Deck.shuffle,
@@ -297,12 +292,6 @@ let reduce = (action, state) => {
         maybeTeamHigh: None,
         maybeTeamLow: None,
         maybeTeamJack: None,
-        notis: Noti.(broadcast(~msg=RoundSummary({
-          noti_maybeTeamHigh: h,
-          noti_maybeTeamLow: l,
-          noti_maybeTeamJack: j,
-          noti_maybeTeamGame: g
-        } ), ~kind=Confirm, ()))
       }, effects)
 
     | PlayCard(playerId, c) =>
@@ -311,12 +300,12 @@ let reduce = (action, state) => {
         let player = Quad.get(playerId, state.players);
         let hand' = List.filter(c' => c != c', player.pla_hand);
         let cardMaybesOnBoard = state.players->Quad.map(player => player.pla_card, _);
-        let state = switch(state.maybeTrumpCard){
+        switch(state.maybeTrumpCard){
         | None => 
           // This should be an impossible state.
           // No player should be able to play a card when there is no trump on board.
           logger.warn("Player is somehow playing a card when trump is None");
-          state
+          ( state, effects )
         | Some({suit: trumpSuit}) =>
           let validationResult =
           ValidatePlay.validate(
@@ -388,16 +377,16 @@ let reduce = (action, state) => {
                 (maybeTeamJackAward, jackAwardNotis);
               | Some(teamJackAward) => (Some(teamJackAward), [])
               };
+            
+            let notiEffects = jackAwardNotis->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
 
-
-            {
+            ({
               ...state,
               players: nextPlayers,
               maybeLeadCard: Js.Option.isNone(state.maybeLeadCard) ? Some(c) : state.maybeLeadCard,
               maybeTeamJack: maybeTeamJackAward,
               phase: phase',
-              notis: jackAwardNotis,
-            };
+            }, effects @ notiEffects);
           };
 
           switch (validationResult) {
@@ -432,13 +421,14 @@ let reduce = (action, state) => {
               noti_kind: Duration(3750),
             };
 
-            {...state, notis: state.notis @ [errorNoti]};
+            let errorNotiEffect = ServerEvent.NotifyPlayer(game_key, errorNoti);
+
+            (state, [errorNotiEffect, ...effects]);
 
           | Belt.Result.Ok () => updateGame()
           };
         };
 
-        (state, effects)
       | _ => 
         let playerIdText = playerId->Player.stringOfId
         logger.warn(
@@ -448,7 +438,7 @@ let reduce = (action, state) => {
       }
 
     | Deal =>
-      let state = switch(state.phase){
+      switch(state.phase){
       | DealPhase => 
         let dealCards = state => {
           let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToDeal, state.deck);
@@ -486,19 +476,20 @@ let reduce = (action, state) => {
 
         let state = state |> dealCards |> kickTrump;
 
-        let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
+        
+        let kickTrumpNotiEffects =
+          getKickTrumpNotis(state.maybeTrumpCard)
+          ->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
 
-        {
+        ({
           ...state,
           phase: isGameOverTest(state) ? GameOverPhase(Quad.make(_ => RematchUnknown)) : BegPhase,
-          notis: state.notis @ kickTrumpNotis,
-        };
+        }, kickTrumpNotiEffects @ effects);
 
       | _ =>
         logger.warn("`Deal` recieved out of phase.");
-        state
+        ( state, effects )
       };
-      (state, effects)
 
     | AdvanceRound => 
       let (p1CardMaybe, p2CardMaybe, p3CardMaybe, p4CardMaybe) =
@@ -606,7 +597,12 @@ let reduce = (action, state) => {
               ~kind=Confirm,
               (),
             );
-          ({...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown)), notis: gameOverTestState.notis @ notis}, effects);
+          let notiEffects = notis->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+          ( {...gameOverTestState
+            , phase: GameOverPhase(Quad.make(_ => RematchUnknown))
+            }
+          , notiEffects @ effects
+          );
         } else {
           /* Any player whose hand is empty at this points indicates all players' hands are empty */
           List.length(Quad.get(N1, state.players).pla_hand) == 0
@@ -614,12 +610,12 @@ let reduce = (action, state) => {
         };
       };
     | Beg =>
-      let state = switch (state.phase) {
+      switch (state.phase) {
       | BegPhase =>
         let beggerId = Quad.nextId(state.dealer);
         switch (state.clients->Quad.get(beggerId, _)) {
         | Vacant
-        | Disconnected(_, _) => state
+        | Disconnected(_, _) => ( state, effects )
         | Connected(client) =>
           let notis =
             Noti.playerBroadcast(
@@ -627,23 +623,27 @@ let reduce = (action, state) => {
               ~msg=Noti.Text(client.client_username ++ " begs"),
               (),
             );
-          {...state, phase: GiveOnePhase, notis};
+          let notiEffects = notis->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+          ( {...state
+            , phase: GiveOnePhase
+            }
+          ,  notiEffects @ effects 
+          );
         };
       | _ =>
         logger.warn("`Beg` recieved out of phase.");
-        state;
+        (state, effects)
       };
 
-      (state, effects)
 
     | Stand =>
-      let state = switch(state.phase){
+      switch(state.phase){
       | BegPhase =>
         let beggerId = Quad.nextId(state.dealer);
 
         switch (Quad.get(beggerId, state.clients)) {
         | Vacant
-        | Disconnected(_) => state
+        | Disconnected(_) => ( state, effects )
         | Connected(begger) =>
           let (maybeTeamHigh, maybeTeamLow) =
             getTeamHighAndLowMaybes(
@@ -651,16 +651,15 @@ let reduce = (action, state) => {
               state.maybeTrumpCard,
             );
 
+          let notiEffects =
+            Noti.playerBroadcast(~from=beggerId, ~msg=Noti.Text(begger.client_username ++ " stands"), ())
+            ->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+
+          let effects = notiEffects @ effects;
           let state' = {
             ...state,
             maybeTeamHigh,
             maybeTeamLow,
-            notis:
-              Noti.playerBroadcast(
-                ~from=beggerId,
-                ~msg=Noti.Text(begger.client_username ++ " stands"),
-                (),
-              ),
           };
 
           let (gameOverTestState, (h, l, j, g)) =
@@ -683,25 +682,25 @@ let reduce = (action, state) => {
                 ~kind=Confirm,
                 (),
               );
-
-            {
+            
+            let notiEffects = notis->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+            ({
               ...gameOverTestState,
               phase: GameOverPhase(Quad.make(_ => RematchUnknown)),
-              notis: gameOverTestState.notis @ notis,
-            };
+            }, notiEffects @ effects);
           } else {
-            {
-              ...state', // don't use gameOverTestState here. Points for high and low should usually be added at the end of the round.
-              phase: PlayerTurnPhase(beggerId),
-            };
+            ( { ...state' // don't use gameOverTestState here. Points for high and low should usually be added at the end of the round.
+              , phase: PlayerTurnPhase(beggerId),
+              }
+            , effects
+            )
           };
 
         };
       | _ =>
         logger.warn("`Stand` recieved out of phase.");
-        state;
+        ( state, effects );
       };
-      (state, effects)
 
 
     // | GiveOne
@@ -714,11 +713,11 @@ let reduce = (action, state) => {
     //       && GameTeams.get(T1, state.teams).team_score == 13 =>
     //   state;
     | GiveOne =>
-      let state = switch(state.phase){
+      switch(state.phase){
       | GiveOnePhase =>
         switch (Quad.get(state.dealer, state.clients)) {
         | Vacant
-        | Disconnected(_) => state
+        | Disconnected(_) => ( state, effects )
         | Connected(dealer) =>
           let receivingTeamId =
             switch (state.dealer) {
@@ -732,17 +731,16 @@ let reduce = (action, state) => {
               state.maybeTrumpCard,
             );
 
+          let giveOneNotiEffects = Noti.playerBroadcast(
+                  ~from=state.dealer,
+                  ~msg=Noti.Text(dealer.client_username ++ " gives one."),
+                  (),
+                )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+
           let state' = {
             ...state,
             teams:
               GameTeams.update(receivingTeamId, x => {...x, team_score: x.team_score + 1}, state.teams),
-            notis:
-              state.notis
-              @ Noti.playerBroadcast(
-                  ~from=state.dealer,
-                  ~msg=Noti.Text(dealer.client_username ++ " gives one."),
-                  (),
-                ),
             maybeTeamHigh,
             maybeTeamLow,
           };
@@ -755,7 +753,7 @@ let reduce = (action, state) => {
             );
 
           if (isGameOverTest(gameOverTestState)) {
-            let notis =
+            let roundSummaryNotiEffects =
               Noti.broadcast(
                 ~msg=
                   RoundSummary({
@@ -766,24 +764,22 @@ let reduce = (action, state) => {
                   }),
                 ~kind=Confirm,
                 (),
-              );
-            {
-              ...gameOverTestState,
-              phase: GameOverPhase(Quad.make(_ => RematchUnknown)),
-              notis: gameOverTestState.notis @ notis,
-            };
+              )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+            (
+              {...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown))},
+              roundSummaryNotiEffects @ effects,
+            );
           } else {
-            {...state', phase: PlayerTurnPhase(state.leader)};
+            ({...state', phase: PlayerTurnPhase(state.leader)}, giveOneNotiEffects @ effects);
           };
         };
       | _ =>
         logger.warn("`GiveOne` recieved out of phase.");
-        state;
+        ( state, effects );
       };
-      ( state, effects )
 
     | RunPack =>
-      let state = switch(state.phase){
+      switch(state.phase){
       | GiveOnePhase
       | RunPackPhase =>
         let (p1Hand, deck) = Deck.deal(SharedGame.settings.nCardsToRun, state.deck);
@@ -822,6 +818,12 @@ let reduce = (action, state) => {
               ...state,
               phase: PlayerTurnPhase(state.leader),
             };
+        
+        let runPackNotiEffects = Noti.playerBroadcast(
+              ~from=state.dealer,
+              ~msg=Noti.Text(client_username ++ " runs the pack"),
+              (),
+            )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti))
 
         let state = {
           ...state,
@@ -839,12 +841,6 @@ let reduce = (action, state) => {
               x => {...x, team_score: x.team_score + pointsKicked},
               state.teams,
             ),
-          notis:
-            Noti.playerBroadcast(
-              ~from=state.dealer,
-              ~msg=Noti.Text(client_username ++ " runs the pack"),
-              (),
-            ),
         };
 
         let (maybeTeamHigh, maybeTeamLow) =
@@ -853,12 +849,21 @@ let reduce = (action, state) => {
             state.maybeTrumpCard,
           );
 
-        let kickTrumpNotis = getKickTrumpNotis(state.maybeTrumpCard);
+        let kickTrumpNotiEffects =
+          getKickTrumpNotis(state.maybeTrumpCard)
+          ->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
 
-        let state = {...state, maybeTeamHigh, maybeTeamLow, notis: state.notis @ kickTrumpNotis};
+        let state = 
+          {...state
+          , maybeTeamHigh
+          , maybeTeamLow
+          };
 
         if (isGameOverTest(state)) {
-          {...state, phase: GameOverPhase(Quad.make(_ => RematchUnknown))};
+          ( {...state
+            , phase: GameOverPhase(Quad.make(_ => RematchUnknown))
+            }
+          , kickTrumpNotiEffects @ runPackNotiEffects @ effects);
         } else {
           switch (state.phase) {
           | PlayerTurnPhase(_) =>
@@ -870,7 +875,7 @@ let reduce = (action, state) => {
               );
 
             if (isGameOverTest(gameOverTestState)) {
-              let notis =
+              let roundSummaryNotiEffects =
                 Noti.broadcast(
                   ~msg=
                     RoundSummary({
@@ -881,43 +886,44 @@ let reduce = (action, state) => {
                     }),
                   ~kind=Confirm,
                   (),
-                );
+                )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
 
-              {...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown)), notis: gameOverTestState.notis @ notis};
+              ( {...gameOverTestState
+                , phase: GameOverPhase(Quad.make(_ => RematchUnknown))
+                }
+              , roundSummaryNotiEffects @ effects);
             } else {
-              state;
+              ( state, effects );
             };
-          | _ => state
+          | _ => ( state, effects )
           };
         };
 
       | _ =>
         logger.warn("`RunPack` recieved out of phase.");
-        state
+        ( state, effects )
       };
-      (state, effects)
+
     | DealAgain =>
-      let state = switch(state.phase){
+      switch(state.phase){
       | PackDepletedPhase => 
         let client_username = state.clients->getUsername(state.dealer);
-        {
+        let redealNotiEffects = Noti.playerBroadcast(
+              ~from=state.dealer,
+              ~msg=Noti.Text(client_username ++ " has to redeal"),
+              (),
+            )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+        ({
           ...state,
           players: Quad.map(x => {...x, pla_hand: []}, state.players),
           maybeTrumpCard: None,
           deck: Deck.make() |> Deck.shuffle,
           phase: DealPhase,
-          notis:
-            Noti.playerBroadcast(
-              ~from=state.dealer,
-              ~msg=Noti.Text(client_username ++ " has to redeal"),
-              (),
-            ),
-        }
+        }, redealNotiEffects @ effects)
       | _ => 
         logger.warn("`DealAgain` recieved out of phase.");
-        state
+        ( state, effects )
       };
-      (state, effects)
 
     | LeaveGame(leavingPlayerId) => 
       switch(state.clients->Quad.get(leavingPlayerId, _)){
@@ -951,13 +957,13 @@ let reduce = (action, state) => {
         
         let clients = state.clients->Quad.update(leavingPlayerId, _ => Vacant, _);
 
-        let playerLeftNotis =
+        let playerLeftNotiEffects =
           Noti.playerBroadcast(
             ~from=leavingPlayerId,
             ~msg=Noti.Text(client.client_username ++ " has left game."),
             ~level=Warning,
             (),
-          );
+          )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
 
         
         /* 
@@ -982,9 +988,8 @@ let reduce = (action, state) => {
           game_id,
           clients,
           phase: getNextPhase(clients->Quad.countHaving(clientState => clientState == Vacant), state.phase),
-          notis: state.notis @ playerLeftNotis,
           maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
-        }, effects);
+        }, playerLeftNotiEffects @ effects);
       }
 
     | UpdateSubbing(canSub) => 
@@ -994,8 +999,6 @@ let reduce = (action, state) => {
         | phase => phase
         };
       ( {...state, phase}, effects );
-    | ClearNotis => 
-      ( {...state, notis: []}, effects );
     | StartGame => ( {...state, phase: DealPhase}, effects );
     | SkipIdling => 
       let state = switch (state.phase) {
@@ -1027,5 +1030,5 @@ let reduce = (action, state) => {
     };
   };
 
-  reduceRec(action, state, {notis: [], timers: []} );
+  reduceRec(action, state, [] );
 }

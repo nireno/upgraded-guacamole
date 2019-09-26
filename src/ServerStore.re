@@ -117,7 +117,19 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
           delay_milliseconds,
         );
         dispatch(AddGameTimeout({game_key, timeout}))
-      
+
+    | NotifyPlayer(game_key, {noti_recipient: seat_id} as noti) =>
+      switch(db_game->StringMap.get(game_key)){
+      | None => ()
+      | Some(game) => 
+        switch(game.clients->Quad.get(seat_id, _)){
+        | Connected({client_socket_id}) =>
+          let msg: SocketMessages.serverToClient =
+            ShowToast(noti |> Noti.t_encode |> Js.Json.stringify);
+          SocketServer.emit(msg, client_socket_id);
+        | _ => ()
+        }
+      }
     };
   }
   and dispatchMany: list(ServerEvent.event) => unit = msgs => {

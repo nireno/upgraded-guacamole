@@ -387,11 +387,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
             "Removing player from game.",
           );
           My.Global.clearMaybeTimeout(gameForLeave.maybeKickTimeoutId);
-          let ( gameAftLeave, _effects ) = GameReducer.reduce(LeaveGame(player_id), gameForLeave);
-          let playerLeftToasts =
-            gameAftLeave.notis->List.keepMap(gameAftLeave->Join.mapNotiToSocketMaybe);
-
-          let ( gameAftLeave, _effects ) = GameReducer.reduce(ClearNotis, gameAftLeave);
+          let ( gameAftLeave, effects ) = GameReducer.reduce(LeaveGame(player_id), gameForLeave);
 
           if (gameAftLeave.clients
               ->Quad.countHaving(
@@ -416,8 +412,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
                 TriggerEffects([
                   ServerEvent.ResetClient(sock_id),
                   ServerEvent.EmitStateByGame(game_key),
-                  ServerEvent.EmitClientToasts(playerLeftToasts),
-                ]),
+                ] @ effects),
                 ReconcileSubstitution,
               ],
               Update(dbAftRemove_player_game),
@@ -574,7 +569,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some(gameState) =>
-        let ( gameAftAction, _effects ) = GameReducer.reduce(action, gameState);
+        let ( gameAftAction, effects ) = GameReducer.reduce(action, gameState);
 
         let maybeKickEffect =
           switch (reconcileKickTimeout(gameState, gameAftAction)) {
@@ -608,20 +603,16 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
             : None;
         };
         
-        let toasts = gameAftAction.notis->List.keepMap(Join.mapNotiToSocketMaybe(gameAftAction));
-        let (gameAftAction'clearNotis, _effects) = GameReducer.reduce(ClearNotis, gameAftAction);
 
-        let maybeEmitToastsEffect = switch(toasts){
-        | [] => None
-        | toasts => Some(ServerEvent.EmitClientToasts(toasts))
-        }
-
-        let someEffects = [maybeAdvanceRound, maybeKickEffect, maybeEmitToastsEffect]->List.keepMap(identity);
+        let someEffects = 
+          [ maybeAdvanceRound
+          , maybeKickEffect
+          ]->List.keepMap(identity);
 
         updateMany(
           [
-            ReplaceGame(game_key, gameAftAction'clearNotis),
-            TriggerEffects([EmitStateByGame(game_key), ...someEffects]),
+            ReplaceGame(game_key, gameAftAction),
+            TriggerEffects([ServerEvent.EmitStateByGame(game_key), ...someEffects] @ effects),
           ],
           NoUpdate(db),
         );
@@ -821,7 +812,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       switch(db_game->StringMap.get(game_key)){
       | None => NoUpdate(db)
       | Some(game) => 
-        let ( game, _effects ) = game->GameReducer.reduce(GameReducer.Transition({fromPhase, toPhase}), _);
+        let ( game, _effects ) = game->GameReducer.reduce(Game.Transition({fromPhase, toPhase}), _);
         updateMany(
           [TriggerEffects([EmitStateByGame(game_key)])],
           Update({...db, db_game: db_game->StringMap.set(game_key, game)}),

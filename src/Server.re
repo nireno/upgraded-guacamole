@@ -51,7 +51,7 @@ let getGameStats = () => {
   };
 };
 
-let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
+let actionOfIO_Action: SocketMessages.clientToServer => Game.event =
   fun
   | IO_JoinGame(_)
   | IO_StartPrivateGame(_)

@@ -58,8 +58,8 @@ type event =
   | KickActivePlayer(game_key)
   | InsertKickTimeoutId(game_key, Js.Global.timeoutId)
   | DeleteKickTimeoutId(game_key)
-  | UpdateGame(game_key, GameReducer.action)
-  | UpdateGameBySocket(sock_id, GameReducer.action)
+  | UpdateGame(game_key, Game.event)
+  | UpdateGameBySocket(sock_id, Game.event)
   | TriggerEffects(list(effect))
   | ReconcileSubstitution
   | IdleWithTimeout(game_key, Timer.timeout, Game.idleReason)
@@ -71,6 +71,7 @@ type event =
   | RemoveGameTimeout(game_key)
   | TransitionGame(transitionGameContext)
 and effect = 
+  | NotifyPlayer(game_key, Noti.t)
   // affecting socketio
   | ResetClient(sock_id)
   | EmitClientState(sock_id, ClientGame.state)
@@ -88,7 +89,7 @@ and clientToast = {
 } 
 and idleThenUpdateGame = {
   game_key,
-  game_reducer_action: GameReducer.action,
+  game_reducer_action: Game.event,
   idle_milliseconds: int,
 }
 and transitionGameContext = {
@@ -117,4 +118,5 @@ let debugOfEffect = fun
   | ClearKickTimeout(_) => {j|ClearKickTimeout|j}
   | IdleThenUpdateGame(_) => {j|IdleThenUpdateGame|j}
   | AddDelayedEvent(_) => {j|IdleThenUpdateGame|j}
+  | NotifyPlayer(_) => {j|NotifyPlayer|j}
   ;
