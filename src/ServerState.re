@@ -19,7 +19,6 @@ type playerGame = {
 
 type db = {
   db_game: Map.String.t(Game.state), /* game_id -> Game.state */ 
-  db_player_game: Map.String.t(playerGame), /* sock_id -> playerGame */
   db_game_timer: Map.String.t(Timer.timeout), /* game_key -> Timer.timeout */
   db_server_started_at: Js.Date.t,
   db_public_games_created: int,
@@ -29,12 +28,57 @@ type db = {
 };
 
 let getGameBySocket: (sock_id, db) => option(Game.state) =
-  (sock_id, {db_game, db_player_game}) => {
-    switch (db_player_game->StringMap.get(sock_id)) {
+  (sock_id, {db_game}) => {
+    db_game
+    ->StringMap.valuesToArray
+    ->Belt.Array.getBy(game =>
+        game.Game.clients
+        ->Quad.exists(clientState =>
+            switch (clientState) {
+            | Game.Connected({client_socket_id})
+            | Disconnected({client_socket_id}, _) when client_socket_id == sock_id => true
+            | _ => false
+            },
+          _)
+      );
+  };
+
+let getGameClientSeat = (db_game, sock_id) => {
+  let gameMaybe =
+    db_game
+    ->StringMap.valuesToArray
+    ->Belt.Array.getBy(game =>
+        game.Game.clients
+        ->Quad.exists(
+            clientState =>
+              switch (clientState) {
+              | Game.Connected({client_socket_id})
+              | Disconnected({client_socket_id}, _) when client_socket_id == sock_id => true
+              | _ => false
+              },
+            _,
+          )
+      );
+  switch (gameMaybe) {
+  | None => None
+  | Some(game) =>
+    let clientSeatMaybe =
+      game.clients
+      ->Quad.withId
+      ->Quad.find(((_sid, clientState)) =>
+          switch (clientState) {
+          | Connected({client_socket_id})
+          | Disconnected({client_socket_id}, _) when client_socket_id == sock_id => true
+          | _ => false
+          }
+        );
+
+    switch (clientSeatMaybe) {
     | None => None
-    | Some({game_key}) => db_game->StringMap.get(game_key)
+    | Some((seat_id, _clientState)) => Some((game, seat_id))
     };
   };
+};
 
 
 
@@ -67,7 +111,6 @@ type inviteCode = string
 
 let stringOfMsg = fun
   | ServerEvent.AddGame(_game) => "AddGame"
-  | AddPlayerGame(_sock_id, _player_id, _game_id) => "AddPlayerGame"
   | RemoveGame(_game_id) => "RemoveGame"
   | ReplaceGame(_game_id, _state) => "ReplaceGame"
   | AttachPlayer(_data) => "AttachPlayer"
@@ -96,7 +139,6 @@ let stringOfMsg = fun
 
 let empty = () => {
   db_game: Map.String.empty,
-  db_player_game: Map.String.empty,
   db_game_timer: Map.String.empty,
   db_server_started_at: Js.Date.make(),
   db_public_games_created: 0,
@@ -229,7 +271,7 @@ let rec initPrivateGame = (db_game) => {
 };
 
 let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
-  (msg, {db_game, db_player_game, db_game_timer} as db) => {
+  (msg, {db_game, db_game_timer} as db) => {
     let logger = logger.makeChild({"_context": "ServerState.update", "update_msg": stringOfMsg(msg)});
     switch (msg) {
     | AddGame(game) =>
@@ -239,13 +281,6 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       | None => Update({...db, db_game: db_game->StringMap.set(key, game)})
       | Some(_) => NoUpdate(db)
       };
-
-    | AddPlayerGame(sock_id, player_id, game_key) =>
-      let db = {
-        ...db,
-        db_player_game: db_player_game->StringMap.set(sock_id, {sock_id, player_id, game_key}),
-      };
-      Update(db);
 
     | RemoveGame(game_key) =>
       switch (db_game->StringMap.get(game_key)) {
@@ -269,9 +304,6 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         | None => NoUpdate(db)
         | Some(player_id) =>
           let client_username = client_username == "" ? Player.stringOfId(player_id) : client_username;
-          let db_player_game' =
-            StringMap.set(db_player_game, sock_id, {sock_id, player_id, game_key});
-          let db' = {...db, db_player_game: db_player_game'};
 
           let clients =
             Quad.update(
@@ -309,10 +341,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
             switch (gameState.phase) {
             | FindPlayersPhase(_) when phase == DealPhase =>
               switch (gameState.game_id) {
-              | Public(_) => {...db', db_public_games_started: db'.db_public_games_started + 1}
-              | Private(_) => {...db', db_private_games_started: db'.db_private_games_started + 1}
+              | Public(_) => {...db, db_public_games_started: db.db_public_games_started + 1}
+              | Private(_) => {...db, db_private_games_started: db.db_private_games_started + 1}
               }
-            | _ => db'
+            | _ => db
             };
 
           let gameAftAttach = {...gameState, clients, phase};
@@ -367,13 +399,12 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
     | RemovePlayerBySocket(sock_id) =>
       // #LeaveGame
       let logger = logger.makeChild({"_context": "RemovePlayerBySocket", "sock_id": sock_id});
-      switch (StringMap.get(db_player_game, sock_id)) {
+      switch(db_game->getGameClientSeat(sock_id)){
       | None => NoUpdate(db)
-      | Some({player_id, game_key}) =>
-        let db_player_game' = db_player_game->StringMap.remove(sock_id);
-        let dbAftRemove_player_game = {...db, db_player_game: db_player_game'};
+      | Some((game, player_id)) => 
+        let game_key = game.game_id->SharedGame.stringOfGameId;
         switch (StringMap.get(db_game, game_key)) {
-        | None => Update(dbAftRemove_player_game)
+        | None => Update(db)
         | Some(gameForLeave) =>
           logger.debug2(
             {
@@ -403,7 +434,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
                 TriggerEffects([ServerEvent.ResetClient(sock_id)]),
                 ReconcileSubstitution,
               ],
-              Update(dbAftRemove_player_game),
+              Update(db),
             );
           } else {
             updateMany(
@@ -415,7 +446,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
                 ] @ effects),
                 ReconcileSubstitution,
               ],
-              Update(dbAftRemove_player_game),
+              Update(db),
             );
           };
         };
@@ -560,9 +591,11 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       }
 
     | UpdateGameBySocket(sock_id, action) =>
-      switch (db_player_game->StringMap.get(sock_id)) {
+      switch (db->getGameBySocket(sock_id, _)) {
       | None => NoUpdate(db)
-      | Some({game_key}) => update(UpdateGame(game_key, action), db)
+      | Some({game_id}) => 
+        let game_key = game_id->SharedGame.stringOfGameId;
+        update(UpdateGame(game_key, action), db)
       }
     | UpdateGame(game_key, action) =>
       // let logger = logger.makeChild({"_context": {j|UpdateGame($game_key, ...)|j}});
@@ -660,9 +693,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
     | Rematch(sock_id) =>
       let logger = logger.makeChild({"_context": "Rematch", "sock_id": sock_id});
       logger.info("Got rematch signal");
-      switch (db_player_game->StringMap.get(sock_id)) {
+      switch (db_game->getGameClientSeat(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_key, player_id}) => 
+      | Some(({game_id}, player_id)) => 
+        let game_key = game_id->SharedGame.stringOfGameId;
         let updateGame = game => {
           switch (game.Game.phase) {
           | GameOverPhase(rematchDecisions) =>
@@ -703,9 +737,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       }
 
     | RotateGuests(sock_id) => /* The game "host" is not part of the rotation */
-      switch (db_player_game->StringMap.get(sock_id)) {
+      switch (db_game->getGameClientSeat(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_key}) =>
+      | Some(({game_id}, _)) =>
+        let game_key = game_id->SharedGame.stringOfGameId;
         let rotateGuests = ({Game.game_id, clients: (p1, p2, p3, p4)} as game) => {
           switch (game_id) {
           | Private({private_game_host}) =>
@@ -724,42 +759,37 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
 
         /* db_player_game caches the seat_id/player_id of players attached to a game.
             When players are rotated, this cache needs to be updated as well. */
-        let updatePlayerSeating = (db_player_game, clients) =>
-          clients
-          ->Quad.withId
-          ->Quad.reduce(
-              ((quadId, clientState), db_player_game) =>
-                switch (clientState) {
-                | Game.Vacant => db_player_game
-                | Connected({Game.client_socket_id})
-                | Disconnected({Game.client_socket_id}, _) =>
-                  db_player_game->StringMap.set(
-                    client_socket_id,
-                    {sock_id: client_socket_id, player_id: quadId, game_key},
-                  )
-                },
-              db_player_game,
-            );
+        // let updatePlayerSeating = (db_player_game, clients) =>
+        //   clients
+        //   ->Quad.withId
+        //   ->Quad.reduce(
+        //       ((quadId, clientState), db_player_game) =>
+        //         switch (clientState) {
+        //         | Game.Vacant => db_player_game
+        //         | Connected({Game.client_socket_id})
+        //         | Disconnected({Game.client_socket_id}, _) =>
+        //           db_player_game->StringMap.set(
+        //             client_socket_id,
+        //             {sock_id: client_socket_id, player_id: quadId, game_key},
+        //           )
+        //         },
+        //       db_player_game,
+        //     );
 
-        let (db_game, gameMaybe) = db_game->My.StringMap.update(game_key, rotateGuests);
+        let (db_game, _gameMaybe) = db_game->My.StringMap.update(game_key, rotateGuests);
 
-        switch (gameMaybe) {
-        | None => NoUpdate(db)
-        | Some(game) =>
-          let db_player_game = db_player_game->updatePlayerSeating(game.clients);
-
-          updateMany(
-            [TriggerEffects([EmitStateByGame(game_key)])],
-            Update({...db, db_game, db_player_game}),
-          );
-        };
+        updateMany(
+          [TriggerEffects([EmitStateByGame(game_key)])],
+          Update({...db, db_game}),
+        );
       };
 
 
     | PrivateToPublic(sock_id) => 
-      switch (db_player_game->StringMap.get(sock_id)) {
+      switch (db_game->getGameClientSeat(sock_id)) {
       | None => NoUpdate(db)
-      | Some({game_key}) =>
+      | Some(( {game_id}, _ )) =>
+        let game_key = game_id->SharedGame.stringOfGameId;
         switch(db_game->StringMap.get(game_key)){
         | None => NoUpdate(db)
         | Some(game) => 
@@ -769,9 +799,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         }
       };
     | FireGameTimer(sock_id) =>
-      switch(db_player_game->StringMap.get(sock_id)){
+      switch(db_game->getGameClientSeat(sock_id)){
       | None => NoUpdate(db)
-      | Some({game_key}) =>
+      | Some(( {game_id}, _ )) =>
+        let game_key = game_id->SharedGame.stringOfGameId;
         switch (db_game_timer->StringMap.get(game_key)) {
         | None => NoUpdate(db)
         | Some(timeout) =>

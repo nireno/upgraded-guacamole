@@ -46,7 +46,6 @@ type attachSubstituteData = {
 
 type event = 
   | AddGame(Game.state)
-  | AddPlayerGame(sock_id, Player.id, game_key)
   | RemoveGame(game_key)
   | ReplaceGame(game_key, Game.state)
   | AttachPlayer(attachPlayerData)
