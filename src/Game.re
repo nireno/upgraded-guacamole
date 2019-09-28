@@ -103,15 +103,6 @@ let isFaceDownPhase =
   | GiveOnePhase => true
   | _ => false;
 
-type timerType = 
-| AdvanceRoundDelay
-| GameStartingCountdown
-| KickInactiveClientCountdown;
-
-/* The string here is a nanoid */
-type timerRequest = 
-| CreateTimer(timerType)
-| DiscardTimer(timerType);
 
 type state = {
   game_id,
@@ -377,6 +368,7 @@ type event =
   | SkipIdling
   | PrivateToPublic
   | Transition(transitionContext)
+  | AttachClient(Quad.id, clientState)
 and transitionContext = {
   fromPhase: phase,
   toPhase: phase

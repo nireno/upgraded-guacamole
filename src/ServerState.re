@@ -238,26 +238,6 @@ let buildSocketStatePairs: Game.state => list((option(sock_id), ClientGame.state
     );
   };
 
-type reconcileKickTimeout =
-  | Keep // Keep the current timer
-  | Clear // Clear the current timer
-  | Reset // Clear the current timer and start a new one
-  ;
-
-let reconcileKickTimeout = (prevGameState, nextGameState) => {
-  let prevMaybeActivePlayer = ActivePlayer.find(prevGameState.Game.phase, prevGameState.dealer);
-  let nextMaybeActivePlayer = ActivePlayer.find(nextGameState.Game.phase, nextGameState.dealer);
-  if (prevMaybeActivePlayer != nextMaybeActivePlayer) {
-    switch (nextMaybeActivePlayer) {
-    | None => Clear
-    | Some(_nextActivePlayer) =>
-      Reset
-    };
-  } else {
-    Keep;
-  };
-}
-
 let rec initPrivateGame = (db_game) => {
   let gameIdExists = (searchKey, gameState) =>
     switch (gameState.Game.game_id) {
@@ -299,100 +279,40 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       // let logger = logger.makeChild({"_context": "AttachPlayer", "sock_id"});
       switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
-      | Some(gameState) =>
-        switch (Game.findEmptySeat(gameState)) {
+      | Some({game_id} as gameStatePrev) =>
+        switch (Game.findEmptySeat(gameStatePrev)) {
         | None => NoUpdate(db)
         | Some(player_id) =>
           let client_username = client_username == "" ? Player.stringOfId(player_id) : client_username;
+          let clientState =
+            Game.Connected({
+              Game.client_username,
+              client_socket_id: sock_id,
+              client_id,
+              client_initials,
+              client_profile_type,
+              client_connected_at: Js.Date.now(),
+            });
 
-          let clients =
-            Quad.update(
-              player_id,
-              _ =>
-                Game.Connected({
-                  Game.client_username: client_username,
-                  client_socket_id: sock_id,
-                  client_id,
-                  client_initials,
-                  client_profile_type,
-                  client_connected_at: Js.Date.now(),
-                }),
-              gameState.clients,
-            );
+          let (gameStateNext, effects) =
+            GameReducer.reduce(AttachClient(player_id, clientState), gameStatePrev);
 
-          let playersNeeded = clients->Quad.countHaving(clientState => clientState == Vacant); 
-          let phase =
-            switch (gameState.phase) {
-              /* Suppose a player left during the delay before advancing the round, then this new player joins
-                 I need to put the game back into the idling phase with the delay restarted. */
-            | FindSubsPhase({ phase: IdlePhase(Some(timeout), idleReason) }) when playersNeeded == 0 =>
-                Game.IdlePhase(Some(Timer.restartTimeout(timeout)), idleReason)
-            // | FindSubsPhase({phase: subPhase}) when playersNeeded == 0 =>
-            //   let timeout = Timer.startTimeout(() => update(ResumeGame(sock_id))
-            | FindSubsPhase({phase: subPhase}) =>
-              FindSubsPhase({ emptySeatCount: playersNeeded, phase: subPhase })
-            | FindPlayersPhase({  canSub }) => FindPlayersPhase({ emptySeatCount:playersNeeded, canSub })
-            | otherPhase => otherPhase
-            };
-
-          // Track how many games were actually started by looking at those that went 
-          // specifically from the FindPlayersPhase to the DealPhase
-          let db' =
-            switch (gameState.phase) {
-            | FindPlayersPhase(_) when phase == DealPhase =>
-              switch (gameState.game_id) {
-              | Public(_) => {...db, db_public_games_started: db.db_public_games_started + 1}
-              | Private(_) => {...db, db_private_games_started: db.db_private_games_started + 1}
+          let (db_public_games_started, db_private_games_started) =
+            switch (gameStatePrev.phase) {
+            | FindPlayersPhase({emptySeatCount: 0}) =>
+              switch (game_id) {
+              | Public(_) => (db.db_public_games_started + 1, db.db_private_games_started)
+              | Private(_) => (db.db_public_games_started, db.db_private_games_started + 1)
               }
-            | _ => db
+            | _ => (db.db_public_games_started, db.db_private_games_started)
             };
-
-          let gameAftAttach = {...gameState, clients, phase};
-          let playerJoinedNotis =
-            Noti.playerBroadcast(
-              ~from=player_id,
-              ~msg=Noti.Text(client_username ++ " joined the game."),
-              ~level=Noti.Success,
-              (),
-            );
-
-          let clientToasts =
-            playerJoinedNotis->List.keepMap(noti =>
-              gameAftAttach.clients
-              ->Quad.select(
-                  noti.noti_recipient,
-                  fun
-                  | Game.Connected(client) =>
-                    Some({sock_id: client.client_socket_id, ServerEvent.toast: noti})
-                  | _ => None,
-                  _,
-                )
-            );
-
-
-          let delayedStartEffect = switch(gameAftAttach.phase){
-          | FindPlayersPhase({ emptySeatCount }) when emptySeatCount == 0 => 
-            Some(ServerEvent.AddDelayedEvent({game_key, event: ServerEvent.TransitionGame({game_key, fromPhase: gameAftAttach.phase, toPhase: DealPhase}), delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis}))
-          | FindSubsPhase({phase: subPhase}) =>
-            Some(ServerEvent.AddDelayedEvent({game_key, event: ServerEvent.TransitionGame({game_key, fromPhase: gameAftAttach.phase, toPhase: subPhase}), delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis}))
-          | _ => None
-          }
-
-          let effects =
-            [
-              Some(ServerEvent.EmitClientToasts(clientToasts)),
-              gameAftAttach.phase->Game.isPlayerActivePhase
-                ? Some(ServerEvent.ResetKickTimeout(game_key)) : None,
-              delayedStartEffect,
-            ]
-            ->Belt.List.keepMap(identity);
 
           updateMany(
             [
-              ReplaceGame(game_key, gameAftAttach),
+              ReplaceGame(game_key, gameStateNext),
               TriggerEffects(effects),
             ],
-            Update(db'),
+            Update({...db, db_public_games_started, db_private_games_started}),
           );
         }
       };
@@ -604,14 +524,6 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       | Some(gameState) =>
         let ( gameAftAction, effects ) = GameReducer.reduce(action, gameState);
 
-        let maybeKickEffect =
-          switch (reconcileKickTimeout(gameState, gameAftAction)) {
-          | Keep => None
-          | Clear => Some(ServerEvent.ClearKickTimeout(game_key))
-          | Reset => Some(ResetKickTimeout(game_key))
-          };
-
-
         let maybeAdvanceRound = {
           // Check if all players have a pla_card on the board to know if this is the
           // end of the trick.
@@ -637,10 +549,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         };
         
 
-        let someEffects = 
-          [ maybeAdvanceRound
-          , maybeKickEffect
-          ]->List.keepMap(identity);
+        let someEffects = [ maybeAdvanceRound ]->List.keepMap(identity);
 
         updateMany(
           [
@@ -843,9 +752,9 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       switch(db_game->StringMap.get(game_key)){
       | None => NoUpdate(db)
       | Some(game) => 
-        let ( game, _effects ) = game->GameReducer.reduce(Game.Transition({fromPhase, toPhase}), _);
+        let (game, effects) = game->GameReducer.reduce(Game.Transition({fromPhase, toPhase}), _);
         updateMany(
-          [TriggerEffects([EmitStateByGame(game_key)])],
+          [TriggerEffects([EmitStateByGame(game_key), ...effects])],
           Update({...db, db_game: db_game->StringMap.set(game_key, game)}),
         )
       }

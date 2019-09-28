@@ -78,10 +78,10 @@ and effect =
   | EmitAck(SocketMessages.serverToClient => unit, SocketMessages.serverToClient)
   | EmitClientToasts(list(clientToast))
   // affecting node timers
-  | ResetKickTimeout(game_key)
-  | ClearKickTimeout(game_key)
   | IdleThenUpdateGame(idleThenUpdateGame)
   | AddDelayedEvent(addGameDelayedEventContext)
+  | CreateGameTimer(game_key, gameTimerType)
+  | DiscardGameTimer(game_key)
 and clientToast = {
   sock_id,
   toast: Noti.t,
@@ -105,6 +105,10 @@ and addGameTimeoutContext = {
   game_key, 
   timeout: Timer.timeout
 }
+and gameTimerType = 
+| AdvanceRoundDelay
+| GameStartingCountdown
+| KickInactiveClientCountdown
 ;
 
 let debugOfEffect = fun
@@ -113,9 +117,9 @@ let debugOfEffect = fun
   | EmitStateByGame(_) => {j|EmitStateByGame|j}
   | EmitAck(_, _) => {j|EmitAck|j}
   | EmitClientToasts(_) => {j|EmitClientToasts|j}
-  | ResetKickTimeout(_) => {j|ResetKickTimeout|j}
-  | ClearKickTimeout(_) => {j|ClearKickTimeout|j}
   | IdleThenUpdateGame(_) => {j|IdleThenUpdateGame|j}
   | AddDelayedEvent(_) => {j|IdleThenUpdateGame|j}
   | NotifyPlayer(_) => {j|NotifyPlayer|j}
+  | CreateGameTimer(_) => {j|CreateGameTimer|j}
+  | DiscardGameTimer(_) => {j|DiscardGameTimer|j}
   ;

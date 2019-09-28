@@ -183,6 +183,43 @@ module ValidatePlay = {
   };
 };
 
+/* Handle things that take effect only when leaving a particular state */
+let addLeaveStateEffects = (statePrev, (stateNext, effects)) => {
+  statePrev.phase == stateNext.phase
+    ? (stateNext, effects)
+    : {
+      let game_key = statePrev.game_id->SharedGame.stringOfGameId;
+      switch (statePrev.phase) {
+      | FindPlayersPhase({emptySeatCount: 4}) =>
+        // Discard the game start timer
+        (stateNext, [ServerEvent.DiscardGameTimer(game_key), ...effects])
+
+      | phase when phase->Game.isPlayerActivePhase =>
+        /* At the moment I assume there is only 1 concurrent timer in effect for a game
+           at any given moment. So If I'm leaving an active player phase I just clear whatever timeout
+           is there and assume it was the kick timeout */
+        (stateNext, effects @ [ServerEvent.DiscardGameTimer(game_key)])
+      | _ => (stateNext, effects)
+      };
+    };
+};
+
+let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
+  statePrev.phase == stateNext.phase
+    ? (stateNext, effects)
+    : {
+      let game_key = statePrev.game_id->SharedGame.stringOfGameId;
+      switch (stateNext.phase) {
+      | phase when phase->Game.isPlayerActivePhase => 
+      
+        (
+          stateNext,
+          effects @ [ServerEvent.CreateGameTimer(game_key, KickInactiveClientCountdown)],
+        )
+      | _ => (stateNext, effects)
+      };
+    };
+};
 
 /* 
   This module should probably be called GameMachine and this function should
@@ -1027,8 +1064,75 @@ let reduce = (action, state) => {
         ...state, 
         phase: state.phase == fromPhase ? toPhase : state.phase,
       },effects)
+    
+    | AttachClient(seat_id, clientState) =>
+      switch(clientState){
+      | Vacant => (state, effects)
+      | Connected({client_username})
+      | Disconnected({client_username}, _) =>
+        let clients = state.clients->Quad.put(seat_id, clientState, _);
+        let playersNeeded = clients->Quad.countHaving(clientState => clientState == Vacant); 
+        let phase =
+          switch (state.phase) {
+            /* Suppose a player left during the delay before advancing the round, then this new player joins
+                I need to put the game back into the idling phase with the delay restarted. */
+          | FindSubsPhase({ phase: IdlePhase(Some(timeout), idleReason) }) when playersNeeded == 0 =>
+              Game.IdlePhase(Some(Timer.restartTimeout(timeout)), idleReason)
+          // | FindSubsPhase({phase: subPhase}) when playersNeeded == 0 =>
+          //   let timeout = Timer.startTimeout(() => update(ResumeGame(sock_id))
+          | FindSubsPhase({phase: subPhase}) =>
+            FindSubsPhase({ emptySeatCount: playersNeeded, phase: subPhase })
+          | FindPlayersPhase({  canSub }) => FindPlayersPhase({ emptySeatCount:playersNeeded, canSub })
+          | otherPhase => otherPhase
+          };
+        
+        let playerJoinedNotiEffects =
+          Noti.playerBroadcast(
+            ~from=seat_id,
+            ~msg=Noti.Text(client_username ++ " joined the game."),
+            ~level=Noti.Success,
+            (),
+          )
+          ->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+        
+        let effectsNext =
+          switch (phase) {
+          | FindPlayersPhase({emptySeatCount: 0}) => [
+              ServerEvent.AddDelayedEvent({
+                game_key,
+                event:
+                  ServerEvent.TransitionGame({
+                    game_key,
+                    fromPhase: phase,
+                    toPhase: DealPhase,
+                  }),
+                delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
+              }),
+              ...playerJoinedNotiEffects,
+            ]
+          | FindSubsPhase({emptySeatCount: 0, phase: subPhase}) => [
+              ServerEvent.AddDelayedEvent({
+                game_key,
+                event:
+                  ServerEvent.TransitionGame({
+                    game_key,
+                    fromPhase: phase,
+                    toPhase: subPhase,
+                  }),
+                delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
+              }),
+              ...playerJoinedNotiEffects,
+            ]
+          | _ => playerJoinedNotiEffects
+          };
+        
+        ({...state, clients, phase}, effects @ effectsNext);
+      }
+      
     };
   };
 
-  reduceRec(action, state, [] );
+  reduceRec(action, state, [] )
+  |> addLeaveStateEffects(state)
+  |> addEnterStateEffects(state);
 }

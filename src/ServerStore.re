@@ -67,27 +67,6 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
         SocketServer.emit(msg, clientToast.sock_id);
       })
 
-    | ResetKickTimeout(game_key) =>
-      perform(db, ServerEvent.ClearKickTimeout(game_key));
-      let timeoutId =
-        Js.Global.setTimeout(
-          () => dispatch(KickActivePlayer(game_key)),
-          SharedGame.settings.kickPlayerMillis,
-        );
-      dispatch(InsertKickTimeoutId(game_key, timeoutId))
-
-    | ClearKickTimeout(game_key) =>
-      switch(db_game->StringMap.get(game_key)){
-      | None => ()
-      | Some(gameState) => 
-        switch(gameState.maybeKickTimeoutId){
-        | None => ()
-        | Some(kickTimeoutId) =>
-          Js.Global.clearTimeout(kickTimeoutId)
-          dispatch(DeleteKickTimeoutId(game_key));
-        }
-      }
-
     | IdleThenUpdateGame({game_key, game_reducer_action, idle_milliseconds}) =>
       let timeout =
         Timer.startTimeout(
@@ -113,7 +92,7 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
          if the game is no longer in a valid state to carry out the DelayedEvent. */
 
         let timeout = Timer.startTimeout(
-          () => dispatchMany([event, RemoveGameTimeout(game_key)]),
+          () => dispatch(event),
           delay_milliseconds,
         );
         dispatch(AddGameTimeout({game_key, timeout}))
@@ -130,6 +109,21 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
         | _ => ()
         }
       }
+    | CreateGameTimer(game_key, gameTimerType) =>
+      switch(gameTimerType){
+      | KickInactiveClientCountdown => 
+        let kickTimer =
+          Timer.startTimeout(
+            () => {
+              dispatch(KickActivePlayer(game_key))
+            },
+            SharedGame.settings.kickPlayerMillis,
+          );
+        dispatch(AddGameTimeout({game_key, timeout: kickTimer}));
+      | _ => ()
+      }
+    | DiscardGameTimer(game_key) =>
+      dispatch(RemoveGameTimeout(game_key));
     };
   }
   and dispatchMany: list(ServerEvent.event) => unit = msgs => {
