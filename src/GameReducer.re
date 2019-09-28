@@ -190,15 +190,13 @@ let addLeaveStateEffects = (statePrev, (stateNext, effects)) => {
     : {
       let game_key = statePrev.game_id->SharedGame.stringOfGameId;
       switch (statePrev.phase) {
-      | FindPlayersPhase({emptySeatCount: 4})
-      | FindSubsPhase({emptySeatCount: 4}) =>
-        // Discard the game start timer
-        (stateNext, [ServerEvent.DiscardGameTimer(game_key), ...effects])
-
+      | FindPlayersPhase({emptySeatCount: 4}) as phase
+      | FindSubsPhase({emptySeatCount: 4}) as phase
+      | IdlePhase(DelayTrickCollection) as phase
       | phase when phase->Game.isPlayerActivePhase =>
         /* At the moment I assume there is only 1 concurrent timer in effect for a game
-           at any given moment. So If I'm leaving an active player phase I just clear whatever timeout
-           is there and assume it was the kick timeout */
+           at any given moment. So If I'm leaving a phase that sets up a timer,
+           I should clean up afterwards */
         (stateNext, effects @ [ServerEvent.DiscardGameTimer(game_key)])
       | _ => (stateNext, effects)
       };
@@ -211,6 +209,10 @@ let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
     : {
       let game_key = statePrev.game_id->SharedGame.stringOfGameId;
       switch (stateNext.phase) {
+      | IdlePhase(DelayTrickCollection) =>
+        (stateNext, 
+         effects @ [ServerEvent.CreateGameTimer(game_key, DelayedGameEvent(AdvanceRound, 2750))]
+        )
       | phase when phase->Game.isPlayerActivePhase => 
       
         (
@@ -370,7 +372,9 @@ let reduce = (action, state) => {
               the game into another active phase.
               */
             let nextPlayer = Quad.nextId(playerId);
-            let phase' = nextPlayer == state.leader ? IdlePhase(None, UpdateGameIdle) : PlayerTurnPhase(nextPlayer);
+            let phase' =
+              nextPlayer == state.leader ? IdlePhase(DelayTrickCollection) : PlayerTurnPhase(nextPlayer);
+
             let nextPlayers =
               Quad.update(playerId, x => {...x, pla_hand: hand', pla_card: Some(c)}, state.players);
 
@@ -984,11 +988,8 @@ let reduce = (action, state) => {
               GameOverPhase(rematchDecisions);
             };
 
-          | IdlePhase(Some(timeout), StartGameIdle) =>
-            Timer.clearTimeout(timeout);
-            FindPlayersPhase({emptySeatCount: nPlayersToFind, canSub: false})
-          | IdlePhase(Some(timeout), reason) =>
-            FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: IdlePhase(Some(timeout->Timer.pauseTimeout), reason) })
+          | IdlePhase(reason) =>
+            FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: IdlePhase(reason) })
           | phase => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase })
           };
         };
@@ -1038,22 +1039,6 @@ let reduce = (action, state) => {
         };
       ( {...state, phase}, effects );
     | StartGame => ( {...state, phase: DealPhase}, effects );
-    | SkipIdling => 
-      let state = switch (state.phase) {
-      | IdlePhase(Some(timeout), idleReason) =>
-        switch(timeout){
-        | RunningTimeout(_, task, _, _) => 
-          Timer.clearTimeout(timeout);
-          let timeout = Timer.startTimeout(task, 0);
-          {
-            ...state,
-            phase: IdlePhase(Some(timeout), idleReason),
-          }
-        | _ => state
-        }
-      | _ => state
-      };
-      (state, effects)
     | PrivateToPublic => 
       let state = switch(state.game_id){
       | Public(_) => state
@@ -1075,12 +1060,6 @@ let reduce = (action, state) => {
         let playersNeeded = clients->Quad.countHaving(clientState => clientState == Vacant); 
         let phase =
           switch (state.phase) {
-            /* Suppose a player left during the delay before advancing the round, then this new player joins
-                I need to put the game back into the idling phase with the delay restarted. */
-          | FindSubsPhase({ phase: IdlePhase(Some(timeout), idleReason) }) when playersNeeded == 0 =>
-              Game.IdlePhase(Some(Timer.restartTimeout(timeout)), idleReason)
-          // | FindSubsPhase({phase: subPhase}) when playersNeeded == 0 =>
-          //   let timeout = Timer.startTimeout(() => update(ResumeGame(sock_id))
           | FindSubsPhase({phase: subPhase}) =>
             FindSubsPhase({ emptySeatCount: playersNeeded, phase: subPhase })
           | FindPlayersPhase({  canSub }) => FindPlayersPhase({ emptySeatCount:playersNeeded, canSub })

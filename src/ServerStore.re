@@ -67,17 +67,6 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
         SocketServer.emit(msg, clientToast.sock_id);
       })
 
-    | IdleThenUpdateGame({game_key, game_reducer_action, idle_milliseconds}) =>
-      let timeout =
-        Timer.startTimeout(
-          () => dispatch(UpdateGame(game_key, game_reducer_action)),
-          idle_milliseconds,
-        );
-      let idleReason = switch(game_reducer_action){
-      | StartGame => Game.StartGameIdle
-      | _ => UpdateGameIdle
-      }
-      dispatch(IdleWithTimeout(game_key, timeout,idleReason));
 
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 
@@ -119,7 +108,13 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
           }),
         );
 
-      | _ => ()
+      | DelayedGameEvent(event, delayMilliseconds) =>
+        dispatch(
+          AddGameTimeout({
+            game_key,
+            timeout: Timer.startTimeout(() => dispatch(UpdateGame(game_key, event)), delayMilliseconds),
+          }),
+        );
       }
     | DiscardGameTimer(game_key) =>
       dispatch(RemoveGameTimeout(game_key));

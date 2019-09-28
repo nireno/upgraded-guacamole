@@ -52,7 +52,7 @@ let initPlayerData = () => {
 type findPlayersContext = { emptySeatCount: int, canSub: bool };
 
 type phase =
-  | IdlePhase(option(Timer.timeout), idleReason)
+  | IdlePhase(idleReason)
   | FindSubsPhase(findSubsContext)
   | FindPlayersPhase(findPlayersContext)
   | DealPhase
@@ -365,7 +365,6 @@ type event =
   | LeaveGame(Player.id)
   | UpdateSubbing(bool)
   | StartGame
-  | SkipIdling
   | PrivateToPublic
   | Transition(transitionContext)
   | AttachClient(Quad.id, clientState)

@@ -68,5 +68,5 @@ let teamOfPlayer =
 
 [@decco]
 type idleReason =
-  | UpdateGameIdle
-  | StartGameIdle;
+  | DelayTrickCollection;
+  // | DelayGameStart;

@@ -61,7 +61,6 @@ type event =
   | UpdateGameBySocket(sock_id, Game.event)
   | TriggerEffects(list(effect))
   | ReconcileSubstitution
-  | IdleWithTimeout(game_key, Timer.timeout, Game.idleReason)
   | Rematch(sock_id)
   | RotateGuests(sock_id)
   | PrivateToPublic(sock_id)
@@ -78,7 +77,6 @@ and effect =
   | EmitAck(SocketMessages.serverToClient => unit, SocketMessages.serverToClient)
   | EmitClientToasts(list(clientToast))
   // affecting node timers
-  | IdleThenUpdateGame(idleThenUpdateGame)
   | CreateGameTimer(game_key, gameTimerType)
   | DiscardGameTimer(game_key)
 and clientToast = {
@@ -105,7 +103,7 @@ and addGameTimeoutContext = {
   timeout: Timer.timeout
 }
 and gameTimerType = 
-| AdvanceRoundDelay
+| DelayedGameEvent(Game.event, int /* delayMilliseconds */)
 | TransitionGameCountdown(Game.phase /*fromPhase*/, Game.phase/* toPhase */) 
 | KickInactiveClientCountdown
 ;
@@ -116,7 +114,6 @@ let debugOfEffect = fun
   | EmitStateByGame(_) => {j|EmitStateByGame|j}
   | EmitAck(_, _) => {j|EmitAck|j}
   | EmitClientToasts(_) => {j|EmitClientToasts|j}
-  | IdleThenUpdateGame(_) => {j|IdleThenUpdateGame|j}
   | NotifyPlayer(_) => {j|NotifyPlayer|j}
   | CreateGameTimer(_) => {j|CreateGameTimer|j}
   | DiscardGameTimer(_) => {j|DiscardGameTimer|j}

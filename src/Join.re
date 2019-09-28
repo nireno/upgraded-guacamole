@@ -9,7 +9,7 @@ let mapNotiToSocketMaybe = (gameState, noti) => {
 
 let clientGamePhaseOfGamePhase =
   fun
-  | Game.IdlePhase(_maybeTimeout, idleReason) => ClientGame.IdlePhase(idleReason)
+  | Game.IdlePhase(idleReason) => ClientGame.IdlePhase(idleReason)
   | FindSubsPhase({emptySeatCount}) =>
     ClientGame.(FindSubsPhase({emptySeatCount: emptySeatCount}))
   | FindPlayersPhase({emptySeatCount, canSub}) => FindPlayersPhase({emptySeatCount, canSub})

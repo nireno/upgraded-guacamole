@@ -126,7 +126,6 @@ let stringOfMsg = fun
   | UpdateGameBySocket(_sock_id, _action) => "UpdateGameBySocket"
   | TriggerEffects(_effects) => "TriggerEffects"
   | ReconcileSubstitution => "ReconcileSubstitution"
-  | IdleWithTimeout(_, _, _) => "IdleWithTimeout"
   | Rematch(_sock_id) => "Rematch"
   | RotateGuests(_sock_id) => "RotateGuests"
   | PrivateToPublic(_sock_id) => "PrivateToPublic"
@@ -524,37 +523,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       | Some(gameState) =>
         let ( gameAftAction, effects ) = GameReducer.reduce(action, gameState);
 
-        let maybeAdvanceRound = {
-          // Check if all players have a pla_card on the board to know if this is the
-          // end of the trick.
-          let isEndTrick =
-            Quad.map(
-              player => Js.Option.isSome(player.Game.pla_card) ? true : false,
-              gameAftAction.players,
-            )
-            |> Quad.foldLeftUntil(
-                 (iPlayed, wePlayed) => wePlayed && iPlayed,
-                 wePlayed => !wePlayed,
-                 true,
-               );
-          isEndTrick
-            ? Some(
-                ServerEvent.IdleThenUpdateGame({
-                  game_key,
-                  game_reducer_action: AdvanceRound,
-                  idle_milliseconds: 2750,
-                }),
-              )
-            : None;
-        };
-        
-
-        let someEffects = [ maybeAdvanceRound ]->List.keepMap(identity);
-
         updateMany(
           [
             ReplaceGame(game_key, gameAftAction),
-            TriggerEffects([ServerEvent.EmitStateByGame(game_key), ...someEffects] @ effects),
+            TriggerEffects([ServerEvent.EmitStateByGame(game_key), ...effects]),
           ],
           NoUpdate(db),
         );
@@ -591,13 +563,6 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         ->List.fromArray;
 
       updateMany(updates, NoUpdate(db));
-    | IdleWithTimeout(game_key, timeout, idleReason) => 
-      let db_game =
-        db_game->StringMap.update(
-          game_key, 
-          Belt.Option.map(_, game => {...game, phase: IdlePhase(Some(timeout), idleReason)})
-        );
-      Update({...db, db_game});
 
     | Rematch(sock_id) =>
       let logger = logger.makeChild({"_context": "Rematch", "sock_id": sock_id});
