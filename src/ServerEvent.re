@@ -79,7 +79,6 @@ and effect =
   | EmitClientToasts(list(clientToast))
   // affecting node timers
   | IdleThenUpdateGame(idleThenUpdateGame)
-  | AddDelayedEvent(addGameDelayedEventContext)
   | CreateGameTimer(game_key, gameTimerType)
   | DiscardGameTimer(game_key)
 and clientToast = {
@@ -107,7 +106,7 @@ and addGameTimeoutContext = {
 }
 and gameTimerType = 
 | AdvanceRoundDelay
-| GameStartingCountdown
+| TransitionGameCountdown(Game.phase /*fromPhase*/, Game.phase/* toPhase */) 
 | KickInactiveClientCountdown
 ;
 
@@ -118,7 +117,6 @@ let debugOfEffect = fun
   | EmitAck(_, _) => {j|EmitAck|j}
   | EmitClientToasts(_) => {j|EmitClientToasts|j}
   | IdleThenUpdateGame(_) => {j|IdleThenUpdateGame|j}
-  | AddDelayedEvent(_) => {j|IdleThenUpdateGame|j}
   | NotifyPlayer(_) => {j|NotifyPlayer|j}
   | CreateGameTimer(_) => {j|CreateGameTimer|j}
   | DiscardGameTimer(_) => {j|DiscardGameTimer|j}

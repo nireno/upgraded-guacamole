@@ -82,20 +82,6 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 
       SocketServer.emit(Reset, sock_id);
-    | AddDelayedEvent({game_key, event, delay_milliseconds}) =>
-      /* TODO: I use DelayedEvent to add a countdown before the game starts. 
-         At the moment, the timer it creates is unstoppable. So if a player leaves
-         before the game starts the timer will still fire. This won't have any effect
-         because the GameReducer event ensures the game is in a valid state before
-         attempting to start the game. However it should be the case that, either the
-         ServerStore or GameReducer should keep track of running timers and clear them
-         if the game is no longer in a valid state to carry out the DelayedEvent. */
-
-        let timeout = Timer.startTimeout(
-          () => dispatch(event),
-          delay_milliseconds,
-        );
-        dispatch(AddGameTimeout({game_key, timeout}))
 
     | NotifyPlayer(game_key, {noti_recipient: seat_id} as noti) =>
       switch(db_game->StringMap.get(game_key)){
@@ -120,6 +106,19 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
             SharedGame.settings.kickPlayerMillis,
           );
         dispatch(AddGameTimeout({game_key, timeout: kickTimer}));
+      
+      | TransitionGameCountdown(fromPhase, toPhase) =>
+        dispatch(
+          AddGameTimeout({
+            game_key,
+            timeout:
+              Timer.startTimeout(
+                () => dispatch(TransitionGame({game_key, fromPhase, toPhase})),
+                SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
+              ),
+          }),
+        );
+
       | _ => ()
       }
     | DiscardGameTimer(game_key) =>

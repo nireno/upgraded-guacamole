@@ -190,7 +190,8 @@ let addLeaveStateEffects = (statePrev, (stateNext, effects)) => {
     : {
       let game_key = statePrev.game_id->SharedGame.stringOfGameId;
       switch (statePrev.phase) {
-      | FindPlayersPhase({emptySeatCount: 4}) =>
+      | FindPlayersPhase({emptySeatCount: 4})
+      | FindSubsPhase({emptySeatCount: 4}) =>
         // Discard the game start timer
         (stateNext, [ServerEvent.DiscardGameTimer(game_key), ...effects])
 
@@ -1098,29 +1099,11 @@ let reduce = (action, state) => {
         let effectsNext =
           switch (phase) {
           | FindPlayersPhase({emptySeatCount: 0}) => [
-              ServerEvent.AddDelayedEvent({
-                game_key,
-                event:
-                  ServerEvent.TransitionGame({
-                    game_key,
-                    fromPhase: phase,
-                    toPhase: DealPhase,
-                  }),
-                delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
-              }),
+              ServerEvent.CreateGameTimer(game_key, TransitionGameCountdown(phase, DealPhase)),
               ...playerJoinedNotiEffects,
             ]
           | FindSubsPhase({emptySeatCount: 0, phase: subPhase}) => [
-              ServerEvent.AddDelayedEvent({
-                game_key,
-                event:
-                  ServerEvent.TransitionGame({
-                    game_key,
-                    fromPhase: phase,
-                    toPhase: subPhase,
-                  }),
-                delay_milliseconds: SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
-              }),
+              ServerEvent.CreateGameTimer(game_key, TransitionGameCountdown(phase, subPhase)),
               ...playerJoinedNotiEffects,
             ]
           | _ => playerJoinedNotiEffects
