@@ -1,15 +1,11 @@
 [@react.component]
 let make = (~emptySeatCount as n, ~onLeaveClick, ~players: Quad.t(ClientGame.playerState), ~me) => {
   let playersWord = Grammar.byNumber(n, "player");
-  let n = string_of_int(n);
+  let nText = string_of_int(n);
   let rotatedPlayers =  
     Player.playersAsQuad(~startFrom=me, ())
     ->Quad.map(playerId => Quad.get(playerId, players), _);
   <>
-    <div className="text-center">
-      <div> {ReasonReact.string({j|$n $playersWord disconnected|j})} </div>
-      <div> {ReasonReact.string({j|Please wait while I find substitutes...|j})} </div>
-    </div>
     {
       let (bottom, right, top, left) =
         rotatedPlayers
@@ -41,6 +37,18 @@ let make = (~emptySeatCount as n, ~onLeaveClick, ~players: Quad.t(ClientGame.pla
         <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
       </div>;
     } 
+    {
+      n == 0
+        ? <div className="mt-6 text-xl text-center">
+            <span> {ReasonReact.string("Game resuming in: ")} </span>
+            <CountdownView from={SharedGame.settings.gameStartingCountdownSeconds} />
+          </div>
+        : 
+        <div className="text-center">
+          <div> {ReasonReact.string({j|$nText $playersWord disconnected|j})} </div>
+          <div> {ReasonReact.string({j|Please wait while I find substitutes...|j})} </div>
+        </div>
+    }
     <button className="btn btn-blue mt-4" onClick=onLeaveClick>
       {ReasonReact.string("Leave Game")}
     </button>
