@@ -186,7 +186,7 @@ module ValidatePlay = {
 /* Handle things that take effect only when leaving a particular state */
 let addLeaveStateEffects = (statePrev, (stateNext, effects)) => {
   statePrev.phase == stateNext.phase
-    ? (statePrev, effects)
+    ? (stateNext, effects)
     : {
       let game_key = statePrev.game_id->SharedGame.stringOfGameId;
       switch (statePrev.phase) {

@@ -630,10 +630,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         let game_key = game_id->SharedGame.stringOfGameId;
         switch(db_game->StringMap.get(game_key)){
         | None => NoUpdate(db)
-        | Some(game) => 
-          let ( game, _effects ) = GameReducer.reduce(PrivateToPublic, game)
+        | Some(game) =>
+          let ( game, _effects ) = GameReducer.reduce(PrivateToPublic, game);
           let db_game = db_game->StringMap.set(game_key, game);
-          updateMany([TriggerEffects([EmitStateByGame(game_key)])], Update({...db, db_game}));
+          UpdateWithSideEffects({...db, db_game}, [EmitStateByGame(game_key)]);
         }
       };
     | FireGameTimer(sock_id) =>
