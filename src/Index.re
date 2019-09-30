@@ -55,10 +55,10 @@ module App = {
       );
 
     let (
-      (_southName, southCard, southZ, southTags),
-      (eastName, eastCard, eastZ, eastTags),
-      (northName, northCard, northZ, northTags),
-      (westName, westCard, westZ, westTags),
+      (_southName, southCard, southZ, southTags, southIdenticonSeed, southIdenticonStyle, southInitials),
+      (_eastName, eastCard, eastZ, eastTags, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
+      (_northName, northCard, northZ, northTags, northIdenticonSeed, northIdenticonStyle, northInitials),
+      (_westName, westCard, westZ, westTags, westIdenticonSeed, westIdenticonStyle, westInitials),
     ) =
       Player.playersAsQuad(~startFrom=state.me, ())
       |> Quad.map(playerId =>
@@ -73,8 +73,20 @@ module App = {
                  | Some({id: activePlayerId}) =>
                    playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
                  };
+                 
+               let initials = switch(playerId){
+               | N1 => "P1"
+               | N2 => "P2"
+               | N3 => "P3"
+               | N4 => "P4"
+               };
+               
+               let (identiconSeed, identiconStyle) = switch(x.pla_profile_maybe){
+               | None => ("no-profile", "identicon")
+               | Some(profile) => (profile.client_identicon, profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType)
+               };
 
-               (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags);
+               (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags, identiconSeed, identiconStyle, initials);
              },
              state.players,
            )
@@ -395,9 +407,14 @@ module App = {
                    <div
                      className="board-card board-card-west flex-shrink-0"
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
-                     <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                       style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                       <div className="text-sm h-5">{ReasonReact.string(westName)}</div>
+                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
+                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
+                    //    <div className="text-sm h-5">{ReasonReact.string(westName)}</div>
+                    //  </div>
+                     <div
+                       className="w-1/3 absolute top-1/2 right-0"
+                       style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
+                       <PlayerIdentityView initials=westInitials seed=westIdenticonSeed style=westIdenticonStyle />
                      </div>
                      <img
                        className="card__placeholder relative block"
@@ -435,10 +452,15 @@ module App = {
                      <div
                        className="board-card board-card-north relative self-start flex-shrink-0"
                        style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
-                       <div 
-                         className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                         style=ReactDOMRe.Style.make(~transform="translate(-50%, 1.5em)", ())>
-                         <div className="text-sm h-5">{ReasonReact.string(northName)}</div>
+                      //  <div 
+                      //    className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
+                      //    style=ReactDOMRe.Style.make(~transform="translate(-50%, 1.5em)", ())>
+                      //    <div className="text-sm h-5">{ReasonReact.string(northName)}</div>
+                      //  </div>
+                       <div
+                         className="w-1/3 absolute top-1/2 -left-1/2"
+                         style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
+                         <PlayerIdentityView initials=northInitials seed=northIdenticonSeed style=northIdenticonStyle />
                        </div>
                        <img
                          className="card__placeholder block relative"
@@ -472,6 +494,11 @@ module App = {
                       //    style=ReactDOMRe.Style.make(~transform="translateY(-1.5em)", ())>
                       //    <div>{ReasonReact.string(southName)}</div>
                       //  </div>
+                       <div
+                         className="w-1/3 absolute top-1/2 right-0"
+                         style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
+                         <PlayerIdentityView initials=southInitials seed=southIdenticonSeed style=southIdenticonStyle />
+                       </div>
                        <img
                          className="card__placeholder block relative"
                          src="./static/img/card_transparent.svg"
@@ -492,9 +519,14 @@ module App = {
                    <div
                      className="board-card board-card-east flex-shrink-0"
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
-                     <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                       style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                       <div className="text-sm h-5">{ReasonReact.string(eastName)}</div>
+                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
+                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
+                    //    <div className="text-sm h-5">{ReasonReact.string(eastName)}</div>
+                    //  </div>
+                     <div
+                       className="w-1/3 absolute top-1/2 left-0"
+                       style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
+                       <PlayerIdentityView initials=eastInitials seed=eastIdenticonSeed style=eastIdenticonStyle />
                      </div>
                      <img className="card relative" src="./static/img/card_transparent.svg" />
                      <CardTransition.PlayCard
