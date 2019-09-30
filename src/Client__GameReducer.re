@@ -72,17 +72,31 @@ let reducer = (prevState, action) => {
     };
 
     /** "Game started" sound effect */
-    switch (prevState.gamePhase) {
-    | FindPlayersPhase(_) 
-    | FindSubsPhase(_) 
-    | IdlePhase(_) =>
-      switch (nextState.gamePhase) {
-      | DealPhase =>
-        let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ())));
-        Howler.play(sound);
+    {
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ())));
+      Js.log2(prevState.gamePhase->ClientGame.stringOfPhase, nextState.gamePhase->ClientGame.stringOfPhase);
+      switch (prevState.gamePhase) {
+      | FindPlayersPhase({emptySeatCount: 0}) =>
+        switch (nextState.gamePhase) {
+        | DealPhase => Howler.play(sound)
+        | _ => ()
+        }
+      | FindSubsPhase({emptySeatCount: 0}) =>
+        switch(nextState.gamePhase){
+        | IdlePhase(_)
+        | DealPhase
+        | BegPhase
+        | GiveOnePhase
+        | RunPackPhase
+        | PlayerTurnPhase(_)
+        | PackDepletedPhase => Howler.play(sound)
+        
+        | GameOverPhase(_) 
+        | FindSubsPhase(_)
+        | FindPlayersPhase(_) => ()
+        }
       | _ => ()
-      }
-    | _ => ()
+      };
     };
 
     let wasActivePlayer =
