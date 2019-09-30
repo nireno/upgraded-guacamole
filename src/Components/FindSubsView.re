@@ -1,5 +1,5 @@
 [@react.component]
-let make = (~n, ~onLeaveClick) => {
+let make = (~emptySeatCount as n, ~onLeaveClick) => {
   let players = Grammar.byNumber(n, "player");
   let n = string_of_int(n);
   <div className="text-center">
