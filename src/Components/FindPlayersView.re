@@ -32,43 +32,38 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
     }
     
   </div>
-{
-      let (bottom, right, top, left) =
-        rotatedPlayers->Quad.map(
-                          ({ClientGame.pla_profile_maybe}) =>
-                            switch (pla_profile_maybe) {
-                            | None =>
-                              <EmptySeatAvatarView />
-                              // <img
-                              //   src="./static/img/avatar_placeholder.svg"
-                              //   className="w-full border border-gray-300 rounded"
-                              //   style=ReactDOMRe.Style.make(~opacity="0.3", ())
-                              // />
-                            | Some({client_identicon, client_profile_type}) =>
-                              let identicon_style =
-                                ClientSettings.dicebearTypeOfProfileType(client_profile_type);
-                              <img
-                                src={j|https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg|j}
-                                className="rounded border border-gray-300 w-full rounded"
-                              />;
-                            },
-                          _,
-                        );
+  {
+    let (bottom, right, top, left) =
+      rotatedPlayers
+      ->Quad.map(
+          ({ClientGame.pla_profile_maybe}) =>
+            switch (pla_profile_maybe) {
+            | None => <EmptySeatAvatarView />
+            | Some({client_identicon, client_profile_type}) =>
+              let identicon_style =
+                ClientSettings.dicebearTypeOfProfileType(client_profile_type);
+              <img
+                src={j|https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg|j}
+                className="rounded border border-gray-300 w-full rounded"
+              />;
+            },
+          _,
+        );
 
-      <div
-        className="w-2/3 my-8"
-        style={ReactDOMRe.Style.make(
-          ~display="grid",
-          ~gridTemplateColumns="repeat(3, 1fr)",
-          ~gridGap="10px",
-          (),
-        )}>
-        <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
-      </div>;
-    }
+    <div
+      className="w-2/3 my-8"
+      style={ReactDOMRe.Style.make(
+        ~display="grid",
+        ~gridTemplateColumns="repeat(3, 1fr)",
+        ~gridGap="10px",
+        (),
+      )}>
+      <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
+      <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
+      <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
+      <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
+    </div>;
+  }
   <button className="btn btn-blue mt-4" onClick=onLeaveClick>
     {ReasonReact.string("Cancel")}
   </button>
