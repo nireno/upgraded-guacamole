@@ -80,13 +80,13 @@ let make = (~onSave, ~settings) => {
   <div className="bg-white shadow-md border border-solid border-gray-300 rounded px-8 pt-6 pb-8 mb-4 w-10/12">
     <div className="mb-4 text-xl text-center"> {ReasonReact.string("Settings")} </div>
     <div className="mb-4 text-lg"> {ReasonReact.string("Profile")} </div>
-    <div className="flex">
+    <div className="flex flex-col">
       <img
         src={j|https://avatars.dicebear.com/v2/$dicebearType/$client_id.svg|j}
-        className="rounded border border-gray-300 p-2 w-1/5 cursor-pointer"
+        className="self-center rounded border border-gray-300 p-2 w-1/3 cursor-pointer"
         onClick=onChangeClientId
       />
-      <div className="flex flex-col flex-grow ml-8">
+      <div className="flex flex-col flex-grow mt-4">
         <div className="flex justify-between">
           <div className="flex flex-col">
             <input
@@ -97,7 +97,7 @@ let make = (~onSave, ~settings) => {
               defaultChecked={client_profile_type == Masculine}
               onChange=onClientProfileTypeChanged
             />
-            <label htmlFor="client-profile-male"> {ReasonReact.string("Masculine")} </label>
+            <label htmlFor="client-profile-male"> {ReasonReact.string("Man")} </label>
           </div>
           <div className="flex flex-col">
             <input
@@ -108,7 +108,7 @@ let make = (~onSave, ~settings) => {
               defaultChecked={client_profile_type == Feminine}
               onChange=onClientProfileTypeChanged
             />
-            <label htmlFor="client-profile-female"> {ReasonReact.string("Feminine")} </label>
+            <label htmlFor="client-profile-female"> {ReasonReact.string("Woman")} </label>
           </div>
           <div className="flex flex-col">
             <input
@@ -119,7 +119,7 @@ let make = (~onSave, ~settings) => {
               defaultChecked={client_profile_type == Machine}
               onChange=onClientProfileTypeChanged
             />
-            <label htmlFor="client-profile-machine"> {ReasonReact.string("Machine")} </label>
+            <label htmlFor="client-profile-machine"> {ReasonReact.string("Bot")} </label>
           </div>
           <div className="flex flex-col">
             <input
