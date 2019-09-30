@@ -368,6 +368,8 @@ type event =
   | PrivateToPublic
   | Transition(transitionContext)
   | AttachClient(Quad.id, clientState)
+  | PlayerRematch(Player.id)
+  | StartRematch
 and transitionContext = {
   fromPhase: phase,
   toPhase: phase

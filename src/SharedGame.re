@@ -25,6 +25,15 @@ type rematchDecision =
 [@decco]
 type rematchDecisions = Quad.t(rematchDecision);
 
+let isRematchDecisionKnown =
+  fun
+  | RematchUnknown => false
+  | RematchAccepted
+  | RematchDenied => true;
+
+/* The rematch is is ready to start when all players have made a decision */
+let isRematchPrimed = Quad.every(isRematchDecisionKnown, _);
+
 let stringOfGameId =
   fun
   | Public(key)

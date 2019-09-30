@@ -571,43 +571,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       | None => NoUpdate(db)
       | Some(({game_id}, player_id)) => 
         let game_key = game_id->SharedGame.stringOfGameId;
-        let updateGame = game => {
-          switch (game.Game.phase) {
-          | GameOverPhase(rematchDecisions) =>
-            let rematchDecisions = rematchDecisions->Quad.put(player_id, SharedGame.RematchAccepted, _);
-            // When all players have chosen to rematch or leave, reinit the game with the rematching players.
-            // This may mean that the game goes into the FindPlayersPhase if some players left the game instead of
-            // rematching. Or it may go into the deal phase if all players chose to rematch.
-
-            let numRematchingPlayers =
-              rematchDecisions->Quad.countHaving(decision => decision == RematchAccepted);
-
-            let phase =
-              if (rematchDecisions->Quad.every(decision => decision != SharedGame.RematchUnknown, _)) {
-                numRematchingPlayers == 4
-                  ? Game.DealPhase : FindPlayersPhase({ emptySeatCount: 4 - numRematchingPlayers, canSub: false });
-              } else {
-                GameOverPhase(rematchDecisions);
-              };
-
-            switch (phase) {
-            | GameOverPhase(_) => {...game, phase}
-            | phase => {
-                ...Game.initialState(),
-                game_id: game.game_id,
-                players: Quad.make(_ => Game.initPlayerData()),
-                clients: game.clients,
-                phase,
-              }
-            };
-            | _ => game
-          };
-        };
-
-        let db_game =
-          db_game->StringMap.update(game_key, Belt.Option.map(_, updateGame));
-          
-        updateMany([TriggerEffects([EmitStateByGame(game_key)])], Update({...db, db_game}));
+        update(UpdateGame(game_key, PlayerRematch(player_id)), db);
       }
 
     | RotateGuests(sock_id) => /* The game "host" is not part of the rotation */
@@ -703,14 +667,20 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       Update({...db, db_game_timer: db_game_timerNext});
 
     | RemoveGameTimeout(game_key) =>
-      let update =
+      /* By returning None in this update function, StringMap.update will actually remove the kv pair. 
+         See https://bucklescript.github.io/bucklescript/api/Belt.Map.html#VALupdate */
+      let clearAndRemoveTimer =
         fun
         | None => None
         | Some(timeout) => {
             Timer.clearTimeout(timeout);
             None;
           };
-      let db_game_timerNext = db_game_timer->StringMap.update(game_key, update);
+
+      let db_game_timerNext = 
+        db_game_timer
+        ->StringMap.update(game_key, clearAndRemoveTimer)
+
       Update({...db, db_game_timer: db_game_timerNext});
     
     | TransitionGame({game_key, fromPhase, toPhase}) =>

@@ -186,10 +186,12 @@ module ValidatePlay = {
 /* Handle things that take effect only when leaving a particular state */
 let addLeaveStateEffects = (statePrev, (stateNext, effects)) => {
   statePrev.phase == stateNext.phase
-    ? (stateNext, effects)
+    ? (statePrev, effects)
     : {
       let game_key = statePrev.game_id->SharedGame.stringOfGameId;
       switch (statePrev.phase) {
+      | GameOverPhase(rematchDecisions) when isRematchPrimed(rematchDecisions) =>
+        (stateNext, effects @ [ServerEvent.DiscardGameTimer(game_key)])
       | FindPlayersPhase({emptySeatCount: 4}) as phase
       | FindSubsPhase({emptySeatCount: 4}) as phase
       | IdlePhase(DelayTrickCollection) as phase
@@ -212,6 +214,17 @@ let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
       | IdlePhase(DelayTrickCollection) =>
         (stateNext, 
          effects @ [ServerEvent.CreateGameTimer(game_key, DelayedGameEvent(AdvanceRound, 2750))]
+        )
+      | GameOverPhase(rematchDecisions) when isRematchPrimed(rematchDecisions) =>
+        ( stateNext
+        , effects @ [ ServerEvent.CreateGameTimer(
+                        game_key, 
+                        DelayedGameEvent(
+                          StartRematch, 
+                          SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis
+                        )
+                      )
+                    ]
         )
       | phase when phase->Game.isPlayerActivePhase => 
       
@@ -1090,7 +1103,43 @@ let reduce = (action, state) => {
         
         ({...state, clients, phase}, effects @ effectsNext);
       }
-      
+
+    | PlayerRematch(seat_id) =>
+      switch (state.phase) {
+      | GameOverPhase(rematchDecisions) =>
+        let rematchDecisions = rematchDecisions->Quad.put(seat_id, SharedGame.RematchAccepted, _);
+        ({...state, phase: GameOverPhase(rematchDecisions)}, effects)
+
+      | _ => (state, effects)
+      };
+
+    | StartRematch =>
+      switch (state.phase) {
+      | GameOverPhase(rematchDecisions) when isRematchPrimed(rematchDecisions) => 
+        // When all players have chosen to rematch or leave, reinit the game with the rematching players.
+        // This may mean that the game goes into the FindPlayersPhase if some players left the game instead of
+        // rematching. Or it may go into the deal phase if all players chose to rematch
+        let numRematchingPlayers =
+          rematchDecisions->Quad.countHaving(decision => decision == RematchAccepted);
+
+        let phase =
+          numRematchingPlayers == 4
+            ? Game.DealPhase : FindPlayersPhase({emptySeatCount: 4 - numRematchingPlayers, canSub: false});
+
+        (
+          {
+            ...Game.initialState(),
+            game_id: state.game_id,
+            players: Quad.make(_ => Game.initPlayerData()),
+            clients: state.clients,
+            phase,
+          },
+          effects,
+        );
+
+      | _ => (state, effects)
+      };
+
     };
   };
 
