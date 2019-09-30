@@ -612,7 +612,13 @@ module App = {
                         onStartGameClick={_event => sendIO(IO_TransitionGameNow)}
                         private_game_host
                       />
-                    | Public(_) => <FindSubsView emptySeatCount onLeaveClick={_event => sendIO(IO_LeaveGame)} />
+                    | Public(_) => 
+                      <FindSubsView
+                        me={state.me}
+                        emptySeatCount
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        players={state.players}
+                      />
                     };
                   }
                   
