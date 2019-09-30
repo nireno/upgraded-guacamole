@@ -133,22 +133,22 @@ let make = (~onSave, ~settings) => {
             <label htmlFor="client-profile-abstract"> {ReasonReact.string("Abstract")} </label>
           </div>
         </div>
-        <div className="mt-4">
-          <label htmlFor="client-initials"> {ReasonReact.string("Initials: ")} </label>
-          <input
-            style={ReactDOMRe.Style.make(~maxWidth="10em", ())}
-            placeholder="Enter your initials"
-            id="client-initials"
-            onChange=onChangeInitials
-            className="focus:outline-0 border border-transparent focus:bg-white focus:border-gray-300
-                       placeholder-gray-600 rounded-lg bg-gray-200 p-2 ml-4 appearance-none leading-normal
-                       text-center"
-            type_="text"
-            maxLength=2
-            pattern="[A-Za-z]*"
-            value=client_initials
-          />
-        </div>
+        // <div className="mt-4">
+        //   <label htmlFor="client-initials"> {ReasonReact.string("Initials: ")} </label>
+        //   <input
+        //     style={ReactDOMRe.Style.make(~maxWidth="10em", ())}
+        //     placeholder="Enter your initials"
+        //     id="client-initials"
+        //     onChange=onChangeInitials
+        //     className="focus:outline-0 border border-transparent focus:bg-white focus:border-gray-300
+        //                placeholder-gray-600 rounded-lg bg-gray-200 p-2 ml-4 appearance-none leading-normal
+        //                text-center"
+        //     type_="text"
+        //     maxLength=2
+        //     pattern="[A-Za-z]*"
+        //     value=client_initials
+        //   />
+        // </div>
       </div>
     </div>
     <form className="mt-8">
