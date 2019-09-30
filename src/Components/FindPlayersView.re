@@ -20,16 +20,6 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
            </button>
          </div>
        : ReasonReact.null}
-    {
-      emptySeatCount == 0
-        ? <div className="text-xl mt-6">
-            <span> {ReasonReact.string("Game starting in: ")} </span>
-            <CountdownView from={SharedGame.settings.gameStartingCountdownSeconds} />
-          </div>
-        : <div className="text-xl mt-6">
-            {ReasonReact.string({j|Finding $emptySeatText more $playersText|j})}
-          </div>;
-    }
     
   </div>
   {
@@ -63,6 +53,16 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
       <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
       <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
     </div>;
+  }
+  {
+    emptySeatCount == 0
+      ? <div className="mt-6 text-xl text-center">
+          <span> {ReasonReact.string("Game starting in: ")} </span>
+          <CountdownView from={SharedGame.settings.gameStartingCountdownSeconds} />
+        </div>
+      : <div className="text-xl mt-6">
+          {ReasonReact.string({j|Finding $emptySeatText more $playersText|j})}
+        </div>;
   }
   <button className="btn btn-blue mt-4" onClick=onLeaveClick>
     {ReasonReact.string("Cancel")}
