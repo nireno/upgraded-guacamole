@@ -17,11 +17,11 @@ let reducer = (prevState, action) => {
       ();
     };
 
-    let (prevHasEmptySeats, prevNumEmptySeats) =
+    let prevNumEmptySeats =
       switch (prevState.gamePhase) {
       | FindPlayersPhase({ emptySeatCount })
-      | FindSubsPhase({ emptySeatCount }) => (true, emptySeatCount)
-      | _ => (false, 0)
+      | FindSubsPhase({ emptySeatCount }) => emptySeatCount
+      | _ => 0
       };
 
     let (currHasEmptySeats, currNumEmptySeats) =
@@ -72,14 +72,13 @@ let reducer = (prevState, action) => {
     };
 
     /** "Game started" sound effect */
-    {
-      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ())));
-      Js.log2(prevState.gamePhase->ClientGame.stringOfPhase, nextState.gamePhase->ClientGame.stringOfPhase);
+    let isGameStarting = 
       switch (prevState.gamePhase) {
-      | FindPlayersPhase({emptySeatCount: 0}) =>
+      | FindPlayersPhase(_)
+      | GameOverPhase(_) =>
         switch (nextState.gamePhase) {
-        | DealPhase => Howler.play(sound)
-        | _ => ()
+        | DealPhase => true
+        | _ => false
         }
       | FindSubsPhase({emptySeatCount: 0}) =>
         switch(nextState.gamePhase){
@@ -89,15 +88,22 @@ let reducer = (prevState, action) => {
         | GiveOnePhase
         | RunPackPhase
         | PlayerTurnPhase(_)
-        | PackDepletedPhase => Howler.play(sound)
+        | PackDepletedPhase => true
         
         | GameOverPhase(_) 
         | FindSubsPhase(_)
-        | FindPlayersPhase(_) => ()
+        | FindPlayersPhase(_) => false
         }
-      | _ => ()
+      | _ => false
       };
-    };
+    
+    isGameStarting
+      ? {
+        Howler.play(
+          Howler.(makeHowl(howlOptions(~src=[|"./static/audio/subtle_start.mp3"|], ()))),
+        );
+      }
+      : ();
 
     let wasActivePlayer =
       switch (Shared.ActivePlayer.find(prevState.gamePhase, prevState.dealer)) {
@@ -112,7 +118,7 @@ let reducer = (prevState, action) => {
       };
 
     // "player turn" sound effect.
-    if (!prevHasEmptySeats  //only play if not already playing the "Game in progress" sound effect
+    if (!isGameStarting  //only play if not already playing the "Game starting" sound effect
         && !wasActivePlayer  // only play the first time the player becomes active.
         && isActivePlayer) {
       let sound =
