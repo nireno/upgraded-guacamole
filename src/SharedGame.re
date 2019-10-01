@@ -6,9 +6,15 @@ let settings =
   |> Js.Option.getWithDefault("default"));
 
 [@decco]
+type privateGameContext = {
+  private_game_key: string,
+  private_game_host: Quad.id
+};
+
+[@decco]
 type game_id =
   | Public(string)
-  | Private(string);
+  | Private(privateGameContext);
 
 [@decco]
 type rematchDecision = 
@@ -19,11 +25,27 @@ type rematchDecision =
 [@decco]
 type rematchDecisions = Quad.t(rematchDecision);
 
+let isRematchDecisionKnown =
+  fun
+  | RematchUnknown => false
+  | RematchAccepted
+  | RematchDenied => true;
+
+/* The rematch is is ready to start when all players have made a decision */
+let isRematchPrimed = Quad.every(isRematchDecisionKnown, _);
+
 let stringOfGameId =
   fun
-  | Public(str)
-  | Private(str) => str;
+  | Public(key)
+  | Private({private_game_key: key}) => key;
 
+let debugOfGameId =
+  fun
+  | Public(key) => {j|Public($key)|j}
+  | Private({private_game_key: key, private_game_host: quadId}) => {
+      let quadIdText = quadId->Quad.stringifyId;
+      {j|Private($key, $quadIdText)|j};
+    };
 
 let kickPoints =
   Card.Rank.(
@@ -53,129 +75,7 @@ let teamOfPlayer =
   | N2
   | N4 => Team.T2;
 
-
-/*[@decco] won't work. decco doesn'nt yet support recursive types
-  Follow at:https://github.com/ryb73/ppx_decco/issues/6 
-*/
-type phase =
-  | IdlePhase(option(Timer.timeout))
-  | FindSubsPhase(int, phase)
-  | FindPlayersPhase(
-      int, /* numEmptySeats: Number of empty seats in this game */
-      bool, /* canSub: There exists a public game in FindSubsPhase */
-    )
-  | DealPhase
-  | BegPhase
-  | GiveOnePhase
-  | RunPackPhase
-  | PlayerTurnPhase(Player.id)
-  | PackDepletedPhase
-  | GameOverPhase(Quad.t(rematchDecision));
-
-let isPlayerActivePhase = fun
-  | DealPhase
-  | BegPhase
-  | GiveOnePhase
-  | RunPackPhase
-  | PlayerTurnPhase(_) 
-  | PackDepletedPhase => true
-  | IdlePhase(_)
-  | FindSubsPhase(_, _)
-  | FindPlayersPhase(_, _)
-  | GameOverPhase(_) => false;
-
-let rec phase_encode =
-  fun
-  | IdlePhase(_) => Js.Json.string("idle-phase") 
-  | FindSubsPhase(n, phase) =>
-    Js.Json.array([|
-      Js.Json.string("find-subs-phase"),
-      n |> float_of_int |> Js.Json.number,
-      phase_encode(phase),
-    |])
-  | FindPlayersPhase(numEmptySeats, canSub) => {
-      Js.Json.array([|
-        Js.Json.string("find-players-phase"),
-        Js.Json.number(numEmptySeats |> float_of_int),
-        Js.Json.boolean(canSub),
-      |]);
-    }
-  | DealPhase => Js.Json.string("deal-phase")
-  | BegPhase => Js.Json.string("beg-phase")
-  | GiveOnePhase => Js.Json.string("give-one-phase")
-  | RunPackPhase => Js.Json.string("run-pack-phase")
-  | PlayerTurnPhase(playerId) =>
-    Js.Json.string("player-turn-phase-" ++ Quad.stringifyId(playerId))
-  | PackDepletedPhase => Js.Json.string("pack-depleted-phase")
-  | GameOverPhase(rematchDecision) => 
-      Js.Json.array([|
-        Js.Json.string("game-over-phase"),
-        rematchDecisions_encode(rematchDecision),
-      |]);
-
-
-let rec phase_decode = json => {
-  switch (Js.Json.classify(json)) {
-  | Js.Json.JSONString(str_phase) =>
-    switch (str_phase) {
-    | "idle-phase" => Belt.Result.Ok(IdlePhase(None)) // The client should be the only one decoding this data and doesn't need to know the details of the timer.
-    | "deal-phase" => Belt.Result.Ok(DealPhase)
-    | "beg-phase" => Belt.Result.Ok(BegPhase)
-    | "give-one-phase" => Belt.Result.Ok(GiveOnePhase)
-    | "run-pack-phase" => Belt.Result.Ok(RunPackPhase)
-    | "player-turn-phase-N1" => Belt.Result.Ok(PlayerTurnPhase(N1))
-    | "player-turn-phase-N2" => Belt.Result.Ok(PlayerTurnPhase(N2))
-    | "player-turn-phase-N3" => Belt.Result.Ok(PlayerTurnPhase(N3))
-    | "player-turn-phase-N4" => Belt.Result.Ok(PlayerTurnPhase(N4))
-    | "pack-depleted-phase" => Belt.Result.Ok(PackDepletedPhase)
-    | _ => Decco.error("Failed to decode phase classified as string: " ++ str_phase, json)
-    }
-  | Js.Json.JSONArray(jsonTs) =>
-    switch (jsonTs) {
-    | [|phaseJson, numEmptySeats, canSub|]
-        when
-          Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-players-phase" =>
-      FindPlayersPhase(
-        Js.Json.decodeNumber(numEmptySeats) |> Js.Option.getExn |> int_of_float,
-        Js.Json.decodeBoolean(canSub) |> Js.Option.getExn,
-      )
-      ->Belt.Result.Ok
-    | [|phaseJson, n, subPhaseJson|]
-        when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "find-subs-phase" =>
-      switch (phase_decode(subPhaseJson)) {
-      | Belt.Result.Error(_) => Decco.error("Failed to recursively decode FindSubsPhase.", json)
-      | Belt.Result.Ok(phase) =>
-        FindSubsPhase(Js.Json.decodeNumber(n) |> Js.Option.getExn |> int_of_float, phase)
-        ->Belt.Result.Ok
-      }
-    | [|phaseJson, rematchDecisionsJson|]
-      when Js.Json.decodeString(phaseJson) |> Js.Option.getWithDefault("") == "game-over-phase" =>
-    switch (rematchDecisions_decode(rematchDecisionsJson)) {
-    | Belt.Result.Error(_) => Decco.error("Failed to recursively decode GameOverPhase.", json)
-    | Belt.Result.Ok(rematchDecisions) =>
-      GameOverPhase(rematchDecisions)
-      ->Belt.Result.Ok
-    }
-    | _ => Decco.error("Failed to decode phase classified as array.", json)
-    }
-  | _ => Decco.error("Failed to decode phase. Json was not classified as expected.", json)
-  };
-};
-
-let rec stringOfPhase = fun
-  | IdlePhase(_) => "IdlePhase"
-  | FindSubsPhase(n, phase) => "FindSubsPhase(" ++ string_of_int(n) ++ ", " ++ stringOfPhase(phase) ++ ")"
-  | FindPlayersPhase(numEmptySeats, canSub) => "FindPlayersPhase(" ++ string_of_int(numEmptySeats) ++ ", " ++ string_of_bool(canSub) ++ ")"
-  | DealPhase => "DealPhase"
-  | BegPhase => "BegPhase"
-  | GiveOnePhase => "GiveOnePhase"
-  | RunPackPhase => "RunPackPhase"
-  | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Quad.stringifyId(playerId) ++ ")"
-  | PackDepletedPhase => "PackDepletedPhase"
-  | GameOverPhase(_) => "GameOverPhase";
-
-
-let isFaceDownPhase = fun
-| FindSubsPhase(_, BegPhase) | BegPhase 
-| FindSubsPhase(_, GiveOnePhase) | GiveOnePhase => true
-| _ => false
+[@decco]
+type idleReason =
+  | DelayTrickCollection;
+  // | DelayGameStart;

@@ -22,7 +22,7 @@ module App = {
   [@react.component]
   let make = () => {
     let url = ReasonReactRouter.useUrl();
-    let (state, dispatch) = React.useReducer(ClientGame.reducer, ClientGame.initialState);
+    let (state, dispatch) = React.useReducer(Client.GameReducer.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
     let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
@@ -45,17 +45,20 @@ module App = {
       None;
     });
 
-    let maybeActivePlayer = ActivePlayer.find(state.gamePhase, state.dealer);
+    let maybeActivePlayer = Shared.ActivePlayer.find(state.gamePhase, state.dealer);
     let activePlayerName =
-      maybeActivePlayer
-      ->Belt.Option.map(activePlayer => Quad.get(activePlayer.id, state.players).pla_name)
-      ->Belt.Option.getWithDefault("");
+      maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
+        switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
+        | None => ""
+        | Some(profile) => profile.client_username
+        }
+      );
 
     let (
-      (_southName, southCard, southZ, southTags),
-      (eastName, eastCard, eastZ, eastTags),
-      (northName, northCard, northZ, northTags),
-      (westName, westCard, westZ, westTags),
+      (_southName, southCard, southZ, southTags, southIdenticonSeed, southIdenticonStyle, southInitials),
+      (_eastName, eastCard, eastZ, eastTags, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
+      (_northName, northCard, northZ, northTags, northIdenticonSeed, northIdenticonStyle, northInitials),
+      (_westName, westCard, westZ, westTags, westIdenticonSeed, westIdenticonStyle, westInitials),
     ) =
       Player.playersAsQuad(~startFrom=state.me, ())
       |> Quad.map(playerId =>
@@ -70,8 +73,20 @@ module App = {
                  | Some({id: activePlayerId}) =>
                    playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
                  };
+                 
+               let initials = switch(playerId){
+               | N1 => "P1"
+               | N2 => "P2"
+               | N3 => "P3"
+               | N4 => "P4"
+               };
+               
+               let (identiconSeed, identiconStyle) = switch(x.pla_profile_maybe){
+               | None => ("no-profile", "identicon")
+               | Some(profile) => (profile.client_identicon, profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType)
+               };
 
-               (x.pla_name, x.pla_card, Player.turnDistance(state.leader, playerId), tags);
+               (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags, identiconSeed, identiconStyle, initials);
              },
              state.players,
            )
@@ -237,7 +252,17 @@ module App = {
         ackJoinGame,
       );
     };
-    
+
+    let queryParams = My.Document.location->My.URL.makeURL->My.URL.searchParams;
+    let maybeInviteCode = queryParams->My.URL.getSearchParam("inviteCode");
+
+    // This is a workaround of sorts that makes it so that I don't have to 
+    // figure out how to handle non-root urls such as /private-games/ from the server side
+    // instead I just do the forwarding based on the query parameters I might find.
+    maybeInviteCode->My.Option.task(inviteCode =>
+      ReasonReactRouter.replace({j|/private-games?inviteCode=$inviteCode|j})
+    );
+
     /** 
       Reading the url backwords allows the app to work when it isn't served from
       the root url a website i.e. it will work whether the app is served from the
@@ -268,7 +293,9 @@ module App = {
       <div
         ref={ReactDOMRe.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
-        <MenuView> <JoinPrivateGameView sendJoinGame=sendIoJoinPrivateGame /> </MenuView>
+        <MenuView>
+          <JoinPrivateGameView sendJoinGame=sendIoJoinPrivateGame inviteCode=?maybeInviteCode />
+        </MenuView>
       </div>;
     | _ => 
     <div
@@ -380,9 +407,14 @@ module App = {
                    <div
                      className="board-card board-card-west flex-shrink-0"
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
-                     <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                       style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                       <div className="text-sm h-5">{ReasonReact.string(westName)}</div>
+                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
+                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
+                    //    <div className="text-sm h-5">{ReasonReact.string(westName)}</div>
+                    //  </div>
+                     <div
+                       className="w-1/3 absolute top-1/2 right-0"
+                       style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
+                       <PlayerIdentityView initials=westInitials seed=westIdenticonSeed style=westIdenticonStyle />
                      </div>
                      <img
                        className="card__placeholder relative block"
@@ -420,10 +452,15 @@ module App = {
                      <div
                        className="board-card board-card-north relative self-start flex-shrink-0"
                        style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
-                       <div 
-                         className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                         style=ReactDOMRe.Style.make(~transform="translate(-50%, 1.5em)", ())>
-                         <div className="text-sm h-5">{ReasonReact.string(northName)}</div>
+                      //  <div 
+                      //    className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
+                      //    style=ReactDOMRe.Style.make(~transform="translate(-50%, 1.5em)", ())>
+                      //    <div className="text-sm h-5">{ReasonReact.string(northName)}</div>
+                      //  </div>
+                       <div
+                         className="w-1/3 absolute top-1/2 -left-1/2"
+                         style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
+                         <PlayerIdentityView initials=northInitials seed=northIdenticonSeed style=northIdenticonStyle />
                        </div>
                        <img
                          className="card__placeholder block relative"
@@ -457,6 +494,11 @@ module App = {
                       //    style=ReactDOMRe.Style.make(~transform="translateY(-1.5em)", ())>
                       //    <div>{ReasonReact.string(southName)}</div>
                       //  </div>
+                       <div
+                         className="w-1/3 absolute top-1/2 right-0"
+                         style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
+                         <PlayerIdentityView initials=southInitials seed=southIdenticonSeed style=southIdenticonStyle />
+                       </div>
                        <img
                          className="card__placeholder block relative"
                          src="./static/img/card_transparent.svg"
@@ -477,9 +519,14 @@ module App = {
                    <div
                      className="board-card board-card-east flex-shrink-0"
                      style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
-                     <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                       style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                       <div className="text-sm h-5">{ReasonReact.string(eastName)}</div>
+                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
+                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
+                    //    <div className="text-sm h-5">{ReasonReact.string(eastName)}</div>
+                    //  </div>
+                     <div
+                       className="w-1/3 absolute top-1/2 left-0"
+                       style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
+                       <PlayerIdentityView initials=eastInitials seed=eastIdenticonSeed style=eastIdenticonStyle />
                      </div>
                      <img className="card relative" src="./static/img/card_transparent.svg" />
                      <CardTransition.PlayCard
@@ -545,24 +592,68 @@ module App = {
                </div>
              </div>
              {switch (state.gamePhase) {
-              | FindPlayersPhase(n, canSub) =>
+              | FindPlayersPhase(_) =>
+                let (emptySeatCount, canSub) =
+                  switch (state.gamePhase) {
+                  | FindPlayersPhase({emptySeatCount, canSub}) => (emptySeatCount, canSub)
+                  | _ => (0, false)
+                  };
                 <Modal visible=true>
                   {
                     switch (state.gameId) {
                     | Public(_) =>
                       <FindPlayersView
-                        n
+                        me=state.me
+                        players=state.players
+                        emptySeatCount
                         canSub
                         onLeaveClick={_event => sendIO(IO_LeaveGame)}
-                        onSubClick={_event => sendIO(IO_Substitute(username))}
+                        onSubClick={_event =>
+                          sendIO(
+                            IO_Substitute(username, clientSettings->ClientSettings.t_encode->Js.Json.stringify),
+                          )
+                        }
                       />
-                    | Private(str_game_id) => <InviteFriendsView n inviteCode=str_game_id onLeaveClick={_event => sendIO(IO_LeaveGame)}/>
+                    | Private({private_game_key: key, private_game_host}) => 
+                      <InviteFriendsView
+                        me=state.me
+                        emptySeatCount
+                        inviteCode=key
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        players=state.players
+                        onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
+                        onRotateGuestsClick={_event => sendIO(IO_RotateGuests)}
+                        onStartGameClick={_event => sendIO(IO_TransitionGameNow)}
+                        private_game_host
+                      />;
                     };
                   }
                 </Modal>
-              | FindSubsPhase(n, _) => 
+              | FindSubsPhase({ emptySeatCount }) => 
                 <Modal visible=true> 
-                  <FindSubsView n onLeaveClick={_event => sendIO(IO_LeaveGame)} /> 
+                  {
+                    switch (state.gameId) {
+                    | Private({private_game_key: key, private_game_host}) =>
+                      <InviteFriendsView
+                        me={state.me}
+                        emptySeatCount
+                        inviteCode=key
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        players={state.players}
+                        onGoPublicClick={_event => sendIO(IO_PrivateToPublic)}
+                        onStartGameClick={_event => sendIO(IO_TransitionGameNow)}
+                        private_game_host
+                      />
+                    | Public(_) => 
+                      <FindSubsView
+                        me={state.me}
+                        emptySeatCount
+                        onLeaveClick={_event => sendIO(IO_LeaveGame)}
+                        players={state.players}
+                      />
+                    };
+                  }
+                  
                 </Modal>
               | GameOverPhase(rematchDecisions) =>
                 <Modal visible=true>

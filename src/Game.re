@@ -1,17 +1,47 @@
 open AppPrelude;
 include SharedGame;
 
-type playerState = {
-  sock_id_maybe: option(sock_id),
-  pla_name: string,
+type playerData = {
   pla_hand: Hand.FaceUpHand.t,
   pla_tricks: list(Trick.t),
   pla_card: option(Card.t), /* Card on board */
-}
+};
 
-let initialPlayerState = playerId => {
-  sock_id_maybe: None,
-  pla_name: Player.stringOfId(playerId),
+type clientData = {
+  client_socket_id: sock_id,
+  client_username: string,
+  client_id: string,
+  client_initials: string,
+  client_profile_type: ClientSettings.profileType,
+  client_connected_at: milliseconds,
+};
+
+type clientMetaData = {
+  client_disconnected_at: milliseconds,
+};
+
+type clientState = 
+| Connected(clientData)
+| Disconnected(clientData, clientMetaData)
+| Vacant;
+
+let getUsername = (clients, quadId) =>
+  switch (clients->Quad.get(quadId, _)) {
+  | Connected(client)
+  | Disconnected(client, _) => client.client_username
+  | Vacant => Player.stringOfId(quadId)
+  };
+
+let countConnectedClients = clients => {
+  let clientIsConnected =
+    fun
+    | Connected(_) => true
+    | _ => false;
+
+  clients->Quad.countHaving(clientIsConnected);
+};
+
+let initPlayerData = () => {
   pla_hand: [],
   pla_tricks: [],
   pla_card: None,
@@ -19,12 +49,67 @@ let initialPlayerState = playerId => {
 
 [@decco] type notis = list(Noti.t);
 
+type findPlayersContext = { emptySeatCount: int, canSub: bool };
+
+type phase =
+  | IdlePhase(idleReason)
+  | FindSubsPhase(findSubsContext)
+  | FindPlayersPhase(findPlayersContext)
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase(Player.id)
+  | PackDepletedPhase
+  | GameOverPhase(Quad.t(rematchDecision))
+and findSubsContext = { emptySeatCount: int, phase}
+and idlePhaseContext = { maybeTimer: option(Timer.timeout), fromPhase: phase, toPhase: phase};
+
+let rec stringOfPhase =
+  fun
+  | IdlePhase(_) => "IdlePhase"
+  | FindSubsPhase({emptySeatCount, phase}) =>
+    "FindSubsPhase(" ++ string_of_int(emptySeatCount) ++ ", " ++ stringOfPhase(phase) ++ ")"
+  | FindPlayersPhase({emptySeatCount, canSub}) =>
+    "FindPlayersPhase(" ++ string_of_int(emptySeatCount) ++ ", " ++ string_of_bool(canSub) ++ ")"
+  | DealPhase => "DealPhase"
+  | BegPhase => "BegPhase"
+  | GiveOnePhase => "GiveOnePhase"
+  | RunPackPhase => "RunPackPhase"
+  | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Quad.stringifyId(playerId) ++ ")"
+  | PackDepletedPhase => "PackDepletedPhase"
+  | GameOverPhase(_) => "GameOverPhase"
+  ;
+
+let isPlayerActivePhase = fun
+  | DealPhase
+  | BegPhase
+  | GiveOnePhase
+  | RunPackPhase
+  | PlayerTurnPhase(_) 
+  | PackDepletedPhase => true
+  | IdlePhase(_)
+  | FindSubsPhase(_)
+  | FindPlayersPhase(_)
+  | GameOverPhase(_) 
+    => false
+  ;
+
+let isFaceDownPhase =
+  fun
+  | FindSubsPhase({ phase: BegPhase })
+  | BegPhase
+  | FindSubsPhase({ phase: GiveOnePhase })
+  | GiveOnePhase => true
+  | _ => false;
+
+
 type state = {
   game_id,
   deck: Deck.t,
-  players: (playerState, playerState, playerState, playerState),
+  players: (playerData, playerData, playerData, playerData),
+  clients: (clientState, clientState, clientState, clientState),
   teams: (teamState, teamState),
-  notis,
   maybeTrumpCard: option(Card.t),
   maybeLeadCard: option(Card.t),
   dealer: Player.id,
@@ -37,19 +122,41 @@ type state = {
   game_follow_suit: option(Card.Suit.t),
 };
 
+let isSeatTaken = clientState =>
+  switch (clientState) {
+  | Vacant => false
+  | Connected(_)
+  | Disconnected(_, _) => true
+  };
+
+
 module SockServ = BsSocket.Server.Make(SocketMessages);
 
 let debugOfState = (state) => {
   let stringOfPlayer = player => {
-    let name = player.pla_name;
-    let socket = Belt.Option.getWithDefault(player.sock_id_maybe, "None");
     let card = Card.codeOfMaybeCard(player.pla_card);
     let tricks =
       List.map(Trick.codeOfTrick, player.pla_tricks)
       |> Belt.List.toArray
       |> Js.Array.joinWith(", ");
 
-    {j|{$name, $socket, $card, [$tricks] }|j};
+    {j|{card-on-board: $card, tricks-taken: [$tricks] }|j};
+  };
+
+  let stringOfClientData = ({client_socket_id, client_username, client_id, client_initials}) => {
+    {j|{$client_socket_id, $client_username, $client_id, $client_initials}|j};
+  };
+
+  let stringOfClient = client => {
+    switch (client) {
+    | Vacant => "Vacant"
+    | Connected(clientData) =>
+      let clientDataText = clientData->stringOfClientData;
+      {j|Connected($clientDataText)|j};
+    | Disconnected(clientData, _) =>
+      let clientDataText = clientData->stringOfClientData;
+      {j|Disconnected($clientDataText)|j};
+    };
   };
 
   let stringOfTeamHigh =
@@ -71,6 +178,13 @@ let debugOfState = (state) => {
     "Player4": Quad.select(N4, stringOfPlayer, state.players),
   };
 
+  let debugOfClients = {
+    "Client 1": Quad.select(N1, stringOfClient, state.clients),
+    "Client 2": Quad.select(N2, stringOfClient, state.clients),
+    "Client 3": Quad.select(N3, stringOfClient, state.clients),
+    "Client 4": Quad.select(N4, stringOfClient, state.clients),
+  };
+
   let debugOf_game_follow_suit =
     state.game_follow_suit
     ->Belt.Option.mapWithDefault("None", (cardSuit) =>
@@ -88,6 +202,7 @@ let debugOfState = (state) => {
     "maybeTeamLow": stringOfTeamLow,
     "maybeTeamJack": stringOfTeamJack,
     "players": debugOfPlayers,
+    "clients": debugOfClients,
     "game_follow_suit": debugOf_game_follow_suit,
   };
 };
@@ -97,13 +212,13 @@ let initialState = () => {
     game_id: Public(""),
     deck: Deck.make() |> Deck.shuffle,
     players: (
-      initialPlayerState(N1),
-      initialPlayerState(N2),
-      initialPlayerState(N3),
-      initialPlayerState(N4),
+      initPlayerData(),
+      initPlayerData(),
+      initPlayerData(),
+      initPlayerData(),
     ),
+    clients: (Vacant, Vacant, Vacant, Vacant),
     teams: (initialTeamState, initialTeamState),
-    notis: [],
     maybeTrumpCard: None,
     maybeLeadCard: None,
     dealer: N1,
@@ -111,7 +226,7 @@ let initialState = () => {
     maybeTeamHigh: None,
     maybeTeamLow: None,
     maybeTeamJack: None,
-    phase: FindPlayersPhase(4, false),
+    phase: FindPlayersPhase({ emptySeatCount: 4, canSub: false }),
     maybeKickTimeoutId: None,
     game_follow_suit: None,
   };
@@ -120,7 +235,7 @@ let initialState = () => {
 let initPrivateGame = () => {
   // Generate a random string based on the string representation of
   // cards selected from the deck
-  let strId =
+  let key =
     Deck.make()
     |> Deck.shuffle
     |> Belt.List.take(_, 4)
@@ -129,43 +244,15 @@ let initPrivateGame = () => {
     |> Belt.List.toArray
     |> Js.Array.joinWith(" ");
 
-  {...initialState(), game_id: Private(strId)};
-};
-
-let getAllPlayerSockets = state => {
-  let rec f:
-    (Player.id, list((Player.id, sock_id))) =>
-    list((Player.id, sock_id)) =
-    (player, playerSockets) => {
-      let playerSockets =
-        switch (Quad.get(player, state.players).sock_id_maybe) {
-        | None => playerSockets
-        | Some(socket) => [(player, socket), ...playerSockets]
-        };
-      player == N4 ? playerSockets : f(Quad.nextId(player), playerSockets);
-    };
-  f(N1, []);
-};
-
-let playerCount = state => {
-  let (n1, n2, n3, n4) =
-    Quad.map(x => Js.Option.isSome(x.sock_id_maybe) ? 1 : 0, state.players);
-  n1 + n2 + n3 + n4;
-};
-
-let countPlayers = players => {
-  let (n1, n2, n3, n4) = 
-    Quad.map(x => Js.Option.isSome(x.sock_id_maybe) ? 1 : 0, players);
-  n1 + n2 + n3 + n4;
+  {...initialState(), game_id: Private({private_game_key: key, private_game_host: Quad.N1})};
 };
 
 let findEmptySeat = state => {
-  switch(Quad.toDict(state.players) |> List.filter(((_k:Player.id, v:playerState)) => Js.Option.isNone(v.sock_id_maybe))){
-    | [] => None
-    | [(pla_id, _v), ..._rest] => Some(pla_id)
-  }
+  switch (state.clients->Quad.withId->Quad.find(((_, clientState)) => clientState == Vacant)) {
+  | None => None
+  | Some((seatId, _)) => Some(seatId)
+  };
 };
-
 
 let isGameOverTest = state => {
   GameTeams.get(T1, state.teams).team_score >= SharedGame.settings.winningScore
@@ -190,22 +277,16 @@ let playerOfIntUnsafe =
     failwith("Expected a number in [1, 4] but got: " ++ string_of_int(n));
 
 
-let hasSocket = ( socket, state ) => {
-  getAllPlayerSockets(state)
-  |> List.map(((_player, socket)) => socket)
-  |> List.mem(socket)
-}
-
 module Filter = {
   type privacy = Private | Public | PrivateOrPublic;
-  type phase = FindPlayersPhase | FindSubsPhase | Other;
+  type simplePhase = FindPlayersPhase | FindSubsPhase | Other;
 
 
-  let simplifyPhase: SharedGame.phase => phase =
+  let simplifyPhase: phase => simplePhase =
     gamePhase => {
       switch (gamePhase) {
-      | FindPlayersPhase(_, _) => FindPlayersPhase
-      | FindSubsPhase(_, _) => FindSubsPhase
+      | FindPlayersPhase(_) => FindPlayersPhase
+      | FindSubsPhase(_) => FindSubsPhase
       | _ => Other
       };
     };
@@ -222,35 +303,13 @@ module Filter = {
     simplifyPhase(gameState.phase) == simplePhase;
 }
 
-let maybeGetSocketPlayer = (socket, state) => {
-  getAllPlayerSockets(state)
-  |> List.fold_left(
-       (result, (player, soc)) => soc == socket ? Some(player) : result,
-       None,
-     );
-};
-
-let removePlayerBySocket = (socketId, state) => {
-  switch(maybeGetSocketPlayer(socketId, state)){
-    | None => state
-    | Some(playerId) => 
-      {...state,
-        players: 
-          Quad.update( 
-            playerId, 
-            x => {...x, pla_name: Player.stringOfId(playerId), sock_id_maybe: None}, 
-            state.players)
-      }
-  };
-}
-
-
 /* A game is considered empty if no player slot has a socket attached. */
 let isEmpty = (state) => {
-  Quad.(
-    map(x => x.sock_id_maybe, state.players)
-    |> toList
-    |> Belt.List.every(_, Js.Option.isNone))
+  let isHeadless = fun
+  | Vacant => true
+  | Disconnected(_) => true
+  | Connected(_) => false;
+  state.clients->Quad.every(isHeadless, _)
 };
 
 let isPublic = (state) => {
@@ -268,11 +327,11 @@ let isPrivate = (state) => {
 };
 
 let isFindPlayersPhase = fun
-| FindPlayersPhase(_, _) => true
+| FindPlayersPhase(_) => true
 | _ => false;
 
 let isFindSubsPhase = fun
-| FindSubsPhase(_, _) => true
+| FindSubsPhase(_) => true
 | _ => false;
 
 
@@ -292,6 +351,30 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
       (playerId, playerPhase);
     };
 
+type event =
+  | Noop
+  | PlayCard(Player.id, Card.t)
+  | AdvanceRound
+  | NewRound
+  | Beg
+  | Stand
+  | GiveOne
+  | Deal
+  | RunPack
+  | DealAgain
+  | LeaveGame(Player.id)
+  | UpdateSubbing(bool)
+  | StartGame
+  | PrivateToPublic
+  | Transition(transitionContext)
+  | AttachClient(Quad.id, clientState)
+  | PlayerRematch(Player.id)
+  | StartRematch
+and transitionContext = {
+  fromPhase: phase,
+  toPhase: phase
+}
+;
 // module TestState = {
 //   // State initializers for testing specific functionality.
 

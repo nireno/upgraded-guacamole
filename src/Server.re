@@ -6,7 +6,7 @@ open AppPrelude;
 [@bs.val] external httpPortEnv: Js.Nullable.t(string) = "process.env.allfours_port";
 [@bs.val] external adminPasswordEnv: Js.Nullable.t(string) = "process.env.allfours_admin_password";
 
-[@bs.module] external nanoid: unit => string = "";
+[@bs.module] external nanoid: unit => string = "nanoid";
 
 let logger = appLogger.makeChild({"_module": "Server"});
 
@@ -51,7 +51,7 @@ let getGameStats = () => {
   };
 };
 
-let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
+let actionOfIO_Action: SocketMessages.clientToServer => Game.event =
   fun
   | IO_JoinGame(_)
   | IO_StartPrivateGame(_)
@@ -59,7 +59,11 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
   | IO_LeaveGame
   | IO_PlayAgain(_)
   | IO_Rematch
+  | IO_PrivateToPublic
+  | IO_RotateGuests
   | IO_Substitute(_) => Noop
+  | IO_TransitionGameNow => Noop
+  
   | IO_PlayCard(ioPlayerId, ioCard) => {
       switch (Player.id_decode(ioPlayerId |> Js.Json.parseExn)) {
       | Belt.Result.Error(_) => Noop
@@ -70,7 +74,6 @@ let actionOfIO_Action: SocketMessages.clientToServer => GameReducer.action =
         }
       };
     }
-  | IO_EndTrick => EndTrick
   | IO_Beg => Beg
   | IO_Stand => Stand
   | IO_GiveOne => GiveOne
@@ -117,41 +120,50 @@ SocketServer.onConnect(
         let logger = logger.makeChild({"_context": "socket-onevent", "event": stringOfEvent});
         logger.debug2("Handling `%s` event. ", stringOfEvent);
         switch (io) {
-        | IO_StartPrivateGame(username, _ioClientSettingsJson) =>
-          ServerStore.dispatch(CreatePrivateGame(sock_id, username));
+        | IO_StartPrivateGame(client_username, ioClientSettingsJson) =>
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
+            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
+          ServerStore.dispatch(CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type}));
           logger.info2(getGameStats(), "Game stats:");
 
-        | IO_JoinPrivateGame(_inviteCode, _username, _ioClientSettings) => () // handled later by Socket.onWithAck
+        | IO_JoinPrivateGame(_inviteCode, _client_username, _ioClientSettings) => () // handled later by Socket.onWithAck
 
-        | IO_JoinGame(_username, _ioClientSettingsJson) => () // handled later by Socket.onWithAck
+        | IO_JoinGame(_client_username, _ioClientSettingsJson) => () // handled later by Socket.onWithAck
 
         | IO_LeaveGame =>
           ServerStore.dispatch(RemovePlayerBySocket(sock_id));
           logger.info2(getGameStats(), "Game stats:");
 
-        | IO_PlayAgain(username, _ioClientSettingsJson) =>
+        | IO_PlayAgain(client_username, ioClientSettingsJson) =>
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
+            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
           switch (ServerStore.getGameBySocket(sock_id)) {
-          | None => ServerStore.dispatch(TriggerEffects([ServerEffect.ResetClient(sock_id)]))
+          | None => ServerStore.dispatch(TriggerEffects([ServerEvent.ResetClient(sock_id)]))
           | Some(gameState) =>
             switch (gameState.game_id) {
             | Public(_) =>
               let noAck = _ => ()
               ServerStore.dispatchMany([
                 RemovePlayerBySocket(sock_id),
-                AttachPublicPlayer(sock_id, username, noAck),
+                AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack: noAck, client_profile_type}),
               ])
             | Private(_) =>
               ServerStore.dispatchMany([
                 RemovePlayerBySocket(sock_id),
-                CreatePrivateGame(sock_id, username)]);
+                CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type})]);
             }
           };
           logger.info2(getGameStats(), "Game stats:");
 
-        | IO_Substitute(username) => ServerStore.dispatch(AttachSubstitute(sock_id, username))
+        | IO_Substitute(client_username, ioClientSettings) => 
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
+            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
+          ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials, client_profile_type}));
 
         | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
-
+        | IO_RotateGuests => ServerStore.dispatch(RotateGuests(sock_id))
+        | IO_TransitionGameNow => ServerStore.dispatch(FireGameTimer(sock_id))
+        | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
         | ioAction =>
           let action = ioAction |> actionOfIO_Action;
           ServerStore.dispatch(UpdateGameBySocket(sock_id, action));
@@ -169,12 +181,19 @@ SocketServer.onConnect(
         // logger.debug2("Handling `%s` event. ", stringOfEvent);
 
         switch (io) {
-        | IO_JoinPrivateGame(inviteCode, username, _ioClientSettings) =>
-          logger.info("Invite code: " ++ inviteCode);
-          ServerStore.dispatch(AttachPrivatePlayer(sock_id, username, inviteCode, ack));
+        | IO_JoinPrivateGame(invite_code, client_username, ioClientSettings) =>
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
+            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
+          logger.info("Invite code: " ++ invite_code);
+
+          ServerStore.dispatch(
+            AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack, client_profile_type}),
+          );
         
-        | IO_JoinGame(username, _ioClientSettingsJson) =>
-          ServerStore.dispatch(AttachPublicPlayer(sock_id, username, ack));
+        | IO_JoinGame(client_username, ioClientSettings) =>
+          let {ClientSettings.client_id, client_initials, client_profile_type} =
+            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
+          ServerStore.dispatch(AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack, client_profile_type}));
           logger.info2(getGameStats(), "Game stats:");
         | _ => 
           // todo: merge on and onWith ack so I don't have to ignore other messages like this

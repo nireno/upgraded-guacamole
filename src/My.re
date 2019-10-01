@@ -83,4 +83,45 @@ module Option = {
       }
     }
   }
+
+  let task = (option, task) =>
+    switch (option) {
+    | None => ()
+    | Some(data) => task(data)
+    };
+};
+
+module Document = {
+  type location;
+  [@bs.val] [@bs.scope "document"] external location: location = "location";
+};
+
+module URL = {
+  type url;
+  type searchParams;
+  [@bs.new] external makeURL: Document.location => url = "URL";
+  [@bs.get] external searchParams: url => searchParams = "searchParams";
+  [@bs.send] external getSearchParam: (searchParams, string) => Js.Nullable.t(string) = "get";
+
+  let getSearchParam = (searchParams, param) => {
+    searchParams->getSearchParam(param)->Js.Nullable.toOption;
+  };
+};
+
+module StringMap = {
+  /* Update the mapping, returning a pair of the (possibly unchanged) mapping 
+     and a maybe of the updated value. 
+
+     This is just a shortcut to avoid having to do an additional Belt.Map.String.get
+     after performing a Belt.Map.string.update in order to access the value that may
+     have been updated.
+     */
+  let update = (mapping, key, updateFn) =>
+    switch (mapping->Belt.Map.String.get(key)) {
+    | None => (mapping, None)
+    | Some(value) => 
+      let value' = updateFn(value);
+      let mapping' = mapping->Belt.Map.String.set(key, value');
+      (mapping', Some(value'))
+    };
 };

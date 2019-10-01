@@ -3,10 +3,8 @@ let appLogger = Pino.make({"messageKey": "_msg", "level": "debug", "_app": "allf
 
 type str_json = string;
 type sock_id = string;
-
-let teamIdtoName = (weTeamId, teamId) => {
-  teamId == weTeamId ? "We" : "Dem"
-};
+type milliseconds = float;
+type game_key = string;
 
 let leftPad = (s, ~n=0, ~c="\t", ()) => {
   let tabs = Js.String.repeat(n, c); 
@@ -41,3 +39,4 @@ type update('state, 'effect) =
   | SideEffects('state, list('effect))
 
 let daysToMillis = days => days * 24 * 60 * 60 * 1000;
+let secondsToMillis = seconds => seconds * 1000;

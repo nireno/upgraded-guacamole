@@ -12,12 +12,12 @@ let getGameBySocket: sock_id => option(Game.state) =
   sock_id => ServerState.getGameBySocket(sock_id, getState());
 
 
-let getGamesWhere: (~phase: Game.Filter.phase=?, ~privacy: Game.Filter.privacy=?, unit) => list(Game.state) =
+let getGamesWhere: (~phase: Game.Filter.simplePhase=?, ~privacy: Game.Filter.privacy=?, unit) => list(Game.state) =
   (~phase=?, ~privacy=PrivateOrPublic, ()) => {
     ServerState.getGamesWhere(~phase?, ~privacy, getState());
   };
 
-let rec dispatch: ServerState.msg => unit =
+let rec dispatch: ServerEvent.event => unit =
   msg => {
     let state = getState();
     switch (ServerState.update(msg, state)) {
@@ -25,13 +25,17 @@ let rec dispatch: ServerState.msg => unit =
     | Update(stateAftUpdate) => 
       store := stateAftUpdate
     | SideEffects(_, effects) => 
+      // let effectNames = effects->Belt.List.map(effect => effect->ServerEvent.debugOfEffect);
+      // logger.debug2("Performing effects", effectNames);
       List.forEach(effects, perform(getState()))
     | UpdateWithSideEffects(stateAftUpdate, effects) =>
+      // let effectNames = effects->Belt.List.map(effect => effect->ServerEvent.debugOfEffect);
+      // logger.debug2("Performing effects", effectNames);
       store := stateAftUpdate;
       effects->List.forEach(perform(stateAftUpdate));
     };
   }
-and perform: (ServerState.db, ServerEffect.effect) => unit =
+and perform: (ServerState.db, ServerEvent.effect) => unit =
   ({db_game} as db, effect) => {
     switch (effect) {
     | EmitClientState(sock_id, clientState) =>
@@ -41,8 +45,8 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
       let msg: SocketMessages.serverToClient = SetState(clientStateJson |> Js.Json.stringify);
       SocketServer.emit(msg, sock_id);
     
-    | EmitStateByGame(game_id) => 
-      switch (db_game->StringMap.get(game_id->Game.stringOfGameId)) {
+    | EmitStateByGame(game_key) => 
+      switch (db_game->StringMap.get(game_key)) {
       | None => 
         logger.debug("EmitStatByGame: game not found")
       | Some(gameState) =>
@@ -51,7 +55,7 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
         ->Belt.List.forEach(((sock_id_maybe, clientState)) =>
             switch (sock_id_maybe) {
             | None => ()
-            | Some(sock_id) => perform(db, ServerEffect.EmitClientState(sock_id, clientState))
+            | Some(sock_id) => perform(db, ServerEvent.EmitClientState(sock_id, clientState))
             }
           )
       };
@@ -63,37 +67,59 @@ and perform: (ServerState.db, ServerEffect.effect) => unit =
         SocketServer.emit(msg, clientToast.sock_id);
       })
 
-    | ResetKickTimeout(game_id) =>
-      perform(db, ServerEffect.ClearKickTimeout(game_id));
-      let timeoutId =
-        Js.Global.setTimeout(
-          () => dispatch(KickActivePlayer(game_id)),
-          SharedGame.settings.kickPlayerMillis,
-        );
-      dispatch(InsertKickTimeoutId(game_id, timeoutId))
-
-    | ClearKickTimeout(game_id) =>
-      switch(db_game->StringMap.get(game_id->Game.stringOfGameId)){
-      | None => ()
-      | Some(gameState) => 
-        switch(gameState.maybeKickTimeoutId){
-        | None => ()
-        | Some(kickTimeoutId) =>
-          Js.Global.clearTimeout(kickTimeoutId)
-          dispatch(DeleteKickTimeoutId(game_id));
-        }
-      }
-
-    | DelayThenAdvanceRound(game_id) =>
-      let timeout = Timer.startTimeout(() => dispatch(UpdateGame(game_id, AdvanceRound)), 2750);
-      dispatch(IdleWithTimeout(game_id, timeout));
 
     | EmitAck(ack, msg) => ack(msg)
     | ResetClient(sock_id) => 
       SocketServer.emit(Reset, sock_id);
-    };
-  };
 
-let dispatchMany: list(ServerState.msg) => unit = msgs => {
+    | NotifyPlayer(game_key, {noti_recipient: seat_id} as noti) =>
+      switch(db_game->StringMap.get(game_key)){
+      | None => ()
+      | Some(game) => 
+        switch(game.clients->Quad.get(seat_id, _)){
+        | Connected({client_socket_id}) =>
+          let msg: SocketMessages.serverToClient =
+            ShowToast(noti |> Noti.t_encode |> Js.Json.stringify);
+          SocketServer.emit(msg, client_socket_id);
+        | _ => ()
+        }
+      }
+    | CreateGameTimer(game_key, gameTimerType) =>
+      switch(gameTimerType){
+      | KickInactiveClientCountdown => 
+        let kickTimer =
+          Timer.startTimeout(
+            () => {
+              dispatch(KickActivePlayer(game_key))
+            },
+            SharedGame.settings.kickPlayerMillis,
+          );
+        dispatch(AddGameTimeout({game_key, timeout: kickTimer}));
+      
+      | TransitionGameCountdown(fromPhase, toPhase) =>
+        dispatch(
+          AddGameTimeout({
+            game_key,
+            timeout:
+              Timer.startTimeout(
+                () => dispatch(TransitionGame({game_key, fromPhase, toPhase})),
+                SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
+              ),
+          }),
+        );
+
+      | DelayedGameEvent(event, delayMilliseconds) =>
+        dispatch(
+          AddGameTimeout({
+            game_key,
+            timeout: Timer.startTimeout(() => dispatch(UpdateGame(game_key, event)), delayMilliseconds),
+          }),
+        );
+      }
+    | DiscardGameTimer(game_key) =>
+      dispatch(RemoveGameTimeout(game_key));
+    };
+  }
+  and dispatchMany: list(ServerEvent.event) => unit = msgs => {
   msgs->List.forEach(dispatch);
 }

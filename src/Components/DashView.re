@@ -5,9 +5,9 @@ module PlayerState = {
       <div> {playerId |> Player.stringOfId |> ReasonReact.string} </div>
       <div>
       {
-        switch(playerState.Game.sock_id_maybe){
+        switch(playerState.ClientGame.pla_profile_maybe){
           | None => "not connected"
-          | Some(_) => playerState.pla_name ++ " connected"
+          | Some(profile) => profile.client_username ++ " connected"
         }
         |> ReasonReact.string
       }

@@ -1,5 +1,10 @@
-/** Game.phase and dealerId is sufficient for deducing if there is an active player */
-let find: (Game.phase, Player.id) => option(Shared.ActivePlayer.t) = (gamePhase, dealerId) => {
+type t = {
+  id: Player.id,
+  phase: Player.phase
+};
+
+/** phase and dealerId is sufficient for deducing if there is an active player */
+let find: (ClientGame.phase, Player.id) => option(t) = (gamePhase, dealerId) => {
   switch(gamePhase){
   | DealPhase => Some({id: dealerId, phase: Player.PlayerDealPhase})
   | RunPackPhase => Some({id: dealerId, phase: Player.PlayerRunPackPhase})

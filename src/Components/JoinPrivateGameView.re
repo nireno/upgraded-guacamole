@@ -4,8 +4,9 @@ type formState =
   | Error;
 
 [@react.component]
-let make = (~sendJoinGame) => {
-  let (inviteCode, updateInviteCode) = React.useState(() => "");
+let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
+  let (inviteCode, updateInviteCode) =
+    React.useState(() => maybeInviteCode->Belt.Option.getWithDefault(""));
   let (state, updateState) = React.useState(() => Initial);
   let (canJoin, setCanJoin) = React.useState(() => true);
 
@@ -44,7 +45,7 @@ let make = (~sendJoinGame) => {
                type_="text"
                autoFocus=true
                minLength=8
-               maxLength=12
+               maxLength=15
                placeholder="Enter your invite code"
                defaultValue=inviteCode
                onChange=handleInputChanged
