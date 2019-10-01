@@ -216,12 +216,26 @@ let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
          effects @ [ServerEvent.CreateGameTimer(game_key, DelayedGameEvent(AdvanceRound, 2750))]
         )
       | GameOverPhase(rematchDecisions) when isRematchPrimed(rematchDecisions) =>
+
+        let haveAllPlayersAccepted =
+          rematchDecisions->Quad.every(decision =>
+            switch (decision) {
+            | RematchAccepted => true
+            | _ => false
+            }
+          , _
+          );
+
+        /* Only introduce a non-zero delay when rematch is primed and all players have accepted the rematch */
+        let delayMillis =
+          haveAllPlayersAccepted ? SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis : 0;
+
         ( stateNext
         , effects @ [ ServerEvent.CreateGameTimer(
                         game_key, 
                         DelayedGameEvent(
                           StartRematch, 
-                          SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis
+                          delayMillis
                         )
                       )
                     ]
