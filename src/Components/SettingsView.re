@@ -57,7 +57,7 @@ let make = (~onSave, ~settings) => {
     updateClientProfileType(_ => client_profile_type);
   };
 
-  let onChangeInitials = event => {
+  let _onChangeInitials = event => {
     let inputVal = event->ReactEvent.Form.target##value;
     let inputStripped = Js.String.split("", inputVal)
     ->Belt.Array.map(Js.String.toUpperCase)
