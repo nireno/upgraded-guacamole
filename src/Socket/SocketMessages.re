@@ -53,6 +53,8 @@ type serverToClient =
   | ShowToast(ioToast)
   | Reset
   | AckOk
-  | AckError(string);
+  | AckError(string)
+  | HandshakeFailed
+  ;
 
 type ack = serverToClient => unit

@@ -108,99 +108,109 @@ SocketServer.onConnect(
   socket => {
     let sock_id = SocketServer.Socket.getId(socket);
     let logger = logger.makeChild({"_context": "socket-onconnect", "sock_id": sock_id});
-    SocketServer.Store.dispatch(AddSocket(socket));
-    logger.info("Socket connected");
-    onSocketDisconnect(socket);
-    SocketServer.Socket.emit(socket, SocketMessages.Reset);
 
-    SocketServer.Socket.on(
-      socket,
-      io => {
-        let stringOfEvent = SocketMessages.stringOfClientToServer(io);
-        let logger = logger.makeChild({"_context": "socket-onevent", "event": stringOfEvent});
-        logger.debug2("Handling `%s` event. ", stringOfEvent);
-        switch (io) {
-        | IO_StartPrivateGame(client_username, ioClientSettingsJson) =>
-          let {ClientSettings.client_id, client_initials, client_profile_type} =
-            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
-          ServerStore.dispatch(CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type}));
-          logger.info2(getGameStats(), "Game stats:");
+    let isHandshakeOk =
+      SocketServer.Socket.getHandshake(socket)->SocketServer.Handshake.isHandshakeOk(~apiVersion="1.0.0");
+    if(isHandshakeOk){
+      SocketServer.Socket.on(
+        socket,
+        io => {
+          let stringOfEvent = SocketMessages.stringOfClientToServer(io);
+          let logger = logger.makeChild({"_context": "socket-onevent", "event": stringOfEvent});
+          logger.debug2("Handling `%s` event. ", stringOfEvent);
+          switch (io) {
+          | IO_StartPrivateGame(client_username, ioClientSettingsJson) =>
+            let {ClientSettings.client_id, client_initials, client_profile_type} =
+              decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
+            ServerStore.dispatch(CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type}));
+            logger.info2(getGameStats(), "Game stats:");
 
-        | IO_JoinPrivateGame(_inviteCode, _client_username, _ioClientSettings) => () // handled later by Socket.onWithAck
+          | IO_JoinPrivateGame(_inviteCode, _client_username, _ioClientSettings) => () // handled later by Socket.onWithAck
 
-        | IO_JoinGame(_client_username, _ioClientSettingsJson) => () // handled later by Socket.onWithAck
+          | IO_JoinGame(_client_username, _ioClientSettingsJson) => () // handled later by Socket.onWithAck
 
-        | IO_LeaveGame =>
-          ServerStore.dispatch(RemovePlayerBySocket(sock_id));
-          logger.info2(getGameStats(), "Game stats:");
+          | IO_LeaveGame =>
+            ServerStore.dispatch(RemovePlayerBySocket(sock_id));
+            logger.info2(getGameStats(), "Game stats:");
 
-        | IO_PlayAgain(client_username, ioClientSettingsJson) =>
-          let {ClientSettings.client_id, client_initials, client_profile_type} =
-            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
-          switch (ServerStore.getGameBySocket(sock_id)) {
-          | None => ServerStore.dispatch(TriggerEffects([ServerEvent.ResetClient(sock_id)]))
-          | Some(gameState) =>
-            switch (gameState.game_id) {
-            | Public(_) =>
-              let noAck = _ => ()
-              ServerStore.dispatchMany([
-                RemovePlayerBySocket(sock_id),
-                AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack: noAck, client_profile_type}),
-              ])
-            | Private(_) =>
-              ServerStore.dispatchMany([
-                RemovePlayerBySocket(sock_id),
-                CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type})]);
-            }
+          | IO_PlayAgain(client_username, ioClientSettingsJson) =>
+            let {ClientSettings.client_id, client_initials, client_profile_type} =
+              decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettingsJson);
+            switch (ServerStore.getGameBySocket(sock_id)) {
+            | None => ServerStore.dispatch(TriggerEffects([ServerEvent.ResetClient(sock_id)]))
+            | Some(gameState) =>
+              switch (gameState.game_id) {
+              | Public(_) =>
+                let noAck = _ => ()
+                ServerStore.dispatchMany([
+                  RemovePlayerBySocket(sock_id),
+                  AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack: noAck, client_profile_type}),
+                ])
+              | Private(_) =>
+                ServerStore.dispatchMany([
+                  RemovePlayerBySocket(sock_id),
+                  CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type})]);
+              }
+            };
+            logger.info2(getGameStats(), "Game stats:");
+
+          | IO_Substitute(client_username, ioClientSettings) => 
+            let {ClientSettings.client_id, client_initials, client_profile_type} =
+              decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
+            ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials, client_profile_type}));
+
+          | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
+          | IO_RotateGuests => ServerStore.dispatch(RotateGuests(sock_id))
+          | IO_TransitionGameNow => ServerStore.dispatch(FireGameTimer(sock_id))
+          | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
+          | ioAction =>
+            let action = ioAction |> actionOfIO_Action;
+            ServerStore.dispatch(UpdateGameBySocket(sock_id, action));
           };
-          logger.info2(getGameStats(), "Game stats:");
+        },
+      );
 
-        | IO_Substitute(client_username, ioClientSettings) => 
-          let {ClientSettings.client_id, client_initials, client_profile_type} =
-            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
-          ServerStore.dispatch(AttachSubstitute({sock_id, client_username, client_id, client_initials, client_profile_type}));
+      SocketServer.Socket.onWithAck(
+        socket,
+        (io, ack) => {
+          let stringOfEvent = SocketMessages.stringOfClientToServer(io);
+          let logger =
+            logger.makeChild({"_context": "socket-onevent-with-ack", "event": stringOfEvent});
 
-        | IO_Rematch => ServerStore.dispatch(Rematch(sock_id))
-        | IO_RotateGuests => ServerStore.dispatch(RotateGuests(sock_id))
-        | IO_TransitionGameNow => ServerStore.dispatch(FireGameTimer(sock_id))
-        | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
-        | ioAction =>
-          let action = ioAction |> actionOfIO_Action;
-          ServerStore.dispatch(UpdateGameBySocket(sock_id, action));
-        };
-      },
-    );
+          // logger.debug2("Handling `%s` event. ", stringOfEvent);
 
-    SocketServer.Socket.onWithAck(
-      socket,
-      (io, ack) => {
-        let stringOfEvent = SocketMessages.stringOfClientToServer(io);
-        let logger =
-          logger.makeChild({"_context": "socket-onevent-with-ack", "event": stringOfEvent});
+          switch (io) {
+          | IO_JoinPrivateGame(invite_code, client_username, ioClientSettings) =>
+            let {ClientSettings.client_id, client_initials, client_profile_type} =
+              decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
+            logger.info("Invite code: " ++ invite_code);
 
-        // logger.debug2("Handling `%s` event. ", stringOfEvent);
+            ServerStore.dispatch(
+              AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack, client_profile_type}),
+            );
+          
+          | IO_JoinGame(client_username, ioClientSettings) =>
+            let {ClientSettings.client_id, client_initials, client_profile_type} =
+              decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
+            ServerStore.dispatch(AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack, client_profile_type}));
+            logger.info2(getGameStats(), "Game stats:");
+          | _ => 
+            // todo: merge on and onWith ack so I don't have to ignore other messages like this
+            ()
+          };
+        },
+      );
+      SocketServer.Store.dispatch(AddSocket(socket));
+      logger.info("Socket connected");
+      onSocketDisconnect(socket);
+      SocketServer.Socket.emit(socket, SocketMessages.Reset);
+    } else {
+      logger.warn2("Handshake failed. Disconnecting socket.", socket->SocketServer.Socket.getId);
+      SocketServer.Socket.emit(socket, SocketMessages.HandshakeFailed);
+      socket->SocketServer.Socket.disconnect(true) |> ignore;
+    }
 
-        switch (io) {
-        | IO_JoinPrivateGame(invite_code, client_username, ioClientSettings) =>
-          let {ClientSettings.client_id, client_initials, client_profile_type} =
-            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
-          logger.info("Invite code: " ++ invite_code);
 
-          ServerStore.dispatch(
-            AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack, client_profile_type}),
-          );
-        
-        | IO_JoinGame(client_username, ioClientSettings) =>
-          let {ClientSettings.client_id, client_initials, client_profile_type} =
-            decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings);
-          ServerStore.dispatch(AttachPublicPlayer({sock_id, client_username, client_id, client_initials, ack, client_profile_type}));
-          logger.info2(getGameStats(), "Game stats:");
-        | _ => 
-          // todo: merge on and onWith ack so I don't have to ignore other messages like this
-          ()
-        };
-      },
-    );
   },
 );
 

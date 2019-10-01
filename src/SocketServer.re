@@ -5,6 +5,23 @@ module Ns = BsSocket.Namespace.Make(SocketMessages);
 
 let logger = appLogger.makeChild({"_context": "SocketStore"});
 
+
+module Handshake = {
+  type query = {. "apiVersion": Js.undefined(string)};
+  type handshake = {. "query": Js.undefined(query)};
+
+  let isHandshakeOk = (handshake, ~apiVersion) => {
+    switch (handshake##query->Js.Undefined.toOption) {
+    | None => false
+    | Some(query) =>
+      switch (query##apiVersion->Js.Undefined.toOption) {
+      | None => false
+      | Some(version) => apiVersion == version
+      }
+    };
+  };
+};
+
 module Store: {
   type msg =
     | AddSocket(BsSocket.Server.socketT)
