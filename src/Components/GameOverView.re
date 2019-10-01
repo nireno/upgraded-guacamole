@@ -39,7 +39,10 @@ let make =
                   ClientSettings.dicebearTypeOfProfileType(client_profile_type);
         switch (decision) {
         | SharedGame.RematchAccepted =>
-          <img src={j|https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg|j} />
+          <img
+            style={ReactDOMRe.Style.make(~transitionProperty="transform", ~transitionDuration="0.3s", ())}
+            src={j|https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg|j}
+          />
         | RematchDenied => <EmptySeatAvatarView />;
         | RematchUnknown =>
           <img
