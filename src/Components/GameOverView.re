@@ -91,6 +91,16 @@ let make =
       </div>;
     }
 
+    {
+      SharedGame.isRematchPrimed(rematchDecisions)
+        ? <div className="mt-6 text-xl text-center">
+            <span> {ReasonReact.string("Rematch in: ")} </span>
+            <CountdownView from={SharedGame.settings.gameStartingCountdownSeconds} />
+          </div>
+        : 
+        ReasonReact.null
+    }
+
     <div className="flex flex-row justify-around w-full">
       <button className="btn btn-grey" onClick=leaveClick>
         {ReasonReact.string("Back Home")}
