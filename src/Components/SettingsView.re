@@ -92,6 +92,7 @@ let make = (~onSave, ~settings) => {
             <input
               type_="radio"
               id="client-profile-male"
+              className="ml-auto mr-auto"
               name="client-profile-type"
               value="masculine"
               defaultChecked={client_profile_type == Masculine}
@@ -103,6 +104,7 @@ let make = (~onSave, ~settings) => {
             <input
               type_="radio"
               id="client-profile-female"
+              className="ml-auto mr-auto"
               name="client-profile-type"
               value="feminine"
               defaultChecked={client_profile_type == Feminine}
@@ -114,6 +116,7 @@ let make = (~onSave, ~settings) => {
             <input
               type_="radio"
               id="client-profile-machine"
+              className="ml-auto mr-auto"
               name="client-profile-type"
               value="machine"
               defaultChecked={client_profile_type == Machine}
@@ -125,6 +128,7 @@ let make = (~onSave, ~settings) => {
             <input
               type_="radio"
               id="client-profile-abstract"
+              className="ml-auto mr-auto"
               name="client-profile-type"
               value="abstract"
               defaultChecked={client_profile_type == Abstract}
