@@ -10,7 +10,7 @@ let make = (~initials, ~seed, ~style) => {
       xmlns="http://www.w3.org/2000/svg"
       xmlnsXlink="http://www.w3.org/1999/xlink"
       style={ReactDOMRe.Style.make(~isolation="isolate", ~background="#FFF", ())}
-      viewBox="0 0 3 1"
+      viewBox="0 0 12 4"
       version="1.1">
       <text
         x="50%"
@@ -19,11 +19,10 @@ let make = (~initials, ~seed, ~style) => {
           ~lineHeight="1",
           ~fontFamily=
             "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif",
-          ~fontSize="1px",
+          ~fontSize="4px",
           (),
         )}
         dominantBaseline="central"
-        alignmentBaseline="central"
         fill="#000"
         textAnchor="middle">
         {ReasonReact.string(initials)}
