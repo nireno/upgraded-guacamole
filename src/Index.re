@@ -68,7 +68,10 @@ module App = {
               | ActiveGameState(gameState) =>
                 let nextGameState = Client.GameReducer.reducer(gameState, MatchServerState(serverState));
                 ActiveGameState(nextGameState);
-              | _ => ActiveGameState(serverState);
+              | _ => 
+                // Hinder user from navigating away from an in-progress game.
+                Raw.addUnloadListener(Raw.preventUnloadListener);
+                ActiveGameState(serverState);
               }
               updateMachineState(update)
             }
@@ -80,7 +83,9 @@ module App = {
           | Reset =>
             updateMachineState(machineState =>
               switch (machineState) {
-              | ActiveGameState(_) => MainMenuState(MainMenuDefaultState)
+              | ActiveGameState(_) => 
+                Raw.removeUnloadListener(Raw.preventUnloadListener);
+                MainMenuState(MainMenuDefaultState)
               | otherState => otherState
               }
             );

@@ -5,18 +5,6 @@ type action =
 let reducer = (prevState, action) => {
   switch (action) {
   | MatchServerState(nextState) => 
-    let stringOfPrevGameId = SharedGame.stringOfGameId(prevState.gameId);
-    let stringOfNextGameId = SharedGame.stringOfGameId(nextState.gameId);
-
-    // Prevent user from navigating away from an in-progress game.
-    if (stringOfPrevGameId == "" && stringOfNextGameId != "") {
-      Raw.addUnloadListener(Raw.preventUnloadListener);
-    } else if (stringOfPrevGameId != "" && stringOfNextGameId == "") {
-      Raw.removeUnloadListener(Raw.preventUnloadListener);
-    } else {
-      ();
-    };
-
     let prevNumEmptySeats =
       switch (prevState.gamePhase) {
       | FindPlayersPhase({ emptySeatCount })
