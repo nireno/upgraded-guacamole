@@ -1122,7 +1122,22 @@ let reduce = (action, state) => {
       switch (state.phase) {
       | GameOverPhase(rematchDecisions) =>
         let rematchDecisions = rematchDecisions->Quad.put(seat_id, SharedGame.RematchAccepted, _);
-        ({...state, phase: GameOverPhase(rematchDecisions)}, effects)
+        let nextPhase = GameOverPhase(rematchDecisions);
+
+        /* I'm initializing the state here to make use of the delay between rematch primed and game start.
+        This helps to give any cards that were in the player's hand, enough time animate out. */
+        let nextState =
+          SharedGame.isRematchPrimed(rematchDecisions)
+            ? {
+              ...Game.initialState(),
+              game_id: state.game_id,
+              players: Quad.make(_ => Game.initPlayerData()),
+              clients: state.clients,
+              phase: nextPhase,
+            }
+            : {...state, phase: nextPhase};
+
+        (nextState, effects)
 
       | _ => (state, effects)
       };
@@ -1142,10 +1157,7 @@ let reduce = (action, state) => {
 
         (
           {
-            ...Game.initialState(),
-            game_id: state.game_id,
-            players: Quad.make(_ => Game.initPlayerData()),
-            clients: state.clients,
+            ...state,
             phase,
           },
           effects,
