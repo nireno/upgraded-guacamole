@@ -18,15 +18,24 @@ let isPlayerTurn = (turn, playerId) => {
   };
 };
 
+type mainMenuState = 
+| MainMenuDefaultState
+| MainMenuReloadState;
+
+type machineState = 
+| MainMenuState(mainMenuState)
+| ActiveGameState(ClientGame.state)
+;
+
 module App = {
   [@react.component]
   let make = () => {
     let url = ReasonReactRouter.useUrl();
-    let (state, dispatch) = React.useReducer(Client.GameReducer.reducer, ClientGame.initialState);
     let (maybeSocket, setMaybeSocket) = React.useState(() => None);
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial);
     let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
     let (canJoinPublicGame, updateCanJoinPublicGame) = React.useState(() => true);
+    let ( machineState, updateMachineState ) = React.useState(() => MainMenuState(MainMenuDefaultState));
 
     let saveClientSettings = newClientSettings => {
       LocalStorage.updateClientSettings(newClientSettings);
@@ -45,77 +54,23 @@ module App = {
       None;
     });
 
-    let maybeActivePlayer = Shared.ActivePlayer.find(state.gamePhase, state.dealer);
-    let activePlayerName =
-      maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
-        switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
-        | None => ""
-        | Some(profile) => profile.client_username
-        }
-      );
-
-    let (
-      (_southName, southCard, southZ, southTags, southIdenticonSeed, southIdenticonStyle, southInitials),
-      (_eastName, eastCard, eastZ, eastTags, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
-      (_northName, northCard, northZ, northTags, northIdenticonSeed, northIdenticonStyle, northInitials),
-      (_westName, westCard, westZ, westTags, westIdenticonSeed, westIdenticonStyle, westInitials),
-    ) =
-      Player.playersAsQuad(~startFrom=state.me, ())
-      |> Quad.map(playerId =>
-           Quad.select(
-             playerId,
-             x => {
-               let tags = [];
-               let tags = state.dealer == playerId ? tags @ [PlayerTagsView.Dealer] : tags;
-               let tags =
-                 switch (maybeActivePlayer) {
-                 | None => tags
-                 | Some({id: activePlayerId}) =>
-                   playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
-                 };
-                 
-               let initials = switch(playerId){
-               | N1 => "P1"
-               | N2 => "P2"
-               | N3 => "P3"
-               | N4 => "P4"
-               };
-               
-               let (identiconSeed, identiconStyle) = switch(x.pla_profile_maybe){
-               | None => ("no-profile", "identicon")
-               | Some(profile) => (profile.client_identicon, profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType)
-               };
-
-               (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags, identiconSeed, identiconStyle, initials);
-             },
-             state.players,
-           )
-         );
-
-    /**
-    When it is time to remove cards from the board, state.leader should also
-    be the trick winner. So this will determine the direction/player the cards
-    should animate toward.
-    */
-    let animationLeaveTo =
-      switch (Player.turnDistance(state.me, state.leader)) {
-      | 1 => CardTransition.East
-      | 2 => CardTransition.North
-      | 3 => CardTransition.West
-      | _ => CardTransition.South
-      };
-
     React.useEffect0(
       () => {
-        let socket = ClientSocket.T.create();
+        let socket = ClientSocket.T.createWithUrl("/?apiVersion=1.0.0");
         setMaybeSocket(_ => Some(socket));
         ClientSocket.T.on(socket, x =>
           switch (x) {
           | SetState(ioClientState) =>
             switch (ClientGame.state_decode(ioClientState |> Js.Json.parseExn)) {
             | Belt.Result.Error(err) => Js.log(err)
-            | Belt.Result.Ok(state) =>
-              dispatch(MatchServerState(state));
+            | Belt.Result.Ok(serverState) =>
+              let update = (machineState) => switch(machineState){
+              | ActiveGameState(gameState) =>
+                let nextGameState = Client.GameReducer.reducer(gameState, MatchServerState(serverState));
+                ActiveGameState(nextGameState);
+              | _ => ActiveGameState(serverState);
+              }
+              updateMachineState(update)
             }
           | ShowToast(ioToast) =>
             switch (Noti.t_decode(ioToast |> Js.Json.parseExn)) {
@@ -123,9 +78,16 @@ module App = {
             | Belt.Result.Ok(toast) => updateNotis(AddOne(toast))
             }
           | Reset =>
-            dispatch(MatchServerState(ClientGame.initialState));
+            updateMachineState(machineState =>
+              switch (machineState) {
+              | ActiveGameState(_) => MainMenuState(MainMenuDefaultState)
+              | otherState => otherState
+              }
+            );
             updateNotis(Reset(Noti.State.initial));
           | AckOk | AckError(_) => ()
+          | HandshakeFailed => 
+            updateMachineState(_curr => MainMenuState(MainMenuReloadState));
           }
         );
         None;
@@ -164,48 +126,9 @@ module App = {
       </div>;
     };
 
-    let (weTeam, demTeam) =
-      switch (teamOfPlayer(state.me)) {
-      | Team.T1 => (GameTeams.get(T1, state.teams), GameTeams.get(T2, state.teams))
-      | Team.T2 => (GameTeams.get(T2, state.teams), GameTeams.get(T1, state.teams))
-      };
-
-    let bgBoard =
-      switch (maybeActivePlayer) {
-      | None => " bg-orange-500 "
-      | Some({id: activePlayerId}) =>
-        state.me == activePlayerId ? " bg-green-500 " : " bg-orange-500 "
-      };
-
     let handleAppClick = _ => {
       /* Clear notifications when user taps anywhere in the app. */
       updateNotis( RemoveKind(Noti.Confirm) );
-    };
-
-    let addUniqueTimoutNoti = msg => {
-      let isTimeoutNoti = noti =>
-        switch (noti.Noti.noti_kind) {
-        | Duration(_) => true
-        | _ => false
-        };
-
-      let similarMessages =
-        List.filter(noti => isTimeoutNoti(noti) && noti.noti_message == Text(msg), notis);
-      switch (similarMessages) {
-      | [] =>
-        updateNotis(
-          AddOne(
-            Noti.{
-              noti_id: Nanoid.nanoid(),
-              noti_recipient: state.me,
-              noti_level: Danger,
-              noti_kind: Duration(5000),
-              noti_message: Text(msg),
-            },
-          ),
-        )
-      | _ => ()
-      };
     };
 
     let handleCreatePrivateGameClick = _event => {
@@ -221,8 +144,6 @@ module App = {
       );
     };
     
-    let stringOfGameId = SharedGame.stringOfGameId(state.gameId);
-
     let onExperimentalClick = _event => ReasonReactRouter.replace("./feedback");
 
     let onExperimentalJoinClick = _event => {
@@ -302,8 +223,10 @@ module App = {
       ref={ReactDOMRe.Ref.domRef(appRef)}
       className="all-fours-game font-sans flex flex-col relative mx-auto"
       onClick=handleAppClick>
-      {stringOfGameId == ""
-         ? <MenuView>
+      {
+        switch(machineState){
+        | MainMenuState(state) =>
+          <MenuView>
              <div
                className="app-name text-white text-5xl"
                style={ReactDOMRe.Style.make(
@@ -362,8 +285,119 @@ module App = {
                   }}
                 </div>
               }}
+              {
+                switch(state){
+                | MainMenuDefaultState => ReasonReact.null
+                | MainMenuReloadState => 
+                  <Modal visible=true>
+                    <RefreshPrompt />
+                  </Modal>
+                }
+              }
            </MenuView>
-         : <>
+        | ActiveGameState(state) =>
+
+          let maybeActivePlayer = Shared.ActivePlayer.find(state.gamePhase, state.dealer);
+          let activePlayerName =
+            maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
+              switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
+              | None => ""
+              | Some(profile) => profile.client_username
+              }
+            );
+
+          let (
+            (_southName, southCard, southZ, southTags, southIdenticonSeed, southIdenticonStyle, southInitials),
+            (_eastName, eastCard, eastZ, eastTags, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
+            (_northName, northCard, northZ, northTags, northIdenticonSeed, northIdenticonStyle, northInitials),
+            (_westName, westCard, westZ, westTags, westIdenticonSeed, westIdenticonStyle, westInitials),
+          ) =
+            Player.playersAsQuad(~startFrom=state.me, ())
+            |> Quad.map(playerId =>
+                  Quad.select(
+                    playerId,
+                    x => {
+                      let tags = [];
+                      let tags = state.dealer == playerId ? tags @ [PlayerTagsView.Dealer] : tags;
+                      let tags =
+                        switch (maybeActivePlayer) {
+                        | None => tags
+                        | Some({id: activePlayerId}) =>
+                          playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
+                        };
+                        
+                      let initials = switch(playerId){
+                      | N1 => "P1"
+                      | N2 => "P2"
+                      | N3 => "P3"
+                      | N4 => "P4"
+                      };
+                      
+                      let (identiconSeed, identiconStyle) = switch(x.pla_profile_maybe){
+                      | None => ("no-profile", "identicon")
+                      | Some(profile) => (profile.client_identicon, profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType)
+                      };
+
+                      (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags, identiconSeed, identiconStyle, initials);
+                    },
+                    state.players,
+                  )
+                );
+
+          /**
+          When it is time to remove cards from the board, state.leader should also
+          be the trick winner. So this will determine the direction/player the cards
+          should animate toward.
+          */
+          let animationLeaveTo =
+            switch (Player.turnDistance(state.me, state.leader)) {
+            | 1 => CardTransition.East
+            | 2 => CardTransition.North
+            | 3 => CardTransition.West
+            | _ => CardTransition.South
+            };
+          
+          let (weTeam, demTeam) =
+            switch (teamOfPlayer(state.me)) {
+            | Team.T1 => (GameTeams.get(T1, state.teams), GameTeams.get(T2, state.teams))
+            | Team.T2 => (GameTeams.get(T2, state.teams), GameTeams.get(T1, state.teams))
+            };
+
+          let bgBoard =
+            switch (maybeActivePlayer) {
+            | None => " bg-orange-500 "
+            | Some({id: activePlayerId}) =>
+              state.me == activePlayerId ? " bg-green-500 " : " bg-orange-500 "
+            };
+            
+          let addUniqueTimoutNoti = msg => {
+            let isTimeoutNoti = noti =>
+              switch (noti.Noti.noti_kind) {
+              | Duration(_) => true
+              | _ => false
+              };
+
+            let similarMessages =
+              List.filter(noti => isTimeoutNoti(noti) && noti.noti_message == Text(msg), notis);
+            switch (similarMessages) {
+            | [] =>
+              updateNotis(
+                AddOne(
+                  Noti.{
+                    noti_id: Nanoid.nanoid(),
+                    noti_recipient: state.me,
+                    noti_level: Danger,
+                    noti_kind: Duration(5000),
+                    noti_message: Text(msg),
+                  },
+                ),
+              )
+            | _ => ()
+            };
+          };
+          
+          let stringOfGameId = SharedGame.stringOfGameId(state.gameId);
+          <>
              <div className="trump-card self-center">
                <CardTransition.PlayCard
                  maybeCard={state.maybeTrumpCard}
@@ -684,8 +718,10 @@ module App = {
                   </div>
                 </div>;
               }}
-           </>}
-    </div>;
+           </>
+        }
+      }
+    </div>
     }
   };
 };

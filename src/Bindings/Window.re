@@ -1,0 +1,1 @@
+[@bs.val] [@bs.scope ("window", "location")] external reload : bool => unit = "reload";
