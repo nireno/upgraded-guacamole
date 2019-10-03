@@ -12,10 +12,10 @@ let getGameBySocket: sock_id => option(Game.state) =
   sock_id => ServerState.getGameBySocket(sock_id, getState());
 
 
-let getGamesWhere: (~phase: Game.Filter.simplePhase=?, ~privacy: Game.Filter.privacy=?, unit) => list(Game.state) =
-  (~phase=?, ~privacy=PrivateOrPublic, ()) => {
-    ServerState.getGamesWhere(~phase?, ~privacy, getState());
-  };
+// let getGamesWhere: (~phase: Game.Filter.simplePhase=?, ~privacy: Game.Filter.privacy=?, unit) => list(Game.state) =
+//   (~phase=?, ~privacy=PrivateOrPublic, ()) => {
+//     ServerState.getGamesWhere(~phase?, ~privacy, getState());
+//   };
 
 let rec dispatch: ServerEvent.event => unit =
   msg => {

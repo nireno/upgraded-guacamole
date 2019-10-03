@@ -83,27 +83,27 @@ let getGameClientSeat = (db_game, sock_id) => {
 
 
 
-let getGamesWhere: (~phase: Game.Filter.simplePhase=?, ~privacy: Game.Filter.privacy=?, db) => list(Game.state) =
-  (~phase as maybePhase=? , ~privacy=PrivateOrPublic, {db_game}) => {
-    let matchesPrivacy = gameState => {
-      switch (gameState.Game.game_id) {
-      | Public(_) when privacy == Public => true
-      | Private(_) when privacy == Private => true
-      | _ when privacy == PrivateOrPublic => true
-      | _ => false
-      };
-    };
-    let matchesPhase = gameState => {
-      switch (maybePhase) {
-      | None => true
-      | Some(phase) => phase == Game.Filter.simplifyPhase(gameState.Game.phase)
-      };
-    };
-    db_game
-    ->StringMap.valuesToArray
-    ->Array.keep(gameState => gameState->matchesPrivacy && gameState->matchesPhase)
-    ->List.fromArray;
-  };
+// let getGamesWhere: (~phase: Game.Filter.simplePhase=?, ~privacy: Game.Filter.privacy=?, db) => list(Game.state) =
+//   (~phase as maybePhase=? , ~privacy=PrivateOrPublic, {db_game}) => {
+//     let matchesPrivacy = gameState => {
+//       switch (gameState.Game.game_id) {
+//       | Public(_) when privacy == Public => true
+//       | Private(_) when privacy == Private => true
+//       | _ when privacy == PrivateOrPublic => true
+//       | _ => false
+//       };
+//     };
+//     let matchesPhase = gameState => {
+//       switch (maybePhase) {
+//       | None => true
+//       | Some(phase) => phase == Game.Filter.simplifyPhase(gameState.Game.phase)
+//       };
+//     };
+//     db_game
+//     ->StringMap.valuesToArray
+//     ->Array.keep(gameState => gameState->matchesPrivacy && gameState->matchesPhase)
+//     ->List.fromArray;
+//   };
 
 type sock_id = string;
 type username = string;
@@ -374,8 +374,21 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       let logger =
         logger.makeChild({"_context": "AttachPublicPlayer", "sock_id": sock_id, "client_username": client_username});
 
-      switch (getGamesWhere(~privacy=Public, ~phase=FindPlayersPhase, db)) {
-      | [] =>
+      let findUnfilledPublicGame = (db_game) =>
+        db_game->StringMap.valuesToArray
+        ->Belt.Array.getBy(game => {
+          switch(game.Game.game_id){
+          | Private(_) => false
+          | Public(_) => 
+            switch(game.phase){
+            | FindPlayersPhase({emptySeatCount}) when emptySeatCount > 0 => true
+            | _ => false
+            }
+          }
+        });
+
+      switch (findUnfilledPublicGame(db_game)) {
+      | None =>
         logger.info("Attaching player to a new public game.");
         let nextGameId = db.db_public_games_created + 1;
         let gameState = {...Game.initialState(), game_id: Public(nextGameId->string_of_int)};
@@ -391,7 +404,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           ],
           Update(db'),
         );
-      | [gameState, ..._rest] => 
+      | Some(gameState) => 
         logger.info("Attaching player to an existing public game.");
         updateMany(
           [
