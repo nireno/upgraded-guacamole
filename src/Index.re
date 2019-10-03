@@ -451,8 +451,8 @@ module App = {
                     //    <div className="text-sm h-5">{ReasonReact.string(westName)}</div>
                     //  </div>
                      <div
-                       className="w-1/3 absolute top-1/2 right-0"
-                       style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
+                       className="w-1/3 absolute bottom-0 left-0 opacity-80"
+                       style={ReactDOMRe.Style.make(~transform="translate(0, 100%)", ())}>
                        <PlayerIdentityView initials=westInitials seed=westIdenticonSeed style=westIdenticonStyle />
                      </div>
                      <img
@@ -497,7 +497,7 @@ module App = {
                       //    <div className="text-sm h-5">{ReasonReact.string(northName)}</div>
                       //  </div>
                        <div
-                         className="w-1/3 absolute top-1/2 -left-1/2"
+                         className="w-1/3 absolute top-1/2 -left-1/2 opacity-80"
                          style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
                          <PlayerIdentityView initials=northInitials seed=northIdenticonSeed style=northIdenticonStyle />
                        </div>
@@ -517,7 +517,7 @@ module App = {
                      | None => ReasonReact.null
                      | Some(partnerInfo) =>
                        <PlayerCardTagsView
-                         className="absolute w-full top-0 left-0"
+                         className="absolute w-full top-0 left-0 leading-none"
                          style={ReactDOMRe.Style.make(~transform="translate(50%)", ())}
                          cards={partnerInfo.cardsToDisplay}
                        />
@@ -534,7 +534,7 @@ module App = {
                       //    <div>{ReasonReact.string(southName)}</div>
                       //  </div>
                        <div
-                         className="w-1/3 absolute top-1/2 right-0"
+                         className="w-1/3 absolute top-1/2 right-0 opacity-80"
                          style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
                          <PlayerIdentityView initials=southInitials seed=southIdenticonSeed style=southIdenticonStyle />
                        </div>
@@ -563,8 +563,8 @@ module App = {
                     //    <div className="text-sm h-5">{ReasonReact.string(eastName)}</div>
                     //  </div>
                      <div
-                       className="w-1/3 absolute top-1/2 left-0"
-                       style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
+                       className="w-1/3 absolute top-0 right-0 opacity-80"
+                       style={ReactDOMRe.Style.make(~transform="translate(0, -100%)", ())}>
                        <PlayerIdentityView initials=eastInitials seed=eastIdenticonSeed style=eastIdenticonStyle />
                      </div>
                      <img className="card relative" src="./static/img/card_transparent.svg" />

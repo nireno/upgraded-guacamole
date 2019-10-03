@@ -7,9 +7,9 @@ let make = (~cards, ~className=?, ~style=?) => {
          let rankCode = Card.Rank.codeOfRank(card.rank);
          <img
            key={j|$rankCode$suitCode|j}
-           className="border-solid border-black"
+           className="border border-solid border-black bg-white"
            src={j|./static/card_icons/$rankCode$suitCode.svg|j}
-           style={ReactDOMRe.Style.make(~width="10%", ~display="inline-block", ())}
+           style={ReactDOMRe.Style.make(~width="12%", ~display="inline-block", ())}
          />;
        },
        cards,
