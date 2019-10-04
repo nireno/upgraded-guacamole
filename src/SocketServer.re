@@ -7,16 +7,16 @@ let logger = appLogger.makeChild({"_context": "SocketStore"});
 
 
 module Handshake = {
-  type query = {. "apiVersion": Js.undefined(string)};
+  type query = {. "clientVersion": Js.undefined(string)};
   type handshake = {. "query": Js.undefined(query)};
 
-  let isHandshakeOk = (handshake, ~apiVersion) => {
+  let isHandshakeOk = (handshake, ~clientVersion) => {
     switch (handshake##query->Js.Undefined.toOption) {
     | None => false
     | Some(query) =>
-      switch (query##apiVersion->Js.Undefined.toOption) {
+      switch (query##clientVersion->Js.Undefined.toOption) {
       | None => false
-      | Some(version) => apiVersion == version
+      | Some(version) => clientVersion == version
       }
     };
   };

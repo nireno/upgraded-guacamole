@@ -110,7 +110,7 @@ SocketServer.onConnect(
     let logger = logger.makeChild({"_context": "socket-onconnect", "sock_id": sock_id});
 
     let isHandshakeOk =
-      SocketServer.Socket.getHandshake(socket)->SocketServer.Handshake.isHandshakeOk(~apiVersion="1.0.0");
+      SocketServer.Socket.getHandshake(socket)->SocketServer.Handshake.isHandshakeOk(~clientVersion="0.2.0");
     if(isHandshakeOk){
       SocketServer.Socket.on(
         socket,
