@@ -54,11 +54,14 @@ module App = {
       None;
     });
 
+    let queryParams = My.Document.location->My.URL.makeURL->My.URL.searchParams;
+    let maybeInviteCode = queryParams->My.URL.getSearchParam("g")
+
     React.useEffect0(
       () => {
         let socket = ClientSocket.T.createWithUrl("/?apiVersion=1.0.0");
         setMaybeSocket(_ => Some(socket));
-        ClientSocket.T.on(socket, x =>
+        ClientSocket.T.on(socket, x => 
           switch (x) {
           | SetState(ioClientState) =>
             switch (ClientGame.state_decode(ioClientState |> Js.Json.parseExn)) {
@@ -95,6 +98,10 @@ module App = {
             updateMachineState(_curr => MainMenuState(MainMenuReloadState));
           }
         );
+        switch (maybeInviteCode) {
+        | Some(inviteCode) => ReasonReactRouter.replace("/private-games?g=" ++ inviteCode)
+        | None => ()
+        };
         None;
       }
     );
@@ -179,16 +186,6 @@ module App = {
       );
     };
 
-    let queryParams = My.Document.location->My.URL.makeURL->My.URL.searchParams;
-    let maybeInviteCode = queryParams->My.URL.getSearchParam("inviteCode");
-
-    // This is a workaround of sorts that makes it so that I don't have to 
-    // figure out how to handle non-root urls such as /private-games/ from the server side
-    // instead I just do the forwarding based on the query parameters I might find.
-    maybeInviteCode->My.Option.task(inviteCode =>
-      ReasonReactRouter.replace({j|/private-games?inviteCode=$inviteCode|j})
-    );
-
     /** 
       Reading the url backwords allows the app to work when it isn't served from
       the root url a website i.e. it will work whether the app is served from the
@@ -249,7 +246,7 @@ module App = {
                  {ReasonReact.string("Join Public Game")}
                </button>;
              }
-             <button className="btn btn-blue mt-1" onClick={_ => ReasonReactRouter.replace("./private-games/")}>
+             <button className="btn btn-blue mt-1 hidden" onClick={_ => ReasonReactRouter.replace("./private-games/")}>
                {ReasonReact.string("Join Private Game")}
              </button>
              <button className="btn btn-blue mt-1" onClick=handleCreatePrivateGameClick>

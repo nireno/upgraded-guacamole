@@ -35,6 +35,7 @@ module.exports = {
     }),
     new webpack.EnvironmentPlugin([
       'NODE_ENV', 
+      'allfours_base_url',
       'allfours_feedback_url',
       'allfours_help_url', 
       'allfours_rules_url']), 

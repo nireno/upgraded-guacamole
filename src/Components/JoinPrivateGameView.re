@@ -10,19 +10,33 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
   let (state, updateState) = React.useState(() => Initial);
   let (canJoin, setCanJoin) = React.useState(() => true);
 
-  let submit = _event => {
+  let doJoin = (inviteCode) => {
     setCanJoin(_ => false);
     let ackJoinGame = response => {
       setCanJoin(_ => true);
       switch (response) {
       | SocketMessages.AckOk =>
         updateState(_ => Initial);
-        ReasonReactRouter.replace("../");
-      | _ => updateState(_ => Error)
+        ReasonReactRouter.replace("/");
+      | _ => 
+        updateState(_ => Error)
       };
     };
     updateState(_ => Query);
     sendJoinGame(inviteCode, ackJoinGame);
+  };
+
+  React.useEffect0(() => {
+    switch (maybeInviteCode) {
+    | None => ()
+    | Some(inviteCode) => 
+      doJoin(inviteCode)
+    };
+    None
+  })
+
+  let onJoinClick = _event => {
+    doJoin(inviteCode);
   };
 
   let handleInputChanged = event => {
@@ -56,7 +70,7 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
            <div onClick={_ => ReasonReactRouter.replace("../")} className="link link-blue" href="#">
              {ReasonReact.string("Cancel")}
            </div>
-            <button onClick=submit disabled={!(canJoin)} className={"btn btn-blue " ++ (canJoin ? "" : "btn-disabled")} type_="button">
+            <button onClick=onJoinClick disabled={!(canJoin)} className={"btn btn-blue " ++ (canJoin ? "" : "btn-disabled")} type_="button">
               {ReasonReact.string("Join Game")}
             </button>
          </div>
@@ -65,9 +79,9 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
      | Error =>
        <div className="text-center">
          <div className="text-xl"> {ReasonReact.string("No games found")} </div>
-         <div> {ReasonReact.string("Verify your invite code and try again.")} </div>
+         <div> {ReasonReact.string("Verify your invite link and try again.")} </div>
          <button
-           onClick={_ => updateState(_ => Initial)} className="btn btn-blue mt-4" type_="button">
+           onClick={_ => ReasonReactRouter.replace("/")} className="btn btn-blue mt-4" type_="button">
            {ReasonReact.string("Ok")}
          </button>
        </div>

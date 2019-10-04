@@ -1,3 +1,10 @@
+[@bs.val] external baseUrlEnv: Js.Nullable.t(string) = "process.env.allfours_base_url";
+let baseUrl = 
+  switch(baseUrlEnv->Js.Nullable.toOption){
+  | None => "http://localhost:3000"
+  | Some(url) => url
+  };
+
 [@react.component]
 let make =
     (
@@ -11,11 +18,13 @@ let make =
       ~onStartGameClick,
       ~private_game_host,
     ) => {
+  let normalizedInviteCode = Shared.normalizeInviteCode(inviteCode);
+  let inviteUrl = {j|$baseUrl/?g=$normalizedInviteCode|j};
   let rotatedPlayers =  
     Player.playersAsQuad(~startFrom=me, ())
     ->Quad.map(playerId => Quad.get(playerId, players), _);
 
-  let initialCopyText = "copy invite code";
+  let initialCopyText = "Copy invite link";
   let (copyText, updateCopyText) = React.useState(() => initialCopyText);
   let friends = Grammar.byNumber(emptySeatCount, "friend");
   let emptySeatText = string_of_int(emptySeatCount);
@@ -33,7 +42,7 @@ let make =
     switch (maybeClipboard^) {
     | None => ()
     | Some(clipboard) =>
-      updateCopyText(_ => "Copied!");
+      updateCopyText(_ => "Link copied! Now paste the link in a text message and send it to your friends.");
       clipboard->Clipboard.off("success");
       clipboard->Clipboard.off("error");
 
@@ -44,7 +53,7 @@ let make =
             clipboard->Clipboard.on("success", onCopySuccess);
             clipboard->Clipboard.on("error", onCopyFailure);
           },
-          2000,
+          15000,
         );
       maybeCopySuccessTimeout := Some(timeoutId);
     };
@@ -52,7 +61,7 @@ let make =
 
 
   React.useEffect0(() => {
-    let stringOfTrigger = _ => inviteCode;
+    let stringOfTrigger = _ => inviteUrl
     let clipboard = Clipboard.make(".copy-invite-code", Clipboard.options(~text=stringOfTrigger));
     clipboard->Clipboard.on("success", onCopySuccess);
     clipboard->Clipboard.on("error", onCopyFailure);
@@ -90,7 +99,7 @@ let make =
             );
 
         <div
-          className="w-1/2 my-8"
+          className="w-1/2 my-4"
           style={ReactDOMRe.Style.make(
             ~display="grid",
             ~gridTemplateColumns="repeat(3, 1fr)",
@@ -122,15 +131,55 @@ let make =
           <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
         </div>;
         }
-  <div className="text-center">
-    <div className="text-xl">
-      {ReasonReact.string({j|Tell your friends to join a private game with this invite code:|j})}
-    </div>
-    <div className="mt-6 mb-1"> {ReasonReact.string({j|$inviteCode|j})} </div>
+  <div className="text-center w-full">
+    <div>{ReasonReact.string("Your invite link")}</div>
+    <pre style={ReactDOMRe.Style.make(~whiteSpace="pre-wrap", ())}>
+      <a
+        className="copy-invite-code block text-xs cursor-pointer border border-solid border-gray-300 bg-gray-100">
+        {ReasonReact.string(inviteUrl)}
+      </a>
+    </pre>
     <a
-      className="copy-invite-code block text-base text-blue-700 hover:text-blue-500 underline cursor-pointer">
+      className="copy-invite-code block text-base text-blue-700 hover:text-blue-500 underline cursor-pointer my-2">
       {ReasonReact.string(copyText)}
     </a>
+    //Experimental whatsapp link
+    // {
+    //   let encodedInviteUrl = Js.Global.encodeURI(inviteUrl);
+    //   let whatsappText = "Hi! Join my All Fours game at " ++ encodedInviteUrl;
+    //   <a
+    //     className="block text-base text-blue-700 hover:text-blue-500 underline cursor-pointer"
+    //     target="_blank"
+    //     rel="noopener noreferrer"
+    //     href={"https://wa.me/?text=" ++ whatsappText}>
+    //     {ReasonReact.string("Share link with WhatsApp")}
+    //   </a>;
+    // }
+
+    //Experimental whatsapp link 2
+    // {
+    //   ReactDOMRe.createElementVariadic(
+    //     "a",
+    //     ~props=
+    //       ReactDOMRe.objToDOMProps({
+    //         "target": "_blank",
+    //         "data-action": "share/whatsapp/share",
+    //         "href": "whatsapp://send?text=The text to share!",
+    //       }),
+    //     [|
+    //       {
+    //         ReasonReact.string(inviteUrl);
+    //       },
+    //     |],
+    //   );
+    // }
+    
+    // Share invite code
+    // <div className="mt-2">
+    //   {ReasonReact.string({j|Or tell your friends to select "Join Private Game" from the "Main Menu" and submit the invite code below.|j})}
+    // </div>
+    // <div className="mt-2 mb-2"> {ReasonReact.string({j|$inviteCode|j})} </div>
+
     {
       emptySeatCount == 0 
         ? <div>
