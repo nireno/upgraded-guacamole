@@ -99,7 +99,7 @@ module App = {
           }
         );
         switch (maybeInviteCode) {
-        | Some(inviteCode) => ReasonReactRouter.replace("/private-games?g=" ++ inviteCode)
+        | Some(inviteCode) => ReasonReactRouter.replace("./private-games?g=" ++ inviteCode)
         | None => ()
         };
         None;
