@@ -17,7 +17,7 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
       switch (response) {
       | SocketMessages.AckOk =>
         updateState(_ => Initial);
-        ReasonReactRouter.replace("../");
+        ReasonReactRouter.replace("./");
       | _ => 
         updateState(_ => Error)
       };
