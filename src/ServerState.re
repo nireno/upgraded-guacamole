@@ -270,7 +270,10 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
     | ReplaceGame(game_key, game) =>
       logger.debug2(Game.debugOfState(game), "Updating game");
       updateMany(
-        [ServerEvent.RemoveGame(game_key), AddGame(game), TriggerEffects([EmitStateByGame(game_key)])],
+        [ ServerEvent.RemoveGame(game_key)
+        , AddGame(game)
+        , TriggerEffects([EmitStateByGame(game_key)])
+        ],
         NoUpdate(db),
       )
 
@@ -416,15 +419,36 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         );
       };
     | CreatePrivateGame({sock_id, client_username, client_id, client_initials, client_profile_type}) =>
-      let db' = {...db, db_private_games_created: db.db_private_games_created + 1};
-      let gameState = initPrivateGame(db.db_game);
-      updateMany(
-        [
-          AddGame(gameState), 
-          AttachPlayer({game_key: gameState.game_id->SharedGame.stringOfGameId, sock_id, client_username, client_id, client_initials, client_profile_type})
-        ],
-        Update(db'),
-      );
+      let findClientExistingGame = (sock_id, db_game) =>
+        db_game->StringMap.findFirstBy((_k, {Game.clients}) =>
+          switch (
+            clients->Quad.find(clientState =>
+              switch (clientState) {
+              | Connected({client_socket_id}) when client_socket_id == sock_id => true
+              | _ => false
+              }
+            )
+          ) {
+          | None => false
+          | Some(_) => true
+          }
+        );
+
+      switch(findClientExistingGame(sock_id, db_game)){
+      | None =>
+        let db' = {...db, db_private_games_created: db.db_private_games_created + 1};
+        let gameState = initPrivateGame(db.db_game);
+        updateMany(
+          [
+            AddGame(gameState), 
+            AttachPlayer({game_key: gameState.game_id->SharedGame.stringOfGameId, sock_id, client_username, client_id, client_initials, client_profile_type})
+          ],
+          Update(db'),
+        );
+      | Some((game_key, _game)) => 
+        logger.warn("CreatePrivateGame event from client already attached to existing game.");
+        SideEffects(db, [EmitStateByGame(game_key)])
+      }
     | AttachPrivatePlayer({sock_id, client_username, client_id, client_initials, invite_code, ack, client_profile_type}) =>
       // let logger = logger.makeChild({"_context": "AttachPrivatePlayer", "sock_id"});
 
