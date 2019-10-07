@@ -190,10 +190,10 @@ let addLeaveStateEffects = (statePrev, (stateNext, effects)) => {
     : {
       let game_key = statePrev.game_id->SharedGame.stringOfGameId;
       switch (statePrev.phase) {
-      | GameOverPhase(rematchDecisions) when isRematchPrimed(rematchDecisions) =>
+      | GameOverPhase(rematchDecisions) when Game.isRematchAcceptedByAll(rematchDecisions) =>
         (stateNext, effects @ [ServerEvent.DiscardGameTimer(game_key)])
-      | FindPlayersPhase({emptySeatCount: 4}) as phase
-      | FindSubsPhase({emptySeatCount: 4}) as phase
+      | FindPlayersPhase({emptySeatCount: 0}) as phase
+      | FindSubsPhase({emptySeatCount: 0}) as phase
       | IdlePhase(DelayTrickCollection) as phase
       | phase when phase->Game.isPlayerActivePhase =>
         /* At the moment I assume there is only 1 concurrent timer in effect for a game
@@ -215,27 +215,13 @@ let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
         (stateNext, 
          effects @ [ServerEvent.CreateGameTimer(game_key, DelayedGameEvent(AdvanceRound, 2750))]
         )
-      | GameOverPhase(rematchDecisions) when isRematchPrimed(rematchDecisions) =>
-
-        let haveAllPlayersAccepted =
-          rematchDecisions->Quad.every(decision =>
-            switch (decision) {
-            | RematchAccepted => true
-            | _ => false
-            }
-          , _
-          );
-
-        /* Only introduce a non-zero delay when rematch is primed and all players have accepted the rematch */
-        let delayMillis =
-          haveAllPlayersAccepted ? SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis : 0;
-
+      | GameOverPhase(rematchDecisions) when Game.isRematchAcceptedByAll(rematchDecisions) =>
         ( stateNext
         , effects @ [ ServerEvent.CreateGameTimer(
                         game_key, 
                         DelayedGameEvent(
                           StartRematch, 
-                          delayMillis
+                          SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis
                         )
                       )
                     ]

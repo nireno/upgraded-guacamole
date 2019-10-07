@@ -33,6 +33,15 @@ let isRematchDecisionKnown =
 
 /* The rematch is is ready to start when all players have made a decision */
 let isRematchPrimed = Quad.every(isRematchDecisionKnown, _);
+let isRematchAcceptedByAll =
+  Quad.every(
+    decision =>
+      switch (decision) {
+      | RematchAccepted => true
+      | _ => false
+      },
+    _,
+  );
 
 let stringOfGameId =
   fun
