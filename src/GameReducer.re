@@ -844,35 +844,24 @@ let reduce = (action, state) => {
 
         let client_username = state.clients->Game.getUsername(state.dealer);
 
-        let prevKick =
+        let {Card.suit: prevTrumpSuit} as prevTrumpCard =
           switch (state.maybeTrumpCard) {
           | None =>
             failwith(
-              "DealMore action expected state.maybeTrumpCard to be Some thing but got None",
+              "RunPack action expected state.maybeTrumpCard to be Some thing but got None",
             )
           | Some(k) => k
           };
 
-        let kick = Js.Option.getExn(state.maybeTrumpCard);
-        let {Card.suit: kickSuit} = kick;
-
         let (cards, deck) = Deck.deal(1, deck);
-        let kick' = List.hd(cards);
-        let {Card.rank: kickRank', Card.suit: kickSuit'} = kick';
-        let pointsKicked = kickPoints(kickRank');
+        let {Card.rank: nextTrumpRank, Card.suit: nextTrumpSuit} as nextTrumpCard = List.hd(cards);
+        let pointsKicked = kickPoints(nextTrumpRank);
 
-        let state =
-          kickSuit == kickSuit'
-            ? {
-              ...state,
-              phase:
-                List.length(deck) < SharedGame.settings.nCardsToRun * 4 + 1 // enough for 4 players and kicking 1 trump?
-                  ? PackDepletedPhase : RunPackPhase,
-            }
-            : {
-              ...state,
-              phase: PlayerTurnPhase(state.leader),
-            };
+        let nextPhase =
+          prevTrumpSuit == nextTrumpSuit
+            ? List.length(deck) < SharedGame.settings.nCardsToRun * 4 + 1 // enough for 4 players and kicking 1 trump?
+                ? PackDepletedPhase : RunPackPhase
+            : PlayerTurnPhase(state.leader);
         
         let runPackNotiEffects = Noti.playerBroadcast(
               ~from=state.dealer,
@@ -880,79 +869,44 @@ let reduce = (action, state) => {
               (),
             )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti))
 
-        let state = {
-          ...state,
-          players:
-            state.players
-            |> Quad.update(N1, x => {...x, pla_hand: x.pla_hand @ p1Hand})
-            |> Quad.update(N2, x => {...x, pla_hand: x.pla_hand @ p2Hand})
-            |> Quad.update(N3, x => {...x, pla_hand: x.pla_hand @ p3Hand})
-            |> Quad.update(N4, x => {...x, pla_hand: x.pla_hand @ p4Hand}),
-          deck: deck @ [prevKick],
-          maybeTrumpCard: Some(kick'),
-          teams:
-            GameTeams.update(
-              teamOfPlayer(state.dealer),
-              x => {...x, team_score: x.team_score + pointsKicked},
-              state.teams,
-            ),
-        };
+        let nextPlayers = 
+          state.players
+          ->Quad.zip((p1Hand, p2Hand, p3Hand, p4Hand))
+          ->Quad.map(((p, hand)) => {...p, pla_hand: p.pla_hand @ hand}, _); 
 
+        let nextTrumpCardMaybe = Some(nextTrumpCard);
         let (maybeTeamHigh, maybeTeamLow) =
           getTeamHighAndLowMaybes(
-            state.players->Quad.map(player => player.pla_hand, _),
-            state.maybeTrumpCard,
+            nextPlayers->Quad.map(player => player.pla_hand, _),
+            nextTrumpCardMaybe,
           );
 
         let kickTrumpNotiEffects =
-          getKickTrumpNotis(state.maybeTrumpCard)
+          getKickTrumpNotis(nextTrumpCardMaybe)
           ->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
 
-        let state = 
-          {...state
+        let nextState =
+          { ...state
+          , phase: nextPhase
+          , players: nextPlayers
+          , deck: deck @ [prevTrumpCard]
+          , maybeTrumpCard: nextTrumpCardMaybe
+          , teams:
+               GameTeams.update(
+                 teamOfPlayer(state.dealer),
+                 x => {...x, team_score: x.team_score + pointsKicked},
+                 state.teams,
+               )
           , maybeTeamHigh
           , maybeTeamLow
           };
 
-        if (isGameOverTest(state)) {
-          ( {...state
-            , phase: GameOverPhase(Quad.make(_ => RematchUnknown))
-            }
-          , kickTrumpNotiEffects @ runPackNotiEffects @ effects);
-        } else {
-          switch (state.phase) {
-          | PlayerTurnPhase(_) =>
-            let (gameOverTestState, (h, l, j, g)) =
-              Util.updateUntil(
-                [maybeAddHighPoint, maybeAddLowPoint],
-                ((state, _)) => isGameOverTest(state),
-                (state, (None, None, None, None)),
-              );
-
-            if (isGameOverTest(gameOverTestState)) {
-              let roundSummaryNotiEffects =
-                Noti.broadcast(
-                  ~msg=
-                    RoundSummary({
-                      noti_maybeTeamHigh: h,
-                      noti_maybeTeamLow: l,
-                      noti_maybeTeamJack: j,
-                      noti_maybeTeamGame: g,
-                    }),
-                  ~kind=Confirm,
-                  (),
-                )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
-
-              ( {...gameOverTestState
-                , phase: GameOverPhase(Quad.make(_ => RematchUnknown))
-                }
-              , roundSummaryNotiEffects @ effects);
-            } else {
-              ( state, effects );
-            };
-          | _ => ( state, effects )
-          };
-        };
+        ( 
+          { ...nextState
+          , phase: isGameOverTest(nextState) ? GameOverPhase(Quad.make(_ => RematchUnknown)) : nextState.phase
+          }
+        , kickTrumpNotiEffects @ runPackNotiEffects @ effects
+        )
 
       | _ =>
         logger.warn("`RunPack` recieved out of phase.");
