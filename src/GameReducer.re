@@ -111,6 +111,33 @@ let maybeAddJackPoints = (( state, awards )) =>
     (state, (h, l, Some(jackAwardData), g))
   };
 
+let isCardInTrick = card => Quad.exists(c => c == card, _);
+let isCardInPlayerTricks = (card, player) =>
+  player.pla_tricks |> List.exists(isCardInTrick(card));
+
+let isCardInGameTrick = (state, card) => {
+  state.players->Quad.exists(isCardInPlayerTricks(card), _);
+};
+
+let isHighCardInGameTrick = state =>
+  switch (state.maybeTeamHigh) {
+  | Some({winning_card}) when isCardInGameTrick(state, winning_card) => true
+  | _ => false
+  };
+
+let isLowCardInGameTrick = state =>
+  switch (state.maybeTeamLow) {
+  | Some({winning_card}) when isCardInGameTrick(state, winning_card) => true
+  | _ => false
+  };
+
+let getActiveScoreMods = state => {
+  let activeScoreMods = [maybeAddJackPoints];
+  let activeScoreMods =
+    isLowCardInGameTrick(state) ? [maybeAddLowPoint, ...activeScoreMods] : activeScoreMods;
+  isHighCardInGameTrick(state) ? [maybeAddHighPoint, ...activeScoreMods] : activeScoreMods;
+};
+
 let getKickTrumpNotis = (maybeTrumpCard) =>
   switch (maybeTrumpCard) {
   | Some(trumpCard) when kickPoints(trumpCard.Card.rank) > 0 =>
@@ -634,7 +661,7 @@ let reduce = (action, state) => {
 
         let (gameOverTestState, (h, l, j, g)) =
           Util.updateUntil(
-            [maybeAddHighPoint, maybeAddLowPoint, maybeAddJackPoints],
+            getActiveScoreMods(state),
             ((state, _)) => isGameOverTest(state),
             (state, (None, None, None, None)),
           );
@@ -717,40 +744,11 @@ let reduce = (action, state) => {
             maybeTeamLow,
           };
 
-          let (gameOverTestState, (h, l, j, g)) =
-            Util.updateUntil(
-              [maybeAddHighPoint, maybeAddLowPoint],
-              ((state, _)) => isGameOverTest(state),
-              (state', (None, None, None, None)),
-            );
-
-          if (isGameOverTest(gameOverTestState)) {
-            let notis =
-              Noti.broadcast(
-                ~msg=
-                  RoundSummary({
-                    noti_maybeTeamHigh: h,
-                    noti_maybeTeamLow: l,
-                    noti_maybeTeamJack: j,
-                    noti_maybeTeamGame: g,
-                  }),
-                ~kind=Confirm,
-                (),
-              );
-            
-            let notiEffects = notis->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
-            ({
-              ...gameOverTestState,
-              phase: GameOverPhase(Quad.make(_ => RematchUnknown)),
-            }, notiEffects @ effects);
-          } else {
-            ( { ...state' // don't use gameOverTestState here. Points for high and low should usually be added at the end of the round.
-              , phase: PlayerTurnPhase(beggerId),
-              }
-            , effects
-            )
-          };
-
+          ( { ...state' 
+            , phase: PlayerTurnPhase(beggerId),
+            }
+          , effects
+          )
         };
       | _ =>
         logger.warn("`Stand` recieved out of phase.");
@@ -800,33 +798,7 @@ let reduce = (action, state) => {
             maybeTeamLow,
           };
 
-          let (gameOverTestState, (h, l, j, g)) =
-            Util.updateUntil(
-              [maybeAddHighPoint, maybeAddLowPoint],
-              ((state, _)) => isGameOverTest(state),
-              (state', (None, None, None, None)),
-            );
-
-          if (isGameOverTest(gameOverTestState)) {
-            let roundSummaryNotiEffects =
-              Noti.broadcast(
-                ~msg=
-                  RoundSummary({
-                    noti_maybeTeamHigh: h,
-                    noti_maybeTeamLow: l,
-                    noti_maybeTeamJack: j,
-                    noti_maybeTeamGame: g,
-                  }),
-                ~kind=Confirm,
-                (),
-              )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
-            (
-              {...gameOverTestState, phase: GameOverPhase(Quad.make(_ => RematchUnknown))},
-              roundSummaryNotiEffects @ effects,
-            );
-          } else {
             ({...state', phase: PlayerTurnPhase(state.leader)}, giveOneNotiEffects @ effects);
-          };
         };
       | _ =>
         logger.warn("`GiveOne` recieved out of phase.");
