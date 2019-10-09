@@ -1039,15 +1039,32 @@ let reduce = (action, state) => {
         /* I'm initializing the state here to make use of the delay between rematch primed and game start.
         This helps to give any cards that were in the player's hand, enough time animate out. */
         let nextState =
-          SharedGame.isRematchPrimed(rematchDecisions)
-            ? {
+          if (SharedGame.isRematchPrimed(rematchDecisions)) {
+            let ({team_score: team1Score}, {team_score: team2Score}) = state.teams;
+            let winningTeamId = team1Score >= team2Score ? Team.T1 : T2;
+
+            /* Transfer dealing responsibility to the next player on the losing team. */
+            let selectNextDealer = (currDealerId, winningTeamId) => {
+              let nextToDealerId = Quad.nextId(currDealerId);
+              let currDealerPartnerId = Player.getPartner(currDealerId);
+              let teamOfDealer = teamOfPlayer(currDealerId);
+              teamOfDealer == winningTeamId ? nextToDealerId : currDealerPartnerId;
+            };
+
+            let nextDealer = selectNextDealer(state.dealer, winningTeamId);
+
+            {
               ...Game.initialState(),
               game_id: state.game_id,
               players: Quad.make(_ => Game.initPlayerData()),
+              dealer: nextDealer,
               clients: state.clients,
               phase: nextPhase,
-            }
-            : {...state, phase: nextPhase};
+            };
+          } else {
+            {...state, phase: nextPhase};
+          };
+            
 
         (nextState, effects)
 
