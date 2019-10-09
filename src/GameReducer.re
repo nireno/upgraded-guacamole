@@ -119,23 +119,23 @@ let isCardInGameTrick = (state, card) => {
   state.players->Quad.exists(isCardInPlayerTricks(card), _);
 };
 
-let isHighCardInGameTrick = state =>
+let isHighTrumpInGameTrick = state =>
   switch (state.maybeTeamHigh) {
   | Some({winning_card}) when isCardInGameTrick(state, winning_card) => true
   | _ => false
   };
 
-let isLowCardInGameTrick = state =>
+let isLowTrumpInGameTrick = state =>
   switch (state.maybeTeamLow) {
   | Some({winning_card}) when isCardInGameTrick(state, winning_card) => true
   | _ => false
   };
 
 let getActiveScoreMods = state => {
-  let activeScoreMods = [maybeAddJackPoints];
-  let activeScoreMods =
-    isLowCardInGameTrick(state) ? [maybeAddLowPoint, ...activeScoreMods] : activeScoreMods;
-  isHighCardInGameTrick(state) ? [maybeAddHighPoint, ...activeScoreMods] : activeScoreMods;
+  let isHighTrumpInGameTrick = isHighTrumpInGameTrick(state);
+  isHighTrumpInGameTrick && isLowTrumpInGameTrick(state)
+    ? [maybeAddHighPoint, maybeAddLowPoint, maybeAddJackPoints]
+    : isHighTrumpInGameTrick ? [maybeAddHighPoint] : [];
 };
 
 let getKickTrumpNotis = (maybeTrumpCard) =>
