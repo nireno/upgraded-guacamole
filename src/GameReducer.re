@@ -914,23 +914,27 @@ let reduce = (action, state) => {
       | Connected(client)
       | Disconnected(client, _) =>
         let getNextPhase = (nPlayersToFind, currentPhase) => {
-          switch (currentPhase) {
-          | FindSubsPhase({phase: subPhase}) => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: subPhase })
-          | FindPlayersPhase({ canSub }) => FindPlayersPhase({ emptySeatCount: nPlayersToFind, canSub })
-          | GameOverPhase(rematchDecisions) =>
-            let rematchDecisions = rematchDecisions->Quad.put(leavingPlayerId, RematchDenied, _);
-            let numRematchUnknowns =
-              rematchDecisions->Quad.countHaving(_, decision => decision == RematchUnknown);
-            if (numRematchUnknowns == 0) {
-              FindPlayersPhase({ emptySeatCount: nPlayersToFind, canSub: false });
-            } else {
-              GameOverPhase(rematchDecisions);
-            };
+          if(isNewGameCheck(state)){
+            FindPlayersPhase({emptySeatCount: nPlayersToFind, canSub: false})
+          } else {
+            switch (currentPhase) {
+            | FindSubsPhase({phase: subPhase}) => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: subPhase })
+            | FindPlayersPhase({ canSub }) => FindPlayersPhase({ emptySeatCount: nPlayersToFind, canSub })
+            | GameOverPhase(rematchDecisions) =>
+              let rematchDecisions = rematchDecisions->Quad.put(leavingPlayerId, RematchDenied, _);
+              let numRematchUnknowns =
+                rematchDecisions->Quad.countHaving(_, decision => decision == RematchUnknown);
+              if (numRematchUnknowns == 0) {
+                FindPlayersPhase({ emptySeatCount: nPlayersToFind, canSub: false });
+              } else {
+                GameOverPhase(rematchDecisions);
+              };
 
-          | IdlePhase(reason) =>
-            FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: IdlePhase(reason) })
-          | phase => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase })
-          };
+            | IdlePhase(reason) =>
+              FindSubsPhase({ emptySeatCount: nPlayersToFind, phase: IdlePhase(reason) })
+            | phase => FindSubsPhase({ emptySeatCount: nPlayersToFind, phase })
+            }
+          }
         };
         
         let clients = state.clients->Quad.update(leavingPlayerId, _ => Vacant, _);

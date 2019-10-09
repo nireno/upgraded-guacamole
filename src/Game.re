@@ -351,6 +351,21 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
       (playerId, playerPhase);
     };
 
+let isNewGameCheck = state => {
+  let areScoresZero =
+    switch (state.teams) {
+    | ({team_score: 0}, {team_score: 0}) => true
+    | _ => false
+    };
+
+  let isDealPhase =
+    switch (state.phase) {
+    | DealPhase => true
+    | _ => false
+    };
+  isDealPhase && areScoresZero;
+};
+
 type event =
   | Noop
   | PlayCard(Player.id, Card.t)
