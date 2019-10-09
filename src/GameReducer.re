@@ -253,6 +253,17 @@ let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
                       )
                     ]
         )
+      | SelectDealerPhase =>
+        ( stateNext
+        , effects @ [ ServerEvent.CreateGameTimer(
+                        game_key, 
+                        DelayedGameEvent(
+                          FirstJackDeal, 
+                          SharedGame.settings.firstJackDealMillis
+                        )
+                      )
+                    ]
+        )
       | phase when phase->Game.isPlayerActivePhase => 
       
         (
@@ -1017,7 +1028,7 @@ let reduce = (action, state) => {
         let effectsNext =
           switch (phase) {
           | FindPlayersPhase({emptySeatCount: 0}) => [
-              ServerEvent.CreateGameTimer(game_key, TransitionGameCountdown(phase, DealPhase)),
+              ServerEvent.CreateGameTimer(game_key, TransitionGameCountdown(phase, SelectDealerPhase)),
               ...playerJoinedNotiEffects,
             ]
           | FindSubsPhase({emptySeatCount: 0, phase: subPhase}) => [
@@ -1078,6 +1089,52 @@ let reduce = (action, state) => {
       | _ => (state, effects)
       };
 
+    | FirstJackDeal => 
+      switch(state.phase){
+      | SelectDealerPhase =>
+        let targetPlayerMaybe =
+          state.players
+          ->Quad.withId
+          ->Quad.rotateFirst(state.leader)
+          ->Quad.find(((id, p)) => p.pla_card->Belt.Option.isNone);
+        switch(targetPlayerMaybe){
+        | None => (state, effects)
+        | Some((playerId, player)) =>
+          logger.debug("First Jack deal player id: " ++ Quad.stringifyId(playerId))
+          let (cards, nextDeck) = Deck.deal(1, state.deck);
+          let card = cards->List.hd;
+          let gotJack = card.rank == Card.Rank.Jack;
+          let nextPlayer = 
+          { ...player
+          , pla_card: Some(card)
+          }
+          let playerIdAfterTarget = Quad.nextId(playerId);
+          // let playerAfterTarget = Quad.update(playerIdAfterTarget, p => {...p, pla_card: None});
+          let nextPlayers = 
+            state.players
+            ->Quad.put(playerId, nextPlayer, _)
+          let nextPlayers = gotJack ?  nextPlayers : nextPlayers->Quad.update(playerIdAfterTarget, p => {...p, pla_card: None}, _);
+          let nextEffects =
+            gotJack
+              ? effects
+              : effects
+                @ [
+                  ServerEvent.CreateGameTimer(
+                    game_key,
+                    DelayedGameEvent(FirstJackDeal, SharedGame.settings.firstJackDealMillis),
+                  ),
+                ];
+            // ->Quad.put(playerIdAfterTarget, playerAfterTarget, _);
+          (
+            { ...state
+            , deck: nextDeck
+            , players: nextPlayers
+            }
+            , nextEffects
+          )
+        }
+      | _ => (state, effects)
+      }
     };
   };
 

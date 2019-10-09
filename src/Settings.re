@@ -4,6 +4,7 @@ type t = {
   winningScore: int,
   kickPlayerMillis: int,
   gameStartingCountdownSeconds: int,
+  firstJackDealMillis: int,
 }
 
 let default = {

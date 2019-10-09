@@ -19,6 +19,7 @@ let find: (ClientGame.phase, Player.id) => option(t) = (gamePhase, dealerId) => 
   | FindSubsPhase(_) 
   | IdlePhase(_)
   | GameOverPhase(_)
+  | SelectDealerPhase
     => None
   }
 };

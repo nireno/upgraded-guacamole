@@ -94,6 +94,13 @@ let rec rotateBy = (n, quad) => {
   n <= 0 ? quad : rotate(quad) |> rotateBy(n - 1);
 };
 
+let rotateFirst = (quad, id) =>{
+  let rec r = (((aid, a), (bid, b), (cid, c),(did, d)) as quadWithId) =>
+    aid == id ? (a, b, c, d) : quadWithId->rotate->r;
+
+  r(quad->withId)
+}
+
 let toList = ((a, b, c, d)) => [a, b, c, d];
 
 let toArray = ((a, b, c, d)) => [|a, b, c, d|];

@@ -20,4 +20,5 @@ let clientGamePhaseOfGamePhase =
   | PlayerTurnPhase(seatId) => PlayerTurnPhase(seatId)
   | PackDepletedPhase => PackDepletedPhase
   | GameOverPhase(rematchDecisionQuad) => GameOverPhase(rematchDecisionQuad)
+  | SelectDealerPhase => SelectDealerPhase
   ;
