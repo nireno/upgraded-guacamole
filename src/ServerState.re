@@ -575,7 +575,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         db_game
         ->StringMap.valuesToArray
         ->Array.some(game =>
-            game->Game.Filter.hasPrivacy(Public) && game->Game.Filter.hasPhase(FindSubsPhase)
+            game->Game.Filter.hasPrivacy(Public) && game->Game.needsSubstitutes
           );
 
       let updates =

@@ -366,6 +366,12 @@ let isNewGameCheck = state => {
   isDealPhase && areScoresZero;
 };
 
+let needsSubstitutes = state =>
+  switch (state.phase) {
+  | FindSubsPhase({emptySeatCount}) when emptySeatCount > 0 => true
+  | _ => false
+  };
+
 type event =
   | Noop
   | PlayCard(Player.id, Card.t)
