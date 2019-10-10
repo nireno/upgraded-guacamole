@@ -113,6 +113,17 @@ let reducer = (prevState, action) => {
         Howler.(makeHowl(howlOptions(~src=[|"./static/audio/your_turn_subtle.mp3"|], ())));
       Howler.play(sound);
     };
+    
+    /* notify-player-can-sub sound effect */
+    let getCanSub =
+      fun
+      | FindPlayersPhase({canSub}) => canSub
+      | _ => false;
+
+    if (getCanSub(prevState.gamePhase) == false && getCanSub(nextState.gamePhase) == true) {
+      let sound = Howler.(makeHowl(howlOptions(~src=[|"./static/audio/player_joined.mp3"|], ())));
+      Howler.play(sound);
+    };
 
     nextState
   };
