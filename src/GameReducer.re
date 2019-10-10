@@ -942,7 +942,7 @@ let reduce = (action, state) => {
         let playerLeftNotiEffects =
           Noti.playerBroadcast(
             ~from=leavingPlayerId,
-            ~msg=Noti.Text(client.client_username ++ " has left game."),
+            ~msg=Noti.Text(client.client_username ++ " has left the game."),
             ~level=Warning,
             (),
           )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
