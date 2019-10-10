@@ -77,7 +77,7 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
       | None => ()
       | Some(game) => 
         switch(game.clients->Quad.get(seat_id, _)){
-        | Connected({client_socket_id}) =>
+        | Attached({client_socket_id}) =>
           let msg: SocketMessages.serverToClient =
             ShowToast(noti |> Noti.t_encode |> Js.Json.stringify);
           SocketServer.emit(msg, client_socket_id);

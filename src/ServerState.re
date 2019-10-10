@@ -35,8 +35,8 @@ let getGameBySocket: (sock_id, db) => option(Game.state) =
         game.Game.clients
         ->Quad.exists(clientState =>
             switch (clientState) {
-            | Game.Connected({client_socket_id})
-            | Disconnected({client_socket_id}, _) when client_socket_id == sock_id => true
+            | Game.Attached({client_socket_id})
+            | Detached({client_socket_id}, _) when client_socket_id == sock_id => true
             | _ => false
             },
           _)
@@ -52,8 +52,7 @@ let getGameClientSeat = (db_game, sock_id) => {
         ->Quad.exists(
             clientState =>
               switch (clientState) {
-              | Game.Connected({client_socket_id})
-              | Disconnected({client_socket_id}, _) when client_socket_id == sock_id => true
+              | Game.Attached({client_socket_id}) when client_socket_id == sock_id => true
               | _ => false
               },
             _,
@@ -67,8 +66,8 @@ let getGameClientSeat = (db_game, sock_id) => {
       ->Quad.withId
       ->Quad.find(((_sid, clientState)) =>
           switch (clientState) {
-          | Connected({client_socket_id})
-          | Disconnected({client_socket_id}, _) when client_socket_id == sock_id => true
+          | Attached({client_socket_id})
+          | Detached({client_socket_id}, _) when client_socket_id == sock_id => true
           | _ => false
           }
         );
@@ -181,9 +180,9 @@ let buildClientState = (gameState, player, playerPhase) => {
   let getPlayerPublicState = (player: Game.playerData, client: Game.clientState) => {
     let getUserProfileMaybe =
       fun
-      | Game.Vacant => None
-      | Connected(client)
-      | Disconnected(client, _) =>
+      | Game.Detached(_, _)
+      | Vacant => None
+      | Attached(client) =>
         Some({
           ClientGame.client_username: client.client_username,
           client_identicon: client.client_id,
@@ -229,8 +228,8 @@ let buildSocketStatePairs: Game.state => list((option(sock_id), ClientGame.state
       (
         switch (gameState.clients->Quad.get(playerId, _)) {
         | Vacant
-        | Disconnected(_, _) => None
-        | Connected(client) => Some(client.client_socket_id)
+        | Detached(_, _) => None
+        | Attached(client) => Some(client.client_socket_id)
         },
         buildClientState(playerId, playerPhase),
       )
@@ -282,12 +281,37 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some({game_id} as gameStatePrev) =>
-        switch (Game.findEmptySeat(gameStatePrev)) {
+
+        let findSeatByPrecedence = (clients, client_id) => {
+          let wasClientAttached = (incoming_client_id, client) =>
+            switch (client) {
+            | (_id, Game.Attached({client_id}))
+            | (_id, Detached({client_id}, _)) when client_id == incoming_client_id => true
+            | _ => false
+            };
+
+          let isClientVacant =
+            fun
+            | (_id, Game.Vacant) => true
+            | _ => false;
+
+          let isClientDetached =
+            fun
+            | (_id, Game.Detached(_)) => true
+            | _ => false;
+
+          clients
+          ->Quad.withId
+          ->Quad.findByList([wasClientAttached(client_id), isClientVacant, isClientDetached]);
+        };
+
+
+        switch (findSeatByPrecedence(gameStatePrev.clients, client_id)) {
         | None => NoUpdate(db)
-        | Some(player_id) =>
+        | Some(( player_id, _ )) =>
           let client_username = client_username == "" ? Player.stringOfId(player_id) : client_username;
           let clientState =
-            Game.Connected({
+            Game.Attached({
               Game.client_username,
               client_socket_id: sock_id,
               client_id,
@@ -345,7 +369,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           if (gameAftLeave.clients
               ->Quad.countHaving(
                   fun
-                  | Connected(_) => true
+                  | Attached(_) => true
                   | _ => false,
                 )
               == 0) {
@@ -424,7 +448,7 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           switch (
             clients->Quad.find(clientState =>
               switch (clientState) {
-              | Connected({client_socket_id}) when client_socket_id == sock_id => true
+              | Attached({client_socket_id}) when client_socket_id == sock_id => true
               | _ => false
               }
             )
@@ -514,8 +538,8 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
         | Some(activePlayer) =>
           switch (Quad.get(activePlayer.id, gameState.clients)) {
           | Vacant => NoUpdate(db)
-          | Connected(client)
-          | Disconnected(client, _) => update(ServerEvent.RemovePlayerBySocket(client.client_socket_id), db)
+          | Attached(client)
+          | Detached(client, _) => update(ServerEvent.RemovePlayerBySocket(client.client_socket_id), db)
           }
         };
       };

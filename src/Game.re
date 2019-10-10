@@ -17,25 +17,32 @@ type clientData = {
 };
 
 type clientMetaData = {
-  client_disconnected_at: milliseconds,
+  client_detached_at: milliseconds,
 };
 
 type clientState = 
-| Connected(clientData)
-| Disconnected(clientData, clientMetaData)
+| Attached(clientData)
+| Detached(clientData, clientMetaData)
 | Vacant;
+
+let isClientAttached = clientState =>
+  switch (clientState) {
+  | Attached(_) => true
+  | Detached(_, _) 
+  | Vacant => false
+  };
 
 let getUsername = (clients, quadId) =>
   switch (clients->Quad.get(quadId, _)) {
-  | Connected(client)
-  | Disconnected(client, _) => client.client_username
+  | Attached(client)
+  | Detached(client, _) => client.client_username
   | Vacant => Player.stringOfId(quadId)
   };
 
 let countConnectedClients = clients => {
   let clientIsConnected =
     fun
-    | Connected(_) => true
+    | Attached(_) => true
     | _ => false;
 
   clients->Quad.countHaving(clientIsConnected);
@@ -122,12 +129,6 @@ type state = {
   game_follow_suit: option(Card.Suit.t),
 };
 
-let isSeatTaken = clientState =>
-  switch (clientState) {
-  | Vacant => false
-  | Connected(_)
-  | Disconnected(_, _) => true
-  };
 
 
 module SockServ = BsSocket.Server.Make(SocketMessages);
@@ -150,12 +151,12 @@ let debugOfState = (state) => {
   let stringOfClient = client => {
     switch (client) {
     | Vacant => "Vacant"
-    | Connected(clientData) =>
+    | Attached(clientData) =>
       let clientDataText = clientData->stringOfClientData;
-      {j|Connected($clientDataText)|j};
-    | Disconnected(clientData, _) =>
+      {j|Attached($clientDataText)|j};
+    | Detached(clientData, _) =>
       let clientDataText = clientData->stringOfClientData;
-      {j|Disconnected($clientDataText)|j};
+      {j|Detached($clientDataText)|j};
     };
   };
 
@@ -306,9 +307,9 @@ module Filter = {
 /* A game is considered empty if no player slot has a socket attached. */
 let isEmpty = (state) => {
   let isHeadless = fun
-  | Vacant => true
-  | Disconnected(_) => true
-  | Connected(_) => false;
+  | Attached(_) => false
+  | Detached(_, _)
+  | Vacant => true;
   state.clients->Quad.every(isHeadless, _)
 };
 

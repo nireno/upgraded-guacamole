@@ -696,9 +696,9 @@ let reduce = (action, state) => {
       | BegPhase =>
         let beggerId = Quad.nextId(state.dealer);
         switch (state.clients->Quad.get(beggerId, _)) {
-        | Vacant
-        | Disconnected(_, _) => ( state, effects )
-        | Connected(client) =>
+        | Vacant => ( state, effects )
+        | Detached(client, _) 
+        | Attached(client) =>
           let notis =
             Noti.playerBroadcast(
               ~from=beggerId,
@@ -724,9 +724,9 @@ let reduce = (action, state) => {
         let beggerId = Quad.nextId(state.dealer);
 
         switch (Quad.get(beggerId, state.clients)) {
-        | Vacant
-        | Disconnected(_) => ( state, effects )
-        | Connected(begger) =>
+        | Vacant => ( state, effects )
+        | Detached(begger, _) 
+        | Attached(begger) =>
           let (maybeTeamHigh, maybeTeamLow) =
             getTeamHighAndLowMaybes(
               state.players->Quad.map(player => player.pla_hand, _),
@@ -769,9 +769,9 @@ let reduce = (action, state) => {
       switch(state.phase){
       | GiveOnePhase =>
         switch (Quad.get(state.dealer, state.clients)) {
-        | Vacant
-        | Disconnected(_) => ( state, effects )
-        | Connected(dealer) =>
+        | Vacant => ( state, effects )
+        | Detached(dealer, _) 
+        | Attached(dealer) =>
           let receivingTeamId =
             switch (state.dealer) {
             | N1 | N3 => Team.T2
@@ -908,11 +908,11 @@ let reduce = (action, state) => {
 
     | LeaveGame(leavingPlayerId) => 
       switch(state.clients->Quad.get(leavingPlayerId, _)){
-      | Vacant =>
-        logger.warn("Ignoring `LeaveGame` recieved for already Vacant seat.");
+      | Vacant
+      | Detached(_) =>
+        logger.warn("Ignoring `LeaveGame` recieved for headless player.");
         ( state, effects)
-      | Connected(client)
-      | Disconnected(client, _) =>
+      | Attached(client) =>
         let getNextPhase = (nPlayersToFind, currentPhase) => {
           if(isNewGameCheck(state)){
             FindPlayersPhase({emptySeatCount: nPlayersToFind, canSub: false})
@@ -937,7 +937,9 @@ let reduce = (action, state) => {
           }
         };
         
-        let clients = state.clients->Quad.update(leavingPlayerId, _ => Vacant, _);
+        let clients =
+          state.clients
+          ->Quad.put(leavingPlayerId, Detached(client, {client_detached_at: Js.Date.now()}), _);
 
         let playerLeftNotiEffects =
           Noti.playerBroadcast(
@@ -950,13 +952,13 @@ let reduce = (action, state) => {
         
         /* 
         * When the leaving player was the game master and the game has at least
-        * one other seat till taken, choose a new game master from one of the
+        * one other seat still taken, choose a new game master from one of the
         * taken seats.
         */
         let game_id =
           switch (state.game_id) {
           | Private({private_game_key, private_game_host}) when private_game_host == leavingPlayerId =>
-            switch(clients->Quad.withId->Quad.find(((_quadId, client)) => client->Game.isSeatTaken)){
+            switch(clients->Quad.withId->Quad.find(((_quadId, client)) => client->Game.isClientAttached)){
             /* None means no taken seats were found => no players in the game => this game will be discarded by the ServerStore 
               So I just leave the id as it is. */
             | None => state.game_id 
@@ -969,7 +971,10 @@ let reduce = (action, state) => {
           ...state,
           game_id,
           clients,
-          phase: getNextPhase(clients->Quad.countHaving(clientState => clientState == Vacant), state.phase),
+          phase: 
+            getNextPhase(
+              clients->Quad.countHaving(clientState => !Game.isClientAttached(clientState)) 
+            , state.phase),
           maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
         }, playerLeftNotiEffects @ effects);
       }
@@ -997,10 +1002,11 @@ let reduce = (action, state) => {
     | AttachClient(seat_id, clientState) =>
       switch(clientState){
       | Vacant => (state, effects)
-      | Connected({client_username})
-      | Disconnected({client_username}, _) =>
+      | Attached({client_username})
+      | Detached({client_username}, _) =>
+
         let clients = state.clients->Quad.put(seat_id, clientState, _);
-        let playersNeeded = clients->Quad.countHaving(clientState => clientState == Vacant); 
+        let playersNeeded = clients->Quad.countHaving(clientState => !Game.isClientAttached(clientState)); 
         let phase =
           switch (state.phase) {
           | FindSubsPhase({phase: subPhase}) =>
