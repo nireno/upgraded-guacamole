@@ -49,6 +49,19 @@ let getWhere = (f, (r1, r2, r3, r4)) => {
 // An alias to getWhere with the params switched
 let find = (quad, pred) => getWhere(pred, quad);
 
+/* Maybe get the first element that satasfies any one of the predicates applied in the
+   order they were listed. 
+   `(2,4,6,8)->withId->findByList([is6WithId, is5WithId, is4WithId])` gives `Some((N2, 4))` */
+let rec findByList = (quad, fs) =>
+  switch (fs) {
+  | [] => None
+  | [f, ...fs] =>
+    switch (quad->find(f)) {
+    | None => quad->findByList(fs)
+    | Some(result) => Some(result)
+    }
+  };
+
 let getPairWhere = (f, (r1, r2, r3, r4)) => {
   f(r1) ? Some((N1, r1 )) : f(r2) ? Some(( N2, r2 )) : f(r3) ? Some(( N3, r3 )) : f(r4) ? Some(( N4, r4 )) : None
 }
