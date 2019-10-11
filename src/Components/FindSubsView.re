@@ -6,6 +6,7 @@ let make = (~emptySeatCount as n, ~onLeaveClick, ~players: Quad.t(ClientGame.pla
     Player.playersAsQuad(~startFrom=me, ())
     ->Quad.map(playerId => Quad.get(playerId, players), _);
   <>
+    <HintsView />
     {
       let (bottom, right, top, left) =
         rotatedPlayers
