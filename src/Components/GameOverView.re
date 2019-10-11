@@ -25,11 +25,14 @@ let make =
     ->Quad.exists(((playerId, decision)) => decision == SharedGame.RematchAccepted && playerId == me, _);
 
   let (outcomeText, outcomeImg, outcomeClass) =
-    weScore >= demScore
-      ? ("We win!", "./static/img/emoji_beaming.svg", "bg-green-600")
-      : ("We lost...", "./static/img/emoji_crying.svg", "bg-blue-900");
+    weScore == demScore
+      ? ("Get ready!", "./static/img/emoji_neutral.svg", "bg-green-600")
+      : weScore >= demScore 
+        ?("We win!", "./static/img/emoji_beaming.svg", "bg-green-600")
+        : ("We lost...", "./static/img/emoji_crying.svg", "bg-blue-900");
   <>
-    <div className={ outcomeClass ++ " text-white w-full flex flex-col items-center rounded"} >
+    <div className={ outcomeClass ++ " text-white w-full flex flex-col items-center rounded"} 
+         style=ReactDOMRe.Style.make(~transition="background-color 0.5s", ())>
       <div className="text-3xl"> {outcomeText |> ReasonReact.string} </div>
       <img src=outcomeImg style={ReactDOMRe.Style.make(~width="15%", ())} />
     </div>
