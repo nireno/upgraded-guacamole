@@ -120,7 +120,7 @@ let make =
      | Some(href) =>
        <div className="text-xs text-center mt-8">
          <span> {ReasonReact.string("Love it / Hate it: ")} </span>
-         <a href target="_blank" rel="noopener noreferrer">
+         <a href className="link link-blue" target="_blank" rel="noopener noreferrer">
            {ReasonReact.string("click here to send feedback.")}
          </a>
        </div>

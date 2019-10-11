@@ -19,7 +19,7 @@ let make = (~onJoinClick, ~canJoinPublicGame, ~onCancelClick) => {
          <span>
            {ReasonReact.string("If you enjoy it, or have any comments/suggestions, ")}
          </span>
-         <a href> {ReasonReact.string("click here to send feedback.")} </a>
+         <a className="link link-blue" href> {ReasonReact.string("click here to send feedback.")} </a>
        </p>
      }}
     <div className="flex items-center justify-around">
