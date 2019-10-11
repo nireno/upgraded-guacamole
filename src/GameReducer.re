@@ -798,7 +798,14 @@ let reduce = (action, state) => {
             maybeTeamLow,
           };
 
-            ({...state', phase: PlayerTurnPhase(state.leader)}, giveOneNotiEffects @ effects);
+          ( { ...state'
+            , phase: 
+                isGameOverTest(state') 
+                ? GameOverPhase(Quad.make(_ => RematchUnknown))
+                : PlayerTurnPhase(state.leader)
+            }
+          , giveOneNotiEffects @ effects
+          );
         };
       | _ =>
         logger.warn("`GiveOne` recieved out of phase.");
