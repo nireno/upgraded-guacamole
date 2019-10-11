@@ -7,6 +7,7 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
     ->Quad.map(playerId => Quad.get(playerId, players), _);
   
   <>
+  <HintsView />
   <div className="text-center">
     {canSub
        ? <div className="bg-green-600 text-white text-base m-4 p-4 rounded">

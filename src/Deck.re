@@ -9,12 +9,7 @@ let make = () =>
 
 // https://stackoverflow.com/questions/15095541/how-to-shuffle-list-in-on-in-ocaml
 
-let shuffle = d => {
-  Random.self_init();
-  let nd = List.map(c => (Random.bits(), c), d);
-  let sond = List.sort(compare, nd);
-  List.map(snd, sond);
-};
+let shuffle = My.List.shuffle;
 
 let deal = (n, d) => (
   Belt.List.take(d, n) |> Js.Option.getWithDefault([]),

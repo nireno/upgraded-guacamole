@@ -65,3 +65,7 @@ img, video {
   width: 100%;
   height: auto;
 }
+
+.hint-menu-item-accent {
+  @apply font-bold text-gray-900 font-mono
+}
