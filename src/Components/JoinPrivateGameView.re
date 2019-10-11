@@ -81,7 +81,7 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=? ) => {
          <div className="text-xl"> {ReasonReact.string("No games found")} </div>
          <div> {ReasonReact.string("Verify your invite link and try again.")} </div>
          <button
-           onClick={_ => ReasonReactRouter.replace("/")} className="btn btn-blue mt-4" type_="button">
+           onClick={_ => ReasonReactRouter.replace("./")} className="btn btn-blue mt-4" type_="button">
            {ReasonReact.string("Ok")}
          </button>
        </div>
