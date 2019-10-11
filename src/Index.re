@@ -59,7 +59,7 @@ module App = {
 
     React.useEffect0(
       () => {
-        let socket = ClientSocket.T.createWithUrl("/?clientVersion=0.3.2");
+        let socket = ClientSocket.T.createWithUrl("/?clientVersion=0.4.0");
         setMaybeSocket(_ => Some(socket));
         ClientSocket.T.on(socket, x => 
           switch (x) {
