@@ -9,6 +9,12 @@ module List = {
     let sond = List.sort(compare, nd);
     List.map(snd, sond);
   };
+
+  let addSome = list =>
+    fun
+    | Some(item) => [item, ...list]
+    | None => list;
+
 };
 
 module Nullable = {

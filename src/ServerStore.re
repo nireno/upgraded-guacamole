@@ -102,7 +102,7 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
             game_key,
             timeout:
               Timer.startTimeout(
-                () => dispatch(TransitionGame({game_key, fromPhase, toPhase})),
+                () => dispatch(UpdateGame(game_key, Transition({fromPhase, toPhase}))),
                 SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
               ),
           }),

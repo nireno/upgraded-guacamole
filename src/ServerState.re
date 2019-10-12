@@ -128,10 +128,11 @@ let stringOfMsg = fun
   | Rematch(_sock_id) => "Rematch"
   | RotateGuests(_sock_id) => "RotateGuests"
   | PrivateToPublic(_sock_id) => "PrivateToPublic"
-  | TransitionGame(_) => "TransitionGame"
   | FireGameTimer(_) => "FireGameTimer"
   | AddGameTimeout(_) => "AddGameTimeout"
   | RemoveGameTimeout(_) => "RemoveGameTimeout"
+  | PublicGameStarted => "PublicGameStarted"
+  | PrivateGameStarted => "PrivateGameStarted"
   ;
 
 
@@ -580,14 +581,23 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
       switch (db_game->StringMap.get(game_key)) {
       | None => NoUpdate(db)
       | Some(gameState) =>
-        let ( gameAftAction, effects ) = GameReducer.reduce(action, gameState);
+        let ( nextGameState, effects ) = GameReducer.reduce(action, gameState);
 
+        let maybeGameStartedEvent =
+          Game.isNewGameCheck(nextGameState)
+            ? switch (nextGameState.game_id) {
+              | Public(_) => Some(ServerEvent.PublicGameStarted)
+              | Private(_) => Some(ServerEvent.PrivateGameStarted)
+              }
+            : None;
+
+        
         updateMany(
-          [
-            ReplaceGame(game_key, gameAftAction),
-            TriggerEffects([ServerEvent.EmitStateByGame(game_key), ...effects]),
-          ],
-          NoUpdate(db),
+          [ ServerEvent.ReplaceGame(game_key, nextGameState)
+            , TriggerEffects([ServerEvent.EmitStateByGame(game_key), ...effects])
+          ]
+          ->My.List.addSome(maybeGameStartedEvent)
+        , NoUpdate(db)
         );
       }
 
@@ -742,16 +752,11 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
 
       Update({...db, db_game_timer: db_game_timerNext});
     
-    | TransitionGame({game_key, fromPhase, toPhase}) =>
-      switch(db_game->StringMap.get(game_key)){
-      | None => NoUpdate(db)
-      | Some(game) => 
-        let (game, effects) = game->GameReducer.reduce(Game.Transition({fromPhase, toPhase}), _);
-        updateMany(
-          [TriggerEffects([EmitStateByGame(game_key), ...effects])],
-          Update({...db, db_game: db_game->StringMap.set(game_key, game)}),
-        )
-      }
+    | PublicGameStarted =>
+      Update({...db, db_public_games_started: db.db_public_games_started + 1})
+
+    | PrivateGameStarted =>
+      Update({...db, db_private_games_started: db.db_private_games_started + 1})
     };
   }
 and updateResult: (ServerEvent.event, update(db, ServerEvent.effect)) => update(db, ServerEvent.effect) =

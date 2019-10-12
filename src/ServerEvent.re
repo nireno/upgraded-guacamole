@@ -67,7 +67,8 @@ type event =
   | FireGameTimer(sock_id)
   | AddGameTimeout(addGameTimeoutContext)
   | RemoveGameTimeout(game_key)
-  | TransitionGame(transitionGameContext)
+  | PrivateGameStarted
+  | PublicGameStarted
 and effect = 
   | NotifyPlayer(game_key, Noti.t)
   // affecting socketio
