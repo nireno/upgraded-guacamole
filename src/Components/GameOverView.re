@@ -98,7 +98,7 @@ let make =
     }
 
     {
-      SharedGame.isRematchPrimed(rematchDecisions)
+      SharedGame.isRematchAcceptedByAll(rematchDecisions)
         ? <div className="mt-6 text-xl text-center">
             <span> {ReasonReact.string("Rematch in: ")} </span>
             <CountdownView from={SharedGame.settings.gameStartingCountdownSeconds} />
