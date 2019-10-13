@@ -31,6 +31,18 @@ let isRematchDecisionKnown =
   | RematchAccepted
   | RematchDenied => true;
 
+let rematchDecisionIsUnknown =
+  fun
+  | RematchUnknown => true
+  | RematchAccepted
+  | RematchDenied => false;
+
+let rematchDecisionIsDenied =
+  fun
+  | RematchDenied => true
+  | RematchAccepted
+  | RematchUnknown => false;
+
 /* The rematch is is ready to start when all players have made a decision */
 let isRematchPrimed = Quad.every(isRematchDecisionKnown, _);
 let isRematchAcceptedByAll =
@@ -42,6 +54,14 @@ let isRematchAcceptedByAll =
       },
     _,
   );
+
+let countRematchUnknown = rematchDecisions => {
+  rematchDecisions->Quad.countHaving(rematchDecisionIsUnknown);
+};
+
+let countRematchDenied = rematchDecisions => {
+  rematchDecisions->Quad.countHaving(rematchDecisionIsDenied);
+}
 
 let stringOfGameId =
   fun

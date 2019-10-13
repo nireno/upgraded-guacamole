@@ -39,7 +39,7 @@ let getUsername = (clients, quadId) =>
   | Vacant => Player.stringOfId(quadId)
   };
 
-let countConnectedClients = clients => {
+let countAttachedClients = clients => {
   let clientIsConnected =
     fun
     | Attached(_) => true
@@ -47,6 +47,19 @@ let countConnectedClients = clients => {
 
   clients->Quad.countHaving(clientIsConnected);
 };
+
+let countConnectedClients = countAttachedClients;
+
+let countMissingClients = clients => {
+  let clientIsMissing =
+    fun
+    | Detached(_)
+    | Vacant => true
+    | Attached(_) => false;
+
+  clients->Quad.countHaving(clientIsMissing);
+};
+
 
 let initPlayerData = () => {
   pla_hand: [],

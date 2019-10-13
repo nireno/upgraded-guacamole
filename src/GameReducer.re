@@ -264,6 +264,26 @@ let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
     };
 };
 
+/* Transfers dealing responsibility to the next player on the losing team. */
+let getRematchDealerId = (currDealerId, teams) => {
+  let ({team_score: team1Score}, {team_score: team2Score}) = teams;
+  let winningTeamId = team1Score >= team2Score ? Team.T1 : T2;
+  let nextToDealerId = Quad.nextId(currDealerId);
+  let currDealerPartnerId = Player.getPartner(currDealerId);
+  let teamOfDealer = teamOfPlayer(currDealerId);
+  teamOfDealer == winningTeamId ? nextToDealerId : currDealerPartnerId;
+};
+
+let initializeRematch = (game_id, rematchClients, rematchPhase, rematchDealerId) => 
+  {
+    ...Game.initialState(),
+    game_id,
+    players: Quad.make(_ => Game.initPlayerData()),
+    dealer: rematchDealerId,
+    clients: rematchClients,
+    phase: rematchPhase,
+  };
+
 /* 
   This module should probably be called GameMachine and this function should
   be the gameState machine. It takes some (before) state and an action and
@@ -944,7 +964,7 @@ let reduce = (action, state) => {
           }
         };
         
-        let clients =
+        let nextClients =
           state.clients
           ->Quad.put(leavingPlayerId, Detached(client, {client_detached_at: Js.Date.now()}), _);
 
@@ -962,10 +982,10 @@ let reduce = (action, state) => {
         * one other seat still taken, choose a new game master from one of the
         * taken seats.
         */
-        let game_id =
+        let nextGameId =
           switch (state.game_id) {
           | Private({private_game_key, private_game_host}) when private_game_host == leavingPlayerId =>
-            switch(clients->Quad.withId->Quad.find(((_quadId, client)) => client->Game.isClientAttached)){
+            switch(nextClients->Quad.withId->Quad.find(((_quadId, client)) => client->Game.isClientAttached)){
             /* None means no taken seats were found => no players in the game => this game will be discarded by the ServerStore 
               So I just leave the id as it is. */
             | None => state.game_id 
@@ -974,16 +994,41 @@ let reduce = (action, state) => {
           | game_id => game_id
           };
         
-        ( {
-          ...state,
-          game_id,
-          clients,
-          phase: 
-            getNextPhase(
-              clients->Quad.countHaving(clientState => !Game.isClientAttached(clientState)) 
-            , state.phase),
-          maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
-        }, playerLeftNotiEffects @ effects);
+        let getIsTransitionToRematch = (prevPhase, nextPhase) => {
+          switch (prevPhase) {
+          | GameOverPhase(_) =>
+            switch (nextPhase) {
+            | FindPlayersPhase(_) => true
+            | _ => false
+            }
+          | _ => false
+          };
+        };
+
+
+        let nextPhase = getNextPhase(
+              nextClients->Quad.countHaving(clientState => !Game.isClientAttached(clientState)) 
+            , state.phase);
+        
+        let nextState =
+          if (getIsTransitionToRematch(state.phase, nextPhase)) {
+            initializeRematch(
+              nextGameId,
+              nextClients,
+              nextPhase,
+              getRematchDealerId(state.dealer, state.teams),
+            );
+          } else {
+            {
+              ...state,
+              game_id: nextGameId,
+              clients: nextClients,
+              phase: nextPhase,
+              maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
+            };
+          };
+        
+        ( nextState, playerLeftNotiEffects @ effects);
       }
 
     | UpdateSubbing(canSub) => 
@@ -1048,45 +1093,37 @@ let reduce = (action, state) => {
       }
 
     | PlayerRematch(seat_id) =>
-      switch (state.phase) {
-      | GameOverPhase(rematchDecisions) =>
-        let rematchDecisions = rematchDecisions->Quad.put(seat_id, SharedGame.RematchAccepted, _);
-        let nextPhase = GameOverPhase(rematchDecisions);
+      let getNextPhase = rematchDecisions => {
+        let isRematchPrimed = rematchDecisions->SharedGame.isRematchPrimed;
+        let numRematchDenied = rematchDecisions->SharedGame.countRematchDenied;
 
-        /* I'm initializing the state here to make use of the delay between rematch primed and game start.
-        This helps to give any cards that were in the player's hand, enough time animate out. */
-        let nextState =
-          if (SharedGame.isRematchPrimed(rematchDecisions)) {
-            let ({team_score: team1Score}, {team_score: team2Score}) = state.teams;
-            let winningTeamId = team1Score >= team2Score ? Team.T1 : T2;
-
-            /* Transfer dealing responsibility to the next player on the losing team. */
-            let selectNextDealer = (currDealerId, winningTeamId) => {
-              let nextToDealerId = Quad.nextId(currDealerId);
-              let currDealerPartnerId = Player.getPartner(currDealerId);
-              let teamOfDealer = teamOfPlayer(currDealerId);
-              teamOfDealer == winningTeamId ? nextToDealerId : currDealerPartnerId;
-            };
-
-            let nextDealer = selectNextDealer(state.dealer, winningTeamId);
-
-            {
-              ...Game.initialState(),
-              game_id: state.game_id,
-              players: Quad.make(_ => Game.initPlayerData()),
-              dealer: nextDealer,
-              clients: state.clients,
-              phase: nextPhase,
-            };
-          } else {
-            {...state, phase: nextPhase};
-          };
-            
-
-        (nextState, effects)
-
-      | _ => (state, effects)
+        switch (isRematchPrimed, numRematchDenied) {
+        | (true, numRematchDenied) when numRematchDenied > 0 =>
+          FindPlayersPhase({emptySeatCount: numRematchDenied, canSub: false})
+        | _ => GameOverPhase(rematchDecisions)
+        };
       };
+
+
+
+      let getNextState = (state, seat_id) => {
+        switch (state.phase) {
+        | GameOverPhase(rematchDecisions) =>
+          let nextRematchDecisions = rematchDecisions->Quad.put(seat_id, SharedGame.RematchAccepted, _);
+          let nextPhase = getNextPhase(nextRematchDecisions);
+          let nextDealerId = getRematchDealerId(state.dealer, state.teams);
+          switch (nextPhase) {
+          | FindPlayersPhase(_) =>
+            initializeRematch(state.game_id, state.clients, nextPhase, nextDealerId)
+          | GameOverPhase(rematchDecisions) when SharedGame.isRematchAcceptedByAll(rematchDecisions) =>
+            initializeRematch(state.game_id, state.clients, nextPhase, nextDealerId)
+          | _ => {...state, phase: nextPhase}
+          };
+        | _ => state
+        };
+      };
+
+      (getNextState(state, seat_id), effects)
 
     | StartRematch =>
       switch (state.phase) {
