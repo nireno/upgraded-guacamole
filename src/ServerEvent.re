@@ -69,6 +69,7 @@ type event =
   | RemoveGameTimeout(game_key)
   | PrivateGameStarted
   | PublicGameStarted
+  | PullClients(game_key)
 and effect = 
   | NotifyPlayer(game_key, Noti.t)
   // affecting socketio
@@ -80,6 +81,7 @@ and effect =
   // affecting node timers
   | CreateGameTimer(game_key, gameTimerType)
   | DiscardGameTimer(game_key)
+  | TriggerEvent(event)
 and clientToast = {
   sock_id,
   toast: Noti.t,

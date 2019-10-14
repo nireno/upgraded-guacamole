@@ -133,6 +133,7 @@ let stringOfMsg = fun
   | RemoveGameTimeout(_) => "RemoveGameTimeout"
   | PublicGameStarted => "PublicGameStarted"
   | PrivateGameStarted => "PrivateGameStarted"
+  | PullClients(_) => "PullClients"
   ;
 
 
@@ -757,6 +758,82 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
 
     | PrivateGameStarted =>
       Update({...db, db_private_games_started: db.db_private_games_started + 1})
+    
+    | PullClients(game_key) =>
+      logger.debug("Pulling clients");
+      switch(db_game->StringMap.get(game_key)){
+      | None => NoUpdate(db)
+      | Some(game) =>
+        let findComplementaryGame = (db_game, clients) => {
+          let nClientsAreAttached = (n, clients) => clients->Quad.countHaving(Game.isClientAttached) == n;
+          let hasOneClientAttached = nClientsAreAttached(1);
+          let hasTwoClientsAttached = nClientsAreAttached(2);
+          let hasThreeClientsAttached = nClientsAreAttached(3);
+
+          let hasPartnersAttached =
+            fun
+            | (Game.Attached(_), _, Game.Attached(_), _)
+            | (_, Game.Attached(_), _, Game.Attached(_)) => true
+            | _ => false;
+
+          let hasOpponentsAttached =
+            fun
+            | (Game.Attached(_), Game.Attached(_), _, _)
+            | (_, Game.Attached(_), Game.Attached(_), _)
+            | (_, _, Game.Attached(_), Game.Attached(_))
+            | (Game.Attached(_), _, _, Game.Attached(_)) => true
+            | _ => false;
+
+          let isTwoClientOpponent = clients => {
+            hasTwoClientsAttached(clients) && hasOpponentsAttached(clients);
+          };
+
+          let isTwoClientPartner = clients => {
+            hasTwoClientsAttached(clients) && hasPartnersAttached(clients);
+          };
+
+          let findGameByClientStates = (db_game, searchFn) =>
+            db_game->StringMap.findFirstBy((k, {Game.clients}) => k != game_key && searchFn(clients));
+
+          /* when 3 clients attached find a game with 1 client attached
+               when 2 opposites attached find a game with 2 opposites
+               when 2 adjacents attached find a game with 2 adjacents
+               when 1 client attached find a game with 3 clients attached
+             */
+          if (clients->hasThreeClientsAttached) {
+            logger.debug("has three clients")
+            db_game->findGameByClientStates(hasOneClientAttached);
+          } else if (clients->isTwoClientOpponent) {
+            logger.debug("is two client opponent")
+            db_game->findGameByClientStates(isTwoClientOpponent);
+          } else if (clients->isTwoClientPartner) {
+            logger.debug("is two client partner")
+            db_game->findGameByClientStates(isTwoClientPartner);
+          } else if (clients->hasOneClientAttached) {
+            logger.debug("has one client attached")
+            db_game->findGameByClientStates(hasThreeClientsAttached);
+          } else {
+            logger.debug("Game is already full")
+            None;
+          };
+        };
+      
+        let updates = switch(findComplementaryGame(db_game, game.clients)){
+        | None => 
+          logger.debug("No complementary game found");
+          [];
+        | Some((_, {clients})) => 
+          clients->Quad.toList->Belt.List.map(client=>{
+            switch(client){
+            | Attached({client_socket_id, client_username, client_id, client_initials, client_profile_type}) =>
+              [ServerEvent.RemovePlayerBySocket(client_socket_id), AttachPlayer({game_key, sock_id: client_socket_id, client_username, client_id, client_initials, client_profile_type})]
+            | _ => []
+            }
+          })->Belt.List.flatten
+        }
+
+        updateMany(updates, NoUpdate(db))
+      }
     };
   }
 and updateResult: (ServerEvent.event, update(db, ServerEvent.effect)) => update(db, ServerEvent.effect) =

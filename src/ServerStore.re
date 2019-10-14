@@ -48,7 +48,7 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
     | EmitStateByGame(game_key) => 
       switch (db_game->StringMap.get(game_key)) {
       | None => 
-        logger.debug("EmitStatByGame: game not found")
+        logger.debug({j|EmitStatByGame: game($game_key) not found|j})
       | Some(gameState) =>
         gameState
         ->ServerState.buildSocketStatePairs
@@ -118,6 +118,8 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
       }
     | DiscardGameTimer(game_key) =>
       dispatch(RemoveGameTimeout(game_key));
+    | TriggerEvent(event) =>
+      dispatch(event)
     };
   }
   and dispatchMany: list(ServerEvent.event) => unit = msgs => {

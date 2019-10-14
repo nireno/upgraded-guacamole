@@ -233,35 +233,53 @@ let addLeaveStateEffects = (statePrev, (stateNext, effects)) => {
 };
 
 let addEnterStateEffects = (statePrev, (stateNext, effects)) => {
-  statePrev.phase == stateNext.phase
-    ? (stateNext, effects)
-    : {
-      let game_key = statePrev.game_id->SharedGame.stringOfGameId;
+  let game_key = stateNext.game_id->SharedGame.stringOfGameId;
+  let addTimerEffects =
+    statePrev.phase == stateNext.phase
+      ? identity
+      : (
+        switch (stateNext.phase) {
+        | IdlePhase(DelayTrickCollection) => (
+            effects => [
+              ServerEvent.CreateGameTimer(game_key, DelayedGameEvent(AdvanceRound, 2750)),
+              ...effects,
+            ]
+          )
+        | GameOverPhase(rematchDecisions) when Game.isRematchAcceptedByAll(rematchDecisions) => (
+            effects => [
+              ServerEvent.CreateGameTimer(
+                game_key,
+                DelayedGameEvent(
+                  StartRematch,
+                  SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
+                ),
+              ),
+              ...effects,
+            ]
+          )
+        | phase when phase->Game.isPlayerActivePhase => (
+            effects => [
+              ServerEvent.CreateGameTimer(game_key, KickInactiveClientCountdown),
+              ...effects,
+            ]
+          )
+        | _ => identity
+        }
+      );
+  
+  let addPullClientsEffect =
+    switch(statePrev.phase){
+    | FindPlayersPhase(_) => identity
+    | _ => 
       switch (stateNext.phase) {
-      | IdlePhase(DelayTrickCollection) =>
-        (stateNext, 
-         effects @ [ServerEvent.CreateGameTimer(game_key, DelayedGameEvent(AdvanceRound, 2750))]
+      | FindPlayersPhase(_) => (
+          effects => [ServerEvent.TriggerEvent(PullClients(game_key)), ...effects]
         )
-      | GameOverPhase(rematchDecisions) when Game.isRematchAcceptedByAll(rematchDecisions) =>
-        ( stateNext
-        , effects @ [ ServerEvent.CreateGameTimer(
-                        game_key, 
-                        DelayedGameEvent(
-                          StartRematch, 
-                          SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis
-                        )
-                      )
-                    ]
-        )
-      | phase when phase->Game.isPlayerActivePhase => 
-      
-        (
-          stateNext,
-          effects @ [ServerEvent.CreateGameTimer(game_key, KickInactiveClientCountdown)],
-        )
-      | _ => (stateNext, effects)
-      };
+      | _ => identity
+      }
     };
+
+  (stateNext, effects |> addTimerEffects |> addPullClientsEffect)
 };
 
 /* Transfers dealing responsibility to the next player on the losing team. */
