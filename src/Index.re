@@ -1,3 +1,5 @@
+open AppPrelude;
+
 [@bs.val] external node_env: Js.Nullable.t(string) = "process.env.NODE_ENV";
 [@bs.val] external allfours_rules_url: Js.Nullable.t(string) = "process.env.allfours_rules_url";
 [@bs.val] external allfours_help_url: Js.Nullable.t(string) = "process.env.allfours_help_url";
@@ -353,10 +355,10 @@ module App = {
           */
           let animationLeaveTo =
             switch (Player.turnDistance(state.me, state.leader)) {
-            | 1 => CardTransition.East
-            | 2 => CardTransition.North
-            | 3 => CardTransition.West
-            | _ => CardTransition.South
+            | 1 => East
+            | 2 => North
+            | 3 => West
+            | _ => South
             };
           
           let (weTeam, demTeam) =
@@ -401,10 +403,10 @@ module App = {
           let stringOfGameId = SharedGame.stringOfGameId(state.gameId);
           <>
              <div className="trump-card self-center">
-               <CardTransition.PlayCard
+               <GameBoard.CardTransition.PlayCard
                  maybeCard={state.maybeTrumpCard}
-                 enterFrom=CardTransition.North
-                 leaveTo=CardTransition.North
+                 enterFrom=North
+                 leaveTo=North
                />
              </div>
              <ScoreboardView
@@ -440,29 +442,16 @@ module App = {
                      className="player-tags player-tags__west flex flex-col justify-center h-full"
                      tags=westTags
                    />
-                   <div
-                     className="board-card board-card-west flex-shrink-0"
-                     style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
-                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                    //    <div className="text-sm h-5">{ReasonReact.string(westName)}</div>
-                    //  </div>
-                     <div
-                       className="w-1/3 absolute bottom-0 left-0 opacity-80"
-                       style={ReactDOMRe.Style.make(~transform="translate(0, 100%)", ())}>
-                       <PlayerIdentityView initials=westInitials seed=westIdenticonSeed style=westIdenticonStyle />
-                     </div>
-                     <img
-                       className="card__placeholder relative block"
-                       src="./static/img/card_transparent.svg"
-                     />
-                     <CardTransition.PlayCard
-                       maybeCard=westCard
-                       enterFrom=CardTransition.West
-                       leaveTo=animationLeaveTo
-                     />
-                   </div>
                  </div>
+                 <GameBoard__Player
+                   zone=West
+                   cardLeavesToZone=animationLeaveTo
+                   initials=westInitials
+                   identiconSeed=westIdenticonSeed
+                   identiconStyle=westIdenticonStyle
+                   maybeCard=westCard
+                   zIndex=westZ
+                 />
                  <div className="game-board__player game-board__player-north">
                    <div className="game-board__player-offset">
                      {
@@ -481,33 +470,19 @@ module App = {
                          }
                        };
                      }
-                     <PlayerTagsView
-                       className="player-tags player-tags__north flex flex-row justify-center items-center"
-                       tags=northTags
-                     />
-                     <div
-                       className="board-card board-card-north relative self-start flex-shrink-0"
-                       style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
-                      //  <div 
-                      //    className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                      //    style=ReactDOMRe.Style.make(~transform="translate(-50%, 1.5em)", ())>
-                      //    <div className="text-sm h-5">{ReasonReact.string(northName)}</div>
-                      //  </div>
-                       <div
-                         className="w-1/3 absolute top-1/2 -left-1/2 opacity-80"
-                         style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
-                         <PlayerIdentityView initials=northInitials seed=northIdenticonSeed style=northIdenticonStyle />
-                       </div>
-                       <img
-                         className="card__placeholder block relative"
-                         src="./static/img/card_transparent.svg"
-                       />
-                       <CardTransition.PlayCard
-                         maybeCard=northCard
-                         enterFrom=CardTransition.North
-                         leaveTo=animationLeaveTo
-                       />
-                     </div>
+                      <PlayerTagsView
+                        className="player-tags player-tags__north flex flex-row justify-center items-center"
+                        tags=northTags
+                      />
+                      <GameBoard__Player
+                        zone=North
+                        cardLeavesToZone=animationLeaveTo
+                        initials=northInitials
+                        identiconSeed=northIdenticonSeed
+                        identiconStyle=northIdenticonStyle
+                        maybeCard=northCard
+                        zIndex=northZ
+                      />
                    </div>
                    {
                      switch (state.maybePartnerInfo) {
@@ -523,28 +498,15 @@ module App = {
                  </div>
                  <div className="game-board__player game-board__player-south">
                    <div className="game-board__player-offset">
-                     <div
-                       className="board-card board-card-south flex-shrink-0 self-end mx-auto"
-                       style={ReactDOMRe.Style.make(~zIndex=string_of_int(southZ), ())}>
-                      //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-start items-center"
-                      //    style=ReactDOMRe.Style.make(~transform="translateY(-1.5em)", ())>
-                      //    <div>{ReasonReact.string(southName)}</div>
-                      //  </div>
-                       <div
-                         className="w-1/3 absolute top-1/2 right-0 opacity-80"
-                         style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
-                         <PlayerIdentityView initials=southInitials seed=southIdenticonSeed style=southIdenticonStyle />
-                       </div>
-                       <img
-                         className="card__placeholder block relative"
-                         src="./static/img/card_transparent.svg"
-                       />
-                       <CardTransition.PlayCard
-                         maybeCard=southCard
-                         enterFrom=CardTransition.South
-                         leaveTo=animationLeaveTo
-                       />
-                     </div>
+                    <GameBoard__Player
+                      zone=South
+                      cardLeavesToZone=animationLeaveTo
+                      initials=southInitials
+                      identiconSeed=southIdenticonSeed
+                      identiconStyle=southIdenticonStyle
+                      maybeCard=southCard
+                      zIndex=southZ
+                    />
                      <PlayerTagsView
                        className="player-tags player-tags__south flex flex-row justify-center items-center"
                        tags=southTags
@@ -552,29 +514,19 @@ module App = {
                    </div>
                  </div>
                  <div className="game-board__player game-board__player-east">
-                   <div
-                     className="board-card board-card-east flex-shrink-0"
-                     style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
-                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                    //    <div className="text-sm h-5">{ReasonReact.string(eastName)}</div>
-                    //  </div>
-                     <div
-                       className="w-1/3 absolute top-0 right-0 opacity-80"
-                       style={ReactDOMRe.Style.make(~transform="translate(0, -100%)", ())}>
-                       <PlayerIdentityView initials=eastInitials seed=eastIdenticonSeed style=eastIdenticonStyle />
-                     </div>
-                     <img className="card relative" src="./static/img/card_transparent.svg" />
-                     <CardTransition.PlayCard
-                       maybeCard=eastCard
-                       enterFrom=CardTransition.East
-                       leaveTo=animationLeaveTo
-                     />
-                   </div>
-                   <PlayerTagsView
-                     className="player-tags player-tags__east flex flex-col justify-center h-full"
-                     tags=eastTags
-                   />
+                  <GameBoard__Player
+                    zone=East
+                    cardLeavesToZone=animationLeaveTo
+                    initials=eastInitials
+                    identiconSeed=eastIdenticonSeed
+                    identiconStyle=eastIdenticonStyle
+                    maybeCard=eastCard
+                    zIndex=eastZ
+                  />
+                  <PlayerTagsView
+                    className="player-tags player-tags__east flex flex-col justify-center h-full"
+                    tags=eastTags
+                  />
                  </div>
                </div>
                <WaitingMessage activePlayerName myPlayerId={state.me} maybeActivePlayer />

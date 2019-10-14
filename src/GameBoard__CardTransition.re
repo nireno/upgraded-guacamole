@@ -1,4 +1,4 @@
-type direction = | North | South | East | West;
+open AppPrelude;
 
 let directionToString = fun
 | North => "north"
