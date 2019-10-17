@@ -47,7 +47,9 @@ let make =
   , ~identiconStyle
   , ~maybeCard
   , ~zIndex
-  , ~tags
+  , ~isDealer
+  , ~isTurner
+  , ~gamePhase
   ) => {
 
     let class_ = "player-tags flex";
@@ -59,14 +61,16 @@ let make =
       | West => {j|$class_ flex-col justify-center w-1/5|j};
 
     <div className={"player-section w-full relative flex " ++ getMainDivClass(zone)}>
-      <PlayerTagsView
-          className=playerTagsClass(zone)
-          tags
-      />
+      <PlayerTagsView className=playerTagsClass(zone) isDealer />
       <div
         className="flex-grow relative w-4/5 self-center"
         style={ReactDOMRe.Style.make(~zIndex=zIndex->string_of_int, ())}>
         <img className="card__placeholder relative block " src="./static/img/card_transparent.svg" />
+        {
+          isTurner
+          ? <ActivePlayerCountdownView gamePhase />
+          : ReasonReact.null
+        }
         <GameBoard__CardTransition.PlayCard maybeCard enterFrom=zone leaveTo=cardLeavesToZone />
 
         <AlignedIdenticon

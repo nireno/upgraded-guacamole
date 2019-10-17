@@ -311,23 +311,22 @@ module App = {
             );
 
           let (
-            (_southName, southCard, southZ, southTags, southIdenticonSeed, southIdenticonStyle, southInitials),
-            (_eastName, eastCard, eastZ, eastTags, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
-            (_northName, northCard, northZ, northTags, northIdenticonSeed, northIdenticonStyle, northInitials),
-            (_westName, westCard, westZ, westTags, westIdenticonSeed, westIdenticonStyle, westInitials),
+            (_southName, southCard, southZ, southIsDealer, southIsTurner, southIdenticonSeed, southIdenticonStyle, southInitials),
+            (_eastName, eastCard, eastZ, eastIsDealer, eastIsTurner, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
+            (_northName, northCard, northZ, northIsDealer, northIsTurner, northIdenticonSeed, northIdenticonStyle, northInitials),
+            (_westName, westCard, westZ, westIsDealer, westIsTurner, westIdenticonSeed, westIdenticonStyle, westInitials),
           ) =
             Player.playersAsQuad(~startFrom=state.me, ())
             |> Quad.map(playerId =>
                   Quad.select(
                     playerId,
                     x => {
-                      let tags = [];
-                      let tags = state.dealer == playerId ? tags @ [PlayerTagsView.Dealer] : tags;
-                      let tags =
+                      let isDealer = state.dealer == playerId ? true : false;
+                      let isTurner =
                         switch (maybeActivePlayer) {
-                        | None => tags
+                        | None => false
                         | Some({id: activePlayerId}) =>
-                          playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
+                          playerId == activePlayerId ? true : false;
                         };
                         
                       let initials = switch(playerId){
@@ -342,7 +341,11 @@ module App = {
                       | Some(profile) => (profile.client_identicon, profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType)
                       };
 
-                      (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags, identiconSeed, identiconStyle, initials);
+                      ( Player.stringOfId(playerId)
+                      , x.pla_card
+                      , Player.turnDistance(state.leader, playerId)
+                      , isDealer , isTurner
+                      , identiconSeed , identiconStyle , initials);
                     },
                     state.players,
                   )
@@ -471,7 +474,9 @@ module App = {
                     identiconStyle=northIdenticonStyle
                     maybeCard=northCard
                     zIndex=northZ
-                    tags=northTags
+                    isDealer=northIsDealer
+                    isTurner=northIsTurner
+                    gamePhase=state.gamePhase
                   />
 
                   {
@@ -495,7 +500,9 @@ module App = {
                     identiconStyle=westIdenticonStyle
                     maybeCard=westCard
                     zIndex=westZ
-                    tags=westTags
+                    isDealer=westIsDealer
+                    isTurner=westIsTurner
+                    gamePhase=state.gamePhase
                   />
                 </div>
                 <div className="flex flex-col justify-center " style={ReactDOMRe.Style.make(~gridColumn="3 / 4", ~gridRow="2 / 5", ())}> 
@@ -507,7 +514,9 @@ module App = {
                       identiconStyle=eastIdenticonStyle
                       maybeCard=eastCard
                       zIndex=eastZ
-                      tags=eastTags
+                      isDealer=eastIsDealer
+                      isTurner=eastIsTurner
+                      gamePhase=state.gamePhase
                     />
                 </div>
                 <div className="flex flex-col justify-end" style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="4", ())}> 
@@ -519,7 +528,9 @@ module App = {
                     identiconStyle=southIdenticonStyle
                     maybeCard=southCard
                     zIndex=southZ
-                    tags=southTags
+                    isDealer=southIsDealer
+                    isTurner=southIsTurner
+                    gamePhase=state.gamePhase
                   />
                 </div>
                 

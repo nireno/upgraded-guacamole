@@ -69,3 +69,7 @@ img, video {
 .hint-menu-item-accent {
   @apply font-bold text-gray-900 font-mono
 }
+
+.layer {
+  @apply absolute top-0 w-full h-full
+}
