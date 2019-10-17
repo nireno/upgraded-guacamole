@@ -523,7 +523,7 @@ module App = {
                   />
                 </div>
                 
-                <div className="player-hand flex flex-col" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="5", ())}>
+                <div className="player-hand flex flex-col z-20" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="5", ())}>
                   <div className="player-hand__placeholder-row flex flex-row justify-around">
                     <img className="hand-card" src="./static/img/card_placeholder.svg" />
                     <img className="hand-card" src="./static/img/card_placeholder.svg" />
