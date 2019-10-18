@@ -14,6 +14,7 @@ type key = [
   | `ClientId
   | `ClientProfileType
   | `ClientInitials
+  | `SortHand
   // | [@bs.as "miniCoconut"] `Kiwi
 ];
 
@@ -56,7 +57,8 @@ let getClientSettings = () => {
     | Some(client_initials) => client_initials
     };
   
-  ClientSettings.{volume, client_id, client_profile_type, client_initials};
+  let sort_hand = getItemWithDefault(`SortHand, ClientSettings.sortHand_decode, ClientSettings.defaults.sort_hand);
+  ClientSettings.{volume, client_id, client_profile_type, client_initials, sort_hand};
 };
 
 let updateClientSettings = newSettings => {

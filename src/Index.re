@@ -38,6 +38,7 @@ module App = {
     let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
     let (canJoinPublicGame, updateCanJoinPublicGame) = React.useState(() => true);
     let ( machineState, updateMachineState ) = React.useState(() => MainMenuState(MainMenuDefaultState));
+    let (sortHand, updateSortHand) = React.useState(() => clientSettings.sort_hand);
 
     let saveClientSettings = newClientSettings => {
       LocalStorage.updateClientSettings(newClientSettings);
@@ -186,6 +187,11 @@ module App = {
         IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
         ackJoinGame,
       );
+    };
+
+    let onToggleSortClick = _event => {
+      updateSortHand(b => !b);
+      LocalStorage.(setItem(keyToJs(`SortHand), Json.Encode.bool(sortHand)->Js.Json.stringify));
     };
 
     /** 
@@ -533,8 +539,10 @@ module App = {
                     gamePhase=state.gamePhase
                   />
                 </div>
-                
-                <div className="player-hand flex flex-col z-20" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="5", ())}>
+                <div className="flex" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="5", ())}>
+                  <Toolbar onToggleSortClick sortHand/>
+                </div>
+                <div className="player-hand flex flex-col z-20" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
                   <div className="player-hand__placeholder-row flex flex-row justify-around">
                     <img className="hand-card" src="./static/img/card_placeholder.svg" />
                     <img className="hand-card" src="./static/img/card_placeholder.svg" />
@@ -571,6 +579,7 @@ module App = {
                       }
                     }
                     onInvalidCardClick=addUniqueTimoutNoti
+                    sortHand
                   />
                 </div>
               </div> /* End gameplay-section */

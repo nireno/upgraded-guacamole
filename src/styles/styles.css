@@ -135,3 +135,16 @@ img.card {
 .round-summary-table th, .round-summary-table td {
   text-align: center; 
 }
+
+.toolbar__button {
+  transition: transform .1s ease-in-out, outline .3s ease-in-out;
+  outline: 1px solid white;
+}
+
+.toolbar__button:hover  {
+  outline: 1px solid black;
+}
+
+.toolbar__button:active  {
+  transform: scale(0.92);
+}

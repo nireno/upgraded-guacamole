@@ -71,5 +71,6 @@ img, video {
 }
 
 .layer {
-  @apply absolute top-0 w-full h-full
+  @apply absolute top-0 left-0 w-full h-full;
+  padding: inherit; /*https://stackoverflow.com/questions/17115344/absolute-positioning-ignoring-padding-of-parent*/
 }
