@@ -7,33 +7,34 @@ let getMainDivClass =
   | East => "flex-row-reverse"
   | West => "flex-row";
 
-let getIdenticonClass = zone => {
-  let class_ = switch(zone){
-  | West => "bottom-0 left-0 "
-  | North => "top-0"
-  | South => "bottom-0 right-0"
-  | East => "top-0 right-0";
-  };
-
-  {j|w-1/3 absolute opacity-80 $class_|j}
-}
-
- let getIdenticonStyle = zone => {
-   let transform =
-     switch (zone) {
-     | West => "translate(10%, 100%)"
-     | North => "translate(-100%, 10%)"
-     | South => "translate(100%, -10%)"
-     | East => "translate(-10%, -100%)"
-     };
-   ReactDOMRe.Style.make(~transform, ());
- };
-
 module AlignedIdenticon = {
   [@react.component]
-  let make = (~seed, ~initials, ~style, ~alignmentClass, ~alignmentStyle) => {
-    <div className=alignmentClass style=alignmentStyle>
+  let make = (~seed, ~initials, ~style, ~zone, ~signal=?) => {
+    let getClassName = zone => {
+      let class_ =
+        switch (zone) {
+        | West => "bottom-0 left-0 "
+        | North => "top-0"
+        | South => "bottom-0 right-0"
+        | East => "top-0 right-0"
+        };
+
+      {j|w-1/3 absolute opacity-80 $class_|j};
+    };
+
+    let getStyle = zone => {
+      let transform =
+        switch (zone) {
+        | West => "translate(10%, 100%)"
+        | North => "translate(-100%, 10%)"
+        | South => "translate(100%, -10%)"
+        | East => "translate(-10%, -100%)"
+        };
+      ReactDOMRe.Style.make(~transform, ());
+    };
+    <div className={getClassName(zone)} style={getStyle(zone)}>
       <PlayerIdentityView initials seed style />
+      <SignalsView ?signal zone/>
     </div>;
   };
 };
@@ -50,6 +51,7 @@ let make =
   , ~isDealer
   , ~isTurner
   , ~gamePhase
+  , ~signal=?
   ) => {
 
     let class_ = "player-tags flex";
@@ -77,8 +79,8 @@ let make =
           initials
           seed=identiconSeed
           style=identiconStyle
-          alignmentClass={getIdenticonClass(zone)}
-          alignmentStyle={getIdenticonStyle(zone)}
+          zone
+          ?signal
         />
       </div>
     </div>;

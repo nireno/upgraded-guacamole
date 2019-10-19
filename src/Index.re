@@ -39,6 +39,8 @@ module App = {
     let (canJoinPublicGame, updateCanJoinPublicGame) = React.useState(() => true);
     let ( machineState, updateMachineState ) = React.useState(() => MainMenuState(MainMenuDefaultState));
     let (sortHand, updateSortHand) = React.useState(() => clientSettings.sort_hand);
+    let (signals, updateSignals) = React.useState(() => (None, None, None, None));
+    let maybeSignalTimeout = ref(None);
 
     let saveClientSettings = newClientSettings => {
       LocalStorage.updateClientSettings(newClientSettings);
@@ -99,6 +101,23 @@ module App = {
           | AckOk | AckError(_) => ()
           | HandshakeFailed => 
             updateMachineState(_curr => MainMenuState(MainMenuReloadState));
+          | ShowSignal(fromQid, signal) =>
+            updateSignals(signals => signals->Quad.update(fromQid, _ => Some(( signal, Nanoid.nanoid() )), _));
+
+            let timeoutId =
+              Js.Global.setTimeout(
+                () =>
+                  updateSignals(_
+                    => signals->Quad.update(fromQid, _ => None, _)),
+                2->secondsToMillis,
+              );
+
+            switch (maybeSignalTimeout^) {
+            | None => ()
+            | Some(timeoutId) => Js.Global.clearTimeout(timeoutId)
+            };
+
+            maybeSignalTimeout := Some(timeoutId)
           }
         );
         switch (maybeInviteCode) {
@@ -192,6 +211,12 @@ module App = {
     let onToggleSortClick = _event => {
       updateSortHand(b => !b);
       LocalStorage.(setItem(keyToJs(`SortHand), Json.Encode.bool(sortHand)->Js.Json.stringify));
+    };
+
+    let onSignalClick = (signal, _event)  => {
+      sendIO(
+        IO_Signal(signal),
+      );
     };
 
     /** 
@@ -308,19 +333,19 @@ module App = {
         | ActiveGameState(state) =>
 
           let maybeActivePlayer = Shared.ActivePlayer.find(state.gamePhase, state.dealer);
-          let activePlayerName =
-            maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
-              switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
-              | None => ""
-              | Some(profile) => profile.client_username
-              }
-            );
+          // let activePlayerName =
+          //   maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
+          //     switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
+          //     | None => ""
+          //     | Some(profile) => profile.client_username
+          //     }
+          //   );
 
           let (
-            (_southName, southCard, southZ, southIsDealer, southIsTurner, southIdenticonSeed, southIdenticonStyle, southInitials),
-            (_eastName, eastCard, eastZ, eastIsDealer, eastIsTurner, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
-            (_northName, northCard, northZ, northIsDealer, northIsTurner, northIdenticonSeed, northIdenticonStyle, northInitials),
-            (_westName, westCard, westZ, westIsDealer, westIsTurner, westIdenticonSeed, westIdenticonStyle, westInitials),
+            (_southName, southCard, southZ, southIsDealer, southIsTurner, southIdenticonSeed, southIdenticonStyle, southInitials, southSignal),
+            (_eastName, eastCard, eastZ, eastIsDealer, eastIsTurner, eastIdenticonSeed, eastIdenticonStyle, eastInitials, eastSignal),
+            (_northName, northCard, northZ, northIsDealer, northIsTurner, northIdenticonSeed, northIdenticonStyle, northInitials, northSignal),
+            (_westName, westCard, westZ, westIsDealer, westIsTurner, westIdenticonSeed, westIdenticonStyle, westInitials, westSignal),
           ) =
             Player.playersAsQuad(~startFrom=state.me, ())
             |> Quad.map(playerId =>
@@ -347,11 +372,14 @@ module App = {
                       | Some(profile) => (profile.client_identicon, profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType)
                       };
 
+                      let signal = signals->Quad.get(playerId, _);
+
                       ( Player.stringOfId(playerId)
                       , x.pla_card
                       , Player.turnDistance(state.leader, playerId)
                       , isDealer , isTurner
-                      , identiconSeed , identiconStyle , initials);
+                      , identiconSeed , identiconStyle , initials
+                      , signal);
                     },
                     state.players,
                   )
@@ -483,6 +511,7 @@ module App = {
                     isDealer=northIsDealer
                     isTurner=northIsTurner
                     gamePhase=state.gamePhase
+                    signal=?northSignal
                   />
 
                   {
@@ -509,6 +538,7 @@ module App = {
                     isDealer=westIsDealer
                     isTurner=westIsTurner
                     gamePhase=state.gamePhase
+                    signal=?westSignal
                   />
                 </div>
                 <div className="flex flex-col justify-center " style={ReactDOMRe.Style.make(~gridColumn="3 / 4", ~gridRow="2 / 5", ())}> 
@@ -523,6 +553,7 @@ module App = {
                       isDealer=eastIsDealer
                       isTurner=eastIsTurner
                       gamePhase=state.gamePhase
+                      signal=?eastSignal
                     />
                 </div>
                 <div className="flex flex-col justify-end" style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="4", ())}> 
@@ -537,10 +568,11 @@ module App = {
                     isDealer=southIsDealer
                     isTurner=southIsTurner
                     gamePhase=state.gamePhase
+                    signal=?southSignal
                   />
                 </div>
                 <div className="flex" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="5", ())}>
-                  <Toolbar onToggleSortClick sortHand/>
+                  <Toolbar onToggleSortClick onSignalClick sortHand/>
                 </div>
                 <div className="player-hand flex flex-col z-20" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
                   <div className="player-hand__placeholder-row flex flex-row justify-around">

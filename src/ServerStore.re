@@ -118,6 +118,9 @@ and perform: (ServerState.db, ServerEvent.effect) => unit =
       }
     | DiscardGameTimer(game_key) =>
       dispatch(RemoveGameTimeout(game_key));
+    
+    | EmitSignal(toSocketId, fromPlayerId, signal) =>
+      SocketServer.emit(ShowSignal(fromPlayerId, signal), toSocketId);
     };
   }
   and dispatchMany: list(ServerEvent.event) => unit = msgs => {
