@@ -69,3 +69,9 @@ img, video {
 .hint-menu-item-accent {
   @apply font-bold text-gray-900 font-mono
 }
+
+.layer {
+  @apply absolute top-0 left-0 w-full h-full;
+  /* padding: inherit;  */
+  /*https://stackoverflow.com/questions/17115344/absolute-positioning-ignoring-padding-of-parent*/
+}

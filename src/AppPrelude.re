@@ -5,6 +5,7 @@ type str_json = string;
 type sock_id = string;
 type milliseconds = float;
 type game_key = string;
+type direction = North | South | East | West;
 
 let leftPad = (s, ~n=0, ~c="\t", ()) => {
   let tabs = Js.String.repeat(n, c); 

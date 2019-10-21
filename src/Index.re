@@ -1,3 +1,5 @@
+open AppPrelude;
+
 [@bs.val] external node_env: Js.Nullable.t(string) = "process.env.NODE_ENV";
 [@bs.val] external allfours_rules_url: Js.Nullable.t(string) = "process.env.allfours_rules_url";
 [@bs.val] external allfours_help_url: Js.Nullable.t(string) = "process.env.allfours_help_url";
@@ -36,6 +38,10 @@ module App = {
     let (clientSettings, updateClientSettings) = React.useState(() => LocalStorage.getClientSettings());
     let (canJoinPublicGame, updateCanJoinPublicGame) = React.useState(() => true);
     let ( machineState, updateMachineState ) = React.useState(() => MainMenuState(MainMenuDefaultState));
+    let (sortHand, updateSortHand) = React.useState(() => clientSettings.sort_hand);
+    let (signals, updateSignals) = React.useState(() => (None, None, None, None));
+    let (signalsEnabled, updateSignalsEnabled) = React.useState(() => true);
+    let maybeSignalTimeout = ref(None);
 
     let saveClientSettings = newClientSettings => {
       LocalStorage.updateClientSettings(newClientSettings);
@@ -96,6 +102,23 @@ module App = {
           | AckOk | AckError(_) => ()
           | HandshakeFailed => 
             updateMachineState(_curr => MainMenuState(MainMenuReloadState));
+          | ShowSignal(fromQid, signal) =>
+            updateSignals(signals => signals->Quad.update(fromQid, _ => Some(( signal, Nanoid.nanoid() )), _));
+
+            let timeoutId =
+              Js.Global.setTimeout(
+                () =>
+                  updateSignals(_
+                    => signals->Quad.update(fromQid, _ => None, _)),
+                2->secondsToMillis,
+              );
+
+            switch (maybeSignalTimeout^) {
+            | None => ()
+            | Some(timeoutId) => Js.Global.clearTimeout(timeoutId)
+            };
+
+            maybeSignalTimeout := Some(timeoutId)
           }
         );
         switch (maybeInviteCode) {
@@ -184,6 +207,22 @@ module App = {
         IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
         ackJoinGame,
       );
+    };
+
+    let onToggleSortClick = _event => {
+      updateSortHand(b => !b);
+      LocalStorage.(setItem(keyToJs(`SortHand), Json.Encode.bool(sortHand)->Js.Json.stringify));
+    };
+
+    let onSignalClick = (signal, _event)  => {
+      signalsEnabled ? {
+        updateSignalsEnabled(_ => false);
+        Js.Global.setTimeout(() => updateSignalsEnabled(_ => true), 350) |> ignore;
+        sendIO(
+          IO_Signal(signal),
+        );
+      }
+      : ()
     };
 
     /** 
@@ -300,32 +339,31 @@ module App = {
         | ActiveGameState(state) =>
 
           let maybeActivePlayer = Shared.ActivePlayer.find(state.gamePhase, state.dealer);
-          let activePlayerName =
-            maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
-              switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
-              | None => ""
-              | Some(profile) => profile.client_username
-              }
-            );
+          // let activePlayerName =
+          //   maybeActivePlayer->Belt.Option.mapWithDefault("", activePlayer =>
+          //     switch (state.players->Quad.get(activePlayer.Shared.ActivePlayer.id, _).pla_profile_maybe) {
+          //     | None => ""
+          //     | Some(profile) => profile.client_username
+          //     }
+          //   );
 
           let (
-            (_southName, southCard, southZ, southTags, southIdenticonSeed, southIdenticonStyle, southInitials),
-            (_eastName, eastCard, eastZ, eastTags, eastIdenticonSeed, eastIdenticonStyle, eastInitials),
-            (_northName, northCard, northZ, northTags, northIdenticonSeed, northIdenticonStyle, northInitials),
-            (_westName, westCard, westZ, westTags, westIdenticonSeed, westIdenticonStyle, westInitials),
+            (_southName, southCard, southZ, southIsDealer, southIsTurner, southIdenticonSeed, southIdenticonStyle, southInitials, southSignal),
+            (_eastName, eastCard, eastZ, eastIsDealer, eastIsTurner, eastIdenticonSeed, eastIdenticonStyle, eastInitials, eastSignal),
+            (_northName, northCard, northZ, northIsDealer, northIsTurner, northIdenticonSeed, northIdenticonStyle, northInitials, northSignal),
+            (_westName, westCard, westZ, westIsDealer, westIsTurner, westIdenticonSeed, westIdenticonStyle, westInitials, westSignal),
           ) =
             Player.playersAsQuad(~startFrom=state.me, ())
             |> Quad.map(playerId =>
                   Quad.select(
                     playerId,
                     x => {
-                      let tags = [];
-                      let tags = state.dealer == playerId ? tags @ [PlayerTagsView.Dealer] : tags;
-                      let tags =
+                      let isDealer = state.dealer == playerId ? true : false;
+                      let isTurner =
                         switch (maybeActivePlayer) {
-                        | None => tags
+                        | None => false
                         | Some({id: activePlayerId}) =>
-                          playerId == activePlayerId ? tags @ [PlayerTagsView.Turner] : tags
+                          playerId == activePlayerId ? true : false;
                         };
                         
                       let initials = switch(playerId){
@@ -340,7 +378,14 @@ module App = {
                       | Some(profile) => (profile.client_identicon, profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType)
                       };
 
-                      (Player.stringOfId(playerId), x.pla_card, Player.turnDistance(state.leader, playerId), tags, identiconSeed, identiconStyle, initials);
+                      let signal = signals->Quad.get(playerId, _);
+
+                      ( Player.stringOfId(playerId)
+                      , x.pla_card
+                      , Player.turnDistance(state.leader, playerId)
+                      , isDealer , isTurner
+                      , identiconSeed , identiconStyle , initials
+                      , signal);
                     },
                     state.players,
                   )
@@ -353,10 +398,10 @@ module App = {
           */
           let animationLeaveTo =
             switch (Player.turnDistance(state.me, state.leader)) {
-            | 1 => CardTransition.East
-            | 2 => CardTransition.North
-            | 3 => CardTransition.West
-            | _ => CardTransition.South
+            | 1 => East
+            | 2 => North
+            | 3 => West
+            | _ => South
             };
           
           let (weTeam, demTeam) =
@@ -400,233 +445,194 @@ module App = {
           
           let stringOfGameId = SharedGame.stringOfGameId(state.gameId);
           <>
-             <div className="trump-card self-center">
-               <CardTransition.PlayCard
-                 maybeCard={state.maybeTrumpCard}
-                 enterFrom=CardTransition.North
-                 leaveTo=CardTransition.North
-               />
-             </div>
-             <ScoreboardView
-               weScore={weTeam.team_score}
-               wePoints={weTeam.team_points}
-               demScore={demTeam.team_score}
-               demPoints={demTeam.team_points}
-             />
-             <div className="the-rest flex-grow flex flex-col">
-               <div
-                 className={
-                   "game-board relative flex-grow flex-shrink-0 flex justify-between items-center "
-                   ++ bgBoard
-                 }>
-                 {
-                   Belt.List.forEach(notis, notiToRemove =>
-                     switch (notiToRemove.noti_kind) {
-                     | Duration(millis) =>
-                       Js.Global.setTimeout(() => updateNotis(Remove(notiToRemove)), millis)
-                       |> ignore
-                     | _ => ()
-                     }
-                   );
-                   <NotificationsView
-                     id="notifications_view"
-                     notis
-                     appRect
-                     teamId={teamOfPlayer(state.me)}
-                   />;
-                 }
-                 <div className="game-board__player">
-                   <PlayerTagsView
-                     className="player-tags player-tags__west flex flex-col justify-center h-full"
-                     tags=westTags
-                   />
-                   <div
-                     className="board-card board-card-west flex-shrink-0"
-                     style={ReactDOMRe.Style.make(~zIndex=string_of_int(westZ), ())}>
-                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                    //    <div className="text-sm h-5">{ReasonReact.string(westName)}</div>
-                    //  </div>
-                     <div
-                       className="w-1/3 absolute bottom-0 left-0 opacity-80"
-                       style={ReactDOMRe.Style.make(~transform="translate(0, 100%)", ())}>
-                       <PlayerIdentityView initials=westInitials seed=westIdenticonSeed style=westIdenticonStyle />
-                     </div>
-                     <img
-                       className="card__placeholder relative block"
-                       src="./static/img/card_transparent.svg"
-                     />
-                     <CardTransition.PlayCard
-                       maybeCard=westCard
-                       enterFrom=CardTransition.West
-                       leaveTo=animationLeaveTo
-                     />
-                   </div>
-                 </div>
-                 <div className="game-board__player game-board__player-north">
-                   <div className="game-board__player-offset">
-                     {
-                       switch (state.maybeTrumpCard) {
-                       | None => ReasonReact.null
-                       | Some(trumpCard) =>
-                         switch (state.maybePartnerInfo) {
-                         | None => ReasonReact.null
-                         | Some(partnerInfo) =>
-                           <PlayerTrumpsView
-                             suit={trumpCard.suit}
-                             n={partnerInfo.trumpCount}
-                             className="w-full absolute"
-                             style={ReactDOMRe.Style.make(~transform="translateX(-100%)", ())}
-                           />
-                         }
-                       };
-                     }
-                     <PlayerTagsView
-                       className="player-tags player-tags__north flex flex-row justify-center items-center"
-                       tags=northTags
-                     />
-                     <div
-                       className="board-card board-card-north relative self-start flex-shrink-0"
-                       style={ReactDOMRe.Style.make(~zIndex=string_of_int(northZ), ())}>
-                      //  <div 
-                      //    className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                      //    style=ReactDOMRe.Style.make(~transform="translate(-50%, 1.5em)", ())>
-                      //    <div className="text-sm h-5">{ReasonReact.string(northName)}</div>
-                      //  </div>
-                       <div
-                         className="w-1/3 absolute top-1/2 -left-1/2 opacity-80"
-                         style={ReactDOMRe.Style.make(~transform="translateX(-100%) translateY(-50%)", ())}>
-                         <PlayerIdentityView initials=northInitials seed=northIdenticonSeed style=northIdenticonStyle />
-                       </div>
-                       <img
-                         className="card__placeholder block relative"
-                         src="./static/img/card_transparent.svg"
-                       />
-                       <CardTransition.PlayCard
-                         maybeCard=northCard
-                         enterFrom=CardTransition.North
-                         leaveTo=animationLeaveTo
-                       />
-                     </div>
-                   </div>
-                   {
-                     switch (state.maybePartnerInfo) {
-                     | None => ReasonReact.null
-                     | Some(partnerInfo) =>
-                       <PlayerCardTagsView
-                         className="absolute w-full top-0 left-0 leading-none"
-                         style={ReactDOMRe.Style.make(~transform="translate(50%)", ())}
-                         cards={partnerInfo.cardsToDisplay}
-                       />
-                     };
-                   }
-                 </div>
-                 <div className="game-board__player game-board__player-south">
-                   <div className="game-board__player-offset">
-                     <div
-                       className="board-card board-card-south flex-shrink-0 self-end mx-auto"
-                       style={ReactDOMRe.Style.make(~zIndex=string_of_int(southZ), ())}>
-                      //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-start items-center"
-                      //    style=ReactDOMRe.Style.make(~transform="translateY(-1.5em)", ())>
-                      //    <div>{ReasonReact.string(southName)}</div>
-                      //  </div>
-                       <div
-                         className="w-1/3 absolute top-1/2 right-0 opacity-80"
-                         style={ReactDOMRe.Style.make(~transform="translate(100%, -50%)", ())}>
-                         <PlayerIdentityView initials=southInitials seed=southIdenticonSeed style=southIdenticonStyle />
-                       </div>
-                       <img
-                         className="card__placeholder block relative"
-                         src="./static/img/card_transparent.svg"
-                       />
-                       <CardTransition.PlayCard
-                         maybeCard=southCard
-                         enterFrom=CardTransition.South
-                         leaveTo=animationLeaveTo
-                       />
-                     </div>
-                     <PlayerTagsView
-                       className="player-tags player-tags__south flex flex-row justify-center items-center"
-                       tags=southTags
-                     />
-                   </div>
-                 </div>
-                 <div className="game-board__player game-board__player-east">
-                   <div
-                     className="board-card board-card-east flex-shrink-0"
-                     style={ReactDOMRe.Style.make(~zIndex=string_of_int(eastZ), ())}>
-                    //  <div className="absolute w-full h-full overflow-hidden flex flex-col justify-end"
-                    //    style=ReactDOMRe.Style.make(~transform="translateY(1.5em)", ())>
-                    //    <div className="text-sm h-5">{ReasonReact.string(eastName)}</div>
-                    //  </div>
-                     <div
-                       className="w-1/3 absolute top-0 right-0 opacity-80"
-                       style={ReactDOMRe.Style.make(~transform="translate(0, -100%)", ())}>
-                       <PlayerIdentityView initials=eastInitials seed=eastIdenticonSeed style=eastIdenticonStyle />
-                     </div>
-                     <img className="card relative" src="./static/img/card_transparent.svg" />
-                     <CardTransition.PlayCard
-                       maybeCard=eastCard
-                       enterFrom=CardTransition.East
-                       leaveTo=animationLeaveTo
-                     />
-                   </div>
-                   <PlayerTagsView
-                     className="player-tags player-tags__east flex flex-col justify-center h-full"
-                     tags=eastTags
-                   />
-                 </div>
-               </div>
-               <WaitingMessage activePlayerName myPlayerId={state.me} maybeActivePlayer />
-               <Player
-                 sendDeal={_event => sendIO(SocketMessages.IO_Deal)}
-                 sendStandUp={_event => sendIO(SocketMessages.IO_Stand)}
-                 sendBeg={_event => sendIO(IO_Beg)}
-                 sendGiveOne={_event => sendIO(SocketMessages.IO_GiveOne)}
-                 sendRunPack={_event => sendIO(IO_RunPack)}
-                 sendReshuffle={_event => sendIO(IO_DealAgain)}
-                 playerPhase={state.phase}
-               />
-               <div className="player-hand flex flex-col">
-                 <div className="player-hand__placeholder-row flex flex-row justify-around">
-                   <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                   <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                   <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                   <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                   <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                   <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                 </div>
-                 <Hand
-                   handFacing={state.handFacing}
-                   maybeLeadCard={state.maybeLeadCard}
-                   maybeTrumpCard={state.maybeTrumpCard}
-                   handPhase={
-                     switch (maybeActivePlayer) {
-                     | None => Hand.FaceUpHand.HandWaitPhase
-                     | Some(activePlayer) =>
-                       activePlayer.id == state.me
-                         ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
-                     }
-                   }
-                   sendPlayCard={card =>
-                     switch (maybeSocket) {
-                     | None => ()
-                     | Some(socket) =>
-                       ClientSocket.T.emit(
-                         socket,
-                         SocketMessages.(
-                           IO_PlayCard(
-                             Player.id_encode(state.me) |> Js.Json.stringify,
-                             Card.t_encode(card) |> Js.Json.stringify,
-                           )
-                         ),
-                       )
-                     }
-                   }
-                   onInvalidCardClick=addUniqueTimoutNoti
-                 />
-               </div>
-             </div>
+            <div className="trump-card self-center -z-10">
+              <GameBoard.CardTransition.PlayCard
+                maybeCard={state.maybeTrumpCard}
+                enterFrom=North
+                leaveTo=North 
+              />
+            </div>
+              <ScoreboardView
+                weScore={weTeam.team_score}
+                wePoints={weTeam.team_points}
+                demScore={demTeam.team_score}
+                demPoints={demTeam.team_points}
+              />
+
+            <div className={j|the-rest flex-grow flex flex-col $bgBoard|j}>
+              <div
+                className="gameplay-section h-full"
+                style={ReactDOMRe.Style.make(
+                  ~display="grid",
+                  ~gridTemplateColumns="repeat(3, 1fr)",
+                  ~gridTemplateRows="auto minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto",
+                  (),
+                )}>
+                
+                <div className="relative z-10" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="1", ())}>
+                  {
+                    Belt.List.forEach(notis, notiToRemove =>
+                      switch (notiToRemove.noti_kind) {
+                      | Duration(millis) =>
+                        Js.Global.setTimeout(() => updateNotis(Remove(notiToRemove)), millis)
+                        |> ignore
+                      | _ => ()
+                      }
+                    );
+                    <NotificationsView
+                      id="notifications_view"
+                      notis
+                      appRect
+                      teamId={teamOfPlayer(state.me)}
+                    />;
+                  }
+                </div>
+
+                <div className="relative" style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}> 
+                  {
+                    switch (state.maybeTrumpCard) {
+                    | None => ReasonReact.null
+                    | Some(trumpCard) =>
+                      switch (state.maybePartnerInfo) {
+                      | None => ReasonReact.null
+                      | Some(partnerInfo) =>
+                        <PlayerTrumpsView
+                          suit={trumpCard.suit}
+                          n={partnerInfo.trumpCount}
+                          className="w-full absolute"
+                          style={ReactDOMRe.Style.make(~transform="translateX(-100%)", ())}
+                        />
+                      }
+                    };
+                  }
+
+                  <GameBoard__Player
+                    zone=North
+                    cardLeavesToZone=animationLeaveTo
+                    initials=northInitials
+                    identiconSeed=northIdenticonSeed
+                    identiconStyle=northIdenticonStyle
+                    maybeCard=northCard
+                    zIndex=northZ
+                    isDealer=northIsDealer
+                    isTurner=northIsTurner
+                    gamePhase=state.gamePhase
+                    signal=?northSignal
+                  />
+
+                  {
+                    switch (state.maybePartnerInfo) {
+                    | None => ReasonReact.null
+                    | Some(partnerInfo) =>
+                      <PlayerCardTagsView
+                        className="absolute w-full top-0 left-0 leading-none"
+                        style={ReactDOMRe.Style.make(~transform="translate(100%)", ())}
+                        cards={partnerInfo.cardsToDisplay}
+                      />
+                    };
+                  }
+                </div>
+                <div className="flex flex-col justify-center" style={ReactDOMRe.Style.make(~gridColumn="1 / 2", ~gridRow="2 / 5", ())}> 
+                  <GameBoard__Player
+                    zone=West
+                    cardLeavesToZone=animationLeaveTo
+                    initials=westInitials
+                    identiconSeed=westIdenticonSeed
+                    identiconStyle=westIdenticonStyle
+                    maybeCard=westCard
+                    zIndex=westZ
+                    isDealer=westIsDealer
+                    isTurner=westIsTurner
+                    gamePhase=state.gamePhase
+                    signal=?westSignal
+                  />
+                </div>
+                <div className="flex flex-col justify-center " style={ReactDOMRe.Style.make(~gridColumn="3 / 4", ~gridRow="2 / 5", ())}> 
+                    <GameBoard__Player
+                      zone=East
+                      cardLeavesToZone=animationLeaveTo
+                      initials=eastInitials
+                      identiconSeed=eastIdenticonSeed
+                      identiconStyle=eastIdenticonStyle
+                      maybeCard=eastCard
+                      zIndex=eastZ
+                      isDealer=eastIsDealer
+                      isTurner=eastIsTurner
+                      gamePhase=state.gamePhase
+                      signal=?eastSignal
+                    />
+                </div>
+                <div className="flex flex-col justify-end" style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="4", ())}> 
+                  <GameBoard__Player
+                    zone=South
+                    cardLeavesToZone=animationLeaveTo
+                    initials=southInitials
+                    identiconSeed=southIdenticonSeed
+                    identiconStyle=southIdenticonStyle
+                    maybeCard=southCard
+                    zIndex=southZ
+                    isDealer=southIsDealer
+                    isTurner=southIsTurner
+                    gamePhase=state.gamePhase
+                    signal=?southSignal
+                  />
+                </div>
+                <div className="flex" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="5", ())}>
+                  <Toolbar onToggleSortClick onSignalClick sortHand/>
+                </div>
+                <div className="player-hand flex flex-col z-20" style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
+                  <div className="player-hand__placeholder-row flex flex-row justify-around">
+                    <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                    <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                    <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                    <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                    <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                    <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                  </div>
+                  <Hand
+                    handFacing={state.handFacing}
+                    maybeLeadCard={state.maybeLeadCard}
+                    maybeTrumpCard={state.maybeTrumpCard}
+                    handPhase={
+                      switch (maybeActivePlayer) {
+                      | None => Hand.FaceUpHand.HandWaitPhase
+                      | Some(activePlayer) =>
+                        activePlayer.id == state.me
+                          ? Hand.FaceUpHand.HandPlayPhase : Hand.FaceUpHand.HandWaitPhase
+                      }
+                    }
+                    sendPlayCard={card =>
+                      switch (maybeSocket) {
+                      | None => ()
+                      | Some(socket) =>
+                        ClientSocket.T.emit(
+                          socket,
+                          SocketMessages.(
+                            IO_PlayCard(
+                              Player.id_encode(state.me) |> Js.Json.stringify,
+                              Card.t_encode(card) |> Js.Json.stringify,
+                            )
+                          ),
+                        )
+                      }
+                    }
+                    onInvalidCardClick=addUniqueTimoutNoti
+                    sortHand
+                  />
+                </div>
+              </div> /* End gameplay-section */
+              //  <WaitingMessage activePlayerName myPlayerId={state.me} maybeActivePlayer />
+              <Player
+                sendDeal={_event => sendIO(SocketMessages.IO_Deal)}
+                sendStandUp={_event => sendIO(SocketMessages.IO_Stand)}
+                sendBeg={_event => sendIO(IO_Beg)}
+                sendGiveOne={_event => sendIO(SocketMessages.IO_GiveOne)}
+                sendRunPack={_event => sendIO(IO_RunPack)}
+                sendReshuffle={_event => sendIO(IO_DealAgain)}
+                playerPhase={state.phase}
+              />
+                
+            </div> /* End the-rest */
              {switch (state.gamePhase) {
               | FindPlayersPhase(_) =>
                 let (emptySeatCount, canSub) =

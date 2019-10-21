@@ -61,6 +61,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => Game.event =
   | IO_Rematch
   | IO_PrivateToPublic
   | IO_RotateGuests
+  | IO_Signal(_)
   | IO_Substitute(_) => Noop
   | IO_TransitionGameNow => Noop
   
@@ -163,6 +164,7 @@ SocketServer.onConnect(
           | IO_RotateGuests => ServerStore.dispatch(RotateGuests(sock_id))
           | IO_TransitionGameNow => ServerStore.dispatch(FireGameTimer(sock_id))
           | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
+          | IO_Signal(signal) => ServerStore.dispatch(RelaySignal(sock_id, signal))
           | ioAction =>
             let action = ioAction |> actionOfIO_Action;
             ServerStore.dispatch(UpdateGameBySocket(sock_id, action));

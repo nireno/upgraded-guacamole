@@ -8,6 +8,9 @@ type profileType =
 | Machine
 | Abstract;
 
+[@decco]
+type sortHand = bool;
+
 let dicebearTypeOfProfileType = fun
 | Masculine => "male"
 | Feminine => "female"
@@ -20,6 +23,7 @@ type t = {
   client_id: string,
   client_profile_type: profileType,
   client_initials: string,
+  sort_hand: sortHand
 };
 
 let client_idDefault = Nanoid.nanoid();
@@ -29,4 +33,5 @@ let defaults = {
   client_id: client_idDefault,
   client_profile_type: Masculine,
   client_initials: "",
+  sort_hand: false,
 };

@@ -228,6 +228,23 @@ let getImageSrc = ({rank, suit}) => {
   "./static/cards/" ++ rankCode ++ suitCode ++ ".svg"
 };
 
+let sort = cards => {
+  let cmp = (c1, c2) => {
+    let multiplier =
+      fun
+      | Suit.Spades => 0
+      | Hearts => 1
+      | Clubs => 2
+      | Diamonds => 3;
+
+    let v1 = Rank.intOfRank(c1.rank) + (13 * multiplier(c1.suit));
+    let v2 = Rank.intOfRank(c2.rank) + (13 * multiplier(c2.suit));
+
+    v1 > v2 ? -1 : v1 == v2 ? 0 : (1);
+  };
+  List.sort(cmp, cards);
+};
+
 [@react.component]
 let make = (~card, ~clickAction=?, ~style=?) => {
   let (onClick, isClickable) =

@@ -133,6 +133,7 @@ let stringOfMsg = fun
   | RemoveGameTimeout(_) => "RemoveGameTimeout"
   | PublicGameStarted => "PublicGameStarted"
   | PrivateGameStarted => "PrivateGameStarted"
+  | RelaySignal(_) => "RelaySignal"
   ;
 
 
@@ -757,6 +758,34 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
 
     | PrivateGameStarted =>
       Update({...db, db_private_games_started: db.db_private_games_started + 1})
+    
+    | RelaySignal(sock_id, signal) =>
+      switch (getGameBySocket(sock_id, db)) {
+      | None => NoUpdate(db)
+      | Some(game) =>
+        let getQidOfSender = (clients, socketId) =>
+          clients->Quad.findId(
+            fun
+            | Game.Attached({client_socket_id}) when client_socket_id == socketId => true
+            | _ => false,
+          );
+
+        switch (game.clients->getQidOfSender(sock_id)) {
+        | None => NoUpdate(db)
+        | Some(qid) =>
+          let effects =
+            game.clients
+            ->Quad.toList
+            ->Belt.List.keepMap(client =>
+                switch (client) {
+                | Attached({client_socket_id}) =>
+                  Some(ServerEvent.EmitSignal(client_socket_id, qid, signal))
+                | _ => None
+                }
+              );
+          SideEffects(db, effects);
+        }
+      };
     };
   }
 and updateResult: (ServerEvent.event, update(db, ServerEvent.effect)) => update(db, ServerEvent.effect) =

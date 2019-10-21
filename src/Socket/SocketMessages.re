@@ -26,6 +26,7 @@ type clientToServer =
   | IO_PrivateToPublic
   | IO_RotateGuests
   | IO_TransitionGameNow
+  | IO_Signal(PlayerSignal.t)
   ;
 
 let stringOfClientToServer = fun
@@ -46,6 +47,7 @@ let stringOfClientToServer = fun
   | IO_PrivateToPublic => "PrivateToPublic"
   | IO_RotateGuests => "RotateGuests"
   | IO_TransitionGameNow => "SelectPartner"
+  | IO_Signal(_) => "Signal"
   ;
 
 type serverToClient =
@@ -55,6 +57,7 @@ type serverToClient =
   | AckOk
   | AckError(string)
   | HandshakeFailed
+  | ShowSignal(Quad.id, PlayerSignal.t)
   ;
 
 type ack = serverToClient => unit

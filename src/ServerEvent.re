@@ -69,7 +69,9 @@ type event =
   | RemoveGameTimeout(game_key)
   | PrivateGameStarted
   | PublicGameStarted
+  | RelaySignal(game_key, PlayerSignal.t)
 and effect = 
+  | EmitSignal(sock_id, Quad.id, PlayerSignal.t)
   | NotifyPlayer(game_key, Noti.t)
   // affecting socketio
   | ResetClient(sock_id)
@@ -118,4 +120,5 @@ let debugOfEffect = fun
   | NotifyPlayer(_) => {j|NotifyPlayer|j}
   | CreateGameTimer(_) => {j|CreateGameTimer|j}
   | DiscardGameTimer(_) => {j|DiscardGameTimer|j}
+  | EmitSignal(_) => {j|EmitSignal|j}
   ;

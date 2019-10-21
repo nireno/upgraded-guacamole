@@ -71,7 +71,8 @@ let make = (~onSave, ~settings) => {
   };
 
   let onSaveClick = _event => {
-    onSave(ClientSettings.{volume, client_id, client_profile_type, client_initials});
+    let settings = LocalStorage.getClientSettings();
+    onSave(ClientSettings.{...settings, volume, client_id, client_profile_type, client_initials});
     ReasonReactRouter.replace("./");
   };
 

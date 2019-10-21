@@ -283,9 +283,12 @@ let make =
       ~maybeTrumpCard: option(Card.t),
       ~sendPlayCard: Card.t => unit,
       ~onInvalidCardClick: string => unit,
+      ~sortHand: bool,
     ) => {
   switch (handFacing) {
   | FaceDownHand(n) => <FaceDownHand nCards=n />
-  | FaceUpHand(cards) => <FaceUpHand cards handPhase maybeLeadCard maybeTrumpCard sendPlayCard onInvalidCardClick />
+  | FaceUpHand(cards) => 
+    let cards = sortHand ? Card.sort(cards): cards;
+    <FaceUpHand cards handPhase maybeLeadCard maybeTrumpCard sendPlayCard onInvalidCardClick />
   };
 };

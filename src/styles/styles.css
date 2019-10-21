@@ -27,6 +27,7 @@ body {
 
 .player-hand {
   position:relative;
+  background-color: #edf2ff;
 }
 
 .player-hand-row {
@@ -123,33 +124,8 @@ img.card {
   right: 0;
 }
 
-.player-tags__south .player-tags__item {
+.player-tags.horizontal > .player-tags__item {
   width: 20%;
-}
-
-.player-tags__north .player-tags__item {
-  width: 20%;
-}
-
-.game-board__player {
-  position: relative;
-  width: 25%;
-}
-
-.game-board__player-offset {
-  transform: translateX(-50%);
-}
-
-.game-board__player-north {
-  position: absolute;
-  top: 0;
-  left: 50%;
-}
-
-.game-board__player-south {
-  position: absolute;
-  bottom: 0;
-  left: 50%;
 }
 
 .notification {
@@ -158,4 +134,21 @@ img.card {
 
 .round-summary-table th, .round-summary-table td {
   text-align: center; 
+}
+
+.toolbar__button {
+  transition: outline .3s ease-in-out;
+  outline: 1px solid white;
+}
+
+.toolbar__button:hover  {
+  outline: 1px solid black;
+}
+
+.toolbar__button:active  {
+  transform: scale(0.92);
+}
+
+.toolbar__button + .toolbar__button {
+  margin-left: 1%;
 }
