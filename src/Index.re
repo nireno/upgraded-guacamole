@@ -40,6 +40,7 @@ module App = {
     let ( machineState, updateMachineState ) = React.useState(() => MainMenuState(MainMenuDefaultState));
     let (sortHand, updateSortHand) = React.useState(() => clientSettings.sort_hand);
     let (signals, updateSignals) = React.useState(() => (None, None, None, None));
+    let (signalsEnabled, updateSignalsEnabled) = React.useState(() => true);
     let maybeSignalTimeout = ref(None);
 
     let saveClientSettings = newClientSettings => {
@@ -214,9 +215,14 @@ module App = {
     };
 
     let onSignalClick = (signal, _event)  => {
-      sendIO(
-        IO_Signal(signal),
-      );
+      signalsEnabled ? {
+        updateSignalsEnabled(_ => false);
+        Js.Global.setTimeout(() => updateSignalsEnabled(_ => true), 350) |> ignore;
+        sendIO(
+          IO_Signal(signal),
+        );
+      }
+      : ()
     };
 
     /** 
