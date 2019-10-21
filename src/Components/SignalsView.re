@@ -41,7 +41,7 @@ let makeAnimatedSignal = (transition: SignalTransition.transition) => {
   let filename = PlayerSignal.toFileName(signal);
 
   <ReactSpring.AnimatedDiv key className="signal absolute w-full" style=springStyle>
-    <div className="w-full flex justify-center bg-white rounded " 
+    <div className="w-full flex justify-center bg-white" 
          style={ReactDOMRe.Style.make(~paddingBottom="100%", ())}>
       <img src={j|./static/img/$filename|j} 
            className="absolute" 
