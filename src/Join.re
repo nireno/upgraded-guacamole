@@ -17,6 +17,7 @@ let clientGamePhaseOfGamePhase =
   | BegPhase => BegPhase
   | GiveOnePhase => GiveOnePhase
   | RunPackPhase => RunPackPhase
+  | FlipFinalTrumpPhase => FlipFinalTrumpPhase
   | PlayerTurnPhase(seatId) => PlayerTurnPhase(seatId)
   | PackDepletedPhase => PackDepletedPhase
   | GameOverPhase(rematchDecisionQuad) => GameOverPhase(rematchDecisionQuad)

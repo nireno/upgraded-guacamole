@@ -629,6 +629,7 @@ module App = {
                 sendGiveOne={_event => sendIO(SocketMessages.IO_GiveOne)}
                 sendRunPack={_event => sendIO(IO_RunPack)}
                 sendReshuffle={_event => sendIO(IO_DealAgain)}
+                sendKickFinalTrump={_event => sendIO(IO_FlipFinalTrump)}
                 playerPhase={state.phase}
               />
                 

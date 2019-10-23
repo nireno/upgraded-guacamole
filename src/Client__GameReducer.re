@@ -75,6 +75,7 @@ let reducer = (prevState, action) => {
         | BegPhase
         | GiveOnePhase
         | RunPackPhase
+        | FlipFinalTrumpPhase
         | PlayerTurnPhase(_)
         | PackDepletedPhase => true
         

@@ -80,6 +80,7 @@ let actionOfIO_Action: SocketMessages.clientToServer => Game.event =
   | IO_GiveOne => GiveOne
   | IO_Deal => Deal
   | IO_RunPack => RunPack
+  | IO_FlipFinalTrump => FlipAgain
   | IO_DealAgain => DealAgain;
 
 let onSocketDisconnect = socket =>

@@ -55,6 +55,7 @@ type phase =
   | PlayerBegPhase
   | PlayerGiveOnePhase
   | PlayerRunPackPhase
+  | PlayerFlipFinalTrumpPhase
   | PlayerRedealPhase;
 
 let stringOfPhase =
@@ -68,6 +69,7 @@ let stringOfPhase =
   | PlayerBegPhase => "PlayerBegPhase"
   | PlayerGiveOnePhase => "PlayerGiveOnePhase"
   | PlayerRunPackPhase => "PlayerRunPackPhase"
+  | PlayerFlipFinalTrumpPhase => "PlayerFlipFinalTrumpPhase"
   | PlayerRedealPhase => "PlayerRedealPhase";
 
 
@@ -83,6 +85,7 @@ let make =
       ~sendGiveOne,
       ~sendRunPack,
       ~sendReshuffle,
+      ~sendKickFinalTrump,
       ~playerPhase=PlayerIdlePhase,
     ) => {
       {switch (playerPhase) {
@@ -110,6 +113,12 @@ let make =
           <Modal visible=true>
             <button className="btn btn-blue" onClick=sendRunPack>
               {ReasonReact.string("Run Again")}
+            </button>
+          </Modal>
+        | PlayerFlipFinalTrumpPhase =>
+          <Modal visible=true>
+            <button className="btn btn-blue" onClick=sendKickFinalTrump>
+              {ReasonReact.string("Flip Again")}
             </button>
           </Modal>
         | PlayerRedealPhase =>

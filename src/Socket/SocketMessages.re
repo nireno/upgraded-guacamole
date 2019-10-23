@@ -18,6 +18,7 @@ type clientToServer =
   | IO_GiveOne
   | IO_Deal
   | IO_RunPack
+  | IO_FlipFinalTrump
   | IO_DealAgain
   | IO_LeaveGame
   | IO_PlayAgain(ioUsername, ioClientSettings)
@@ -39,6 +40,7 @@ let stringOfClientToServer = fun
   | IO_GiveOne => "GiveOne"
   | IO_Deal => "Deal"
   | IO_RunPack => "RunPack"
+  | IO_FlipFinalTrump => "FlipFinalTrump"
   | IO_DealAgain => "DealAgain"
   | IO_LeaveGame => "LeaveGame"
   | IO_PlayAgain(ioUsername, _ioClientSettings) => {j|PlayAgain($ioUsername)|j}

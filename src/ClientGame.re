@@ -49,6 +49,7 @@ type phase =
   | BegPhase
   | GiveOnePhase
   | RunPackPhase
+  | FlipFinalTrumpPhase
   | PlayerTurnPhase(Player.id)
   | PackDepletedPhase
   | GameOverPhase(Quad.t(rematchDecision))
@@ -95,6 +96,7 @@ let stringOfPhase = fun
   | BegPhase => "BegPhase"
   | GiveOnePhase => "GiveOnePhase"
   | RunPackPhase => "RunPackPhase"
+  | FlipFinalTrumpPhase => "FlipFinalTrumpPhase"
   | PlayerTurnPhase(_) => "PlayerTurnPhase"
   | PackDepletedPhase => "PackDepletedPhase"
   | GameOverPhase(_) => "GameOverPhase"

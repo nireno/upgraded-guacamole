@@ -17,6 +17,7 @@ let make = (~myPlayerId, ~maybeActivePlayer: option(Shared.ActivePlayer.t), ~act
       | PlayerBegPhase => str_waitingFor ++ " to beg"
       | PlayerGiveOnePhase => str_waitingFor ++ " to run the pack."
       | PlayerRunPackPhase => str_waitingFor ++ " to run the pack again."
+      | PlayerFlipFinalTrumpPhase => str_waitingFor ++ " to kick again."
       | PlayerRedealPhase => str_waitingFor ++ " to redeal."
       | PlayerIdlePhase => "..."
       };

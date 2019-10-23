@@ -3,6 +3,7 @@ let find: (Game.phase, Player.id) => option(Shared.ActivePlayer.t) = (gamePhase,
   switch(gamePhase){
   | DealPhase => Some({id: dealerId, phase: Player.PlayerDealPhase})
   | RunPackPhase => Some({id: dealerId, phase: Player.PlayerRunPackPhase})
+  | FlipFinalTrumpPhase => Some({id: dealerId, phase: Player.PlayerFlipFinalTrumpPhase})
   | PackDepletedPhase => Some({id: dealerId, phase: Player.PlayerRedealPhase})
 
   | BegPhase => Some({id: Quad.nextId(dealerId), phase: Player.PlayerBegPhase})

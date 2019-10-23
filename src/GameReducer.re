@@ -859,7 +859,7 @@ let reduce = (action, state) => {
         let nextPhase =
           prevTrumpSuit == nextTrumpSuit
             ? List.length(deck) < SharedGame.settings.nCardsToRun * 4 + 1 // enough for 4 players and kicking 1 trump?
-                ? PackDepletedPhase : RunPackPhase
+                ? FlipFinalTrumpPhase : RunPackPhase
             : PlayerTurnPhase(state.leader);
         
         let runPackNotiEffects = Noti.playerBroadcast(
@@ -1149,6 +1149,59 @@ let reduce = (action, state) => {
       | _ => (state, effects)
       };
 
+    | FlipAgain => 
+      switch(state.phase){
+      | FlipFinalTrumpPhase => 
+        let client_username = state.clients->Game.getUsername(state.dealer);
+
+        let {Card.suit: prevTrumpSuit} as prevTrumpCard = state->Game.getTrumpCardExn;
+        let (card, deck) = Deck.deal1Exn(state.deck);
+        let {Card.rank: nextTrumpRank, Card.suit: nextTrumpSuit} as nextTrumpCard = card;
+        let pointsKicked = kickPoints(nextTrumpRank);
+
+        let nextPhase =
+          prevTrumpSuit == nextTrumpSuit ? PackDepletedPhase : PlayerTurnPhase(state.leader);
+        let nextTrumpCardMaybe = Some(nextTrumpCard);
+        
+        let (maybeTeamHigh, maybeTeamLow) =
+          getTeamHighAndLowMaybes(
+            state.players->Quad.map(player => player.pla_hand, _),
+            nextTrumpCardMaybe,
+          );
+
+        let kickTrumpNotiEffects =
+          getKickTrumpNotis(nextTrumpCardMaybe)
+          ->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti));
+
+        let runPackNotiEffects = Noti.playerBroadcast(
+              ~from=state.dealer,
+              ~msg=Noti.Text(client_username ++ " flips the last card."),
+              (),
+            )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti))
+
+        let nextState =
+          { ...state
+          , phase: nextPhase
+          , deck: deck @ [prevTrumpCard]
+          , maybeTrumpCard: nextTrumpCardMaybe
+          , teams:
+               GameTeams.update(
+                 teamOfPlayer(state.dealer),
+                 x => {...x, team_score: x.team_score + pointsKicked},
+                 state.teams,
+               )
+          , maybeTeamHigh
+          , maybeTeamLow
+          };
+        
+        ( 
+          { ...nextState
+          , phase: isGameOverTest(nextState) ? GameOverPhase(Quad.make(_ => RematchUnknown)) : nextState.phase
+          }
+        , kickTrumpNotiEffects @ runPackNotiEffects @ effects
+        )
+      | _ => (state, effects)
+      }
     };
   };
 

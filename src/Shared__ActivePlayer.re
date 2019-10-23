@@ -8,6 +8,7 @@ let find: (ClientGame.phase, Player.id) => option(t) = (gamePhase, dealerId) => 
   switch(gamePhase){
   | DealPhase => Some({id: dealerId, phase: Player.PlayerDealPhase})
   | RunPackPhase => Some({id: dealerId, phase: Player.PlayerRunPackPhase})
+  | FlipFinalTrumpPhase => Some({id: dealerId, phase: Player.PlayerFlipFinalTrumpPhase})
   | PackDepletedPhase => Some({id: dealerId, phase: Player.PlayerRedealPhase})
 
   | BegPhase => Some({id: Quad.nextId(dealerId), phase: Player.PlayerBegPhase})

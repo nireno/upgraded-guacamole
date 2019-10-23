@@ -2,6 +2,7 @@ let infoTextOfPhase =
   fun
   | ClientGame.DealPhase => "Dealing"
   | RunPackPhase => "Running"
+  | FlipFinalTrumpPhase => "Kicking Again"
   | PackDepletedPhase => "Redealing"
 
   | BegPhase => "Beg Decision"

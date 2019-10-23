@@ -81,6 +81,7 @@ type phase =
   | RunPackPhase
   | PlayerTurnPhase(Player.id)
   | PackDepletedPhase
+  | FlipFinalTrumpPhase
   | GameOverPhase(Quad.t(rematchDecision))
 and findSubsContext = { emptySeatCount: int, phase}
 and idlePhaseContext = { maybeTimer: option(Timer.timeout), fromPhase: phase, toPhase: phase};
@@ -96,6 +97,7 @@ let rec stringOfPhase =
   | BegPhase => "BegPhase"
   | GiveOnePhase => "GiveOnePhase"
   | RunPackPhase => "RunPackPhase"
+  | FlipFinalTrumpPhase => "FlipFinalTrumpPhase"
   | PlayerTurnPhase(playerId) => "PlayerTurnPhase(" ++ Quad.stringifyId(playerId) ++ ")"
   | PackDepletedPhase => "PackDepletedPhase"
   | GameOverPhase(_) => "GameOverPhase"
@@ -106,6 +108,7 @@ let isPlayerActivePhase = fun
   | BegPhase
   | GiveOnePhase
   | RunPackPhase
+  | FlipFinalTrumpPhase
   | PlayerTurnPhase(_) 
   | PackDepletedPhase => true
   | IdlePhase(_)
@@ -358,6 +361,7 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
         | DealPhase when dealerId == playerId => PlayerDealPhase
         | GiveOnePhase when dealerId == playerId => PlayerGiveOnePhase
         | RunPackPhase when dealerId == playerId => PlayerRunPackPhase
+        | FlipFinalTrumpPhase when dealerId == playerId => PlayerFlipFinalTrumpPhase
         | PackDepletedPhase when dealerId == playerId => PlayerRedealPhase
         | BegPhase when Quad.nextId(dealerId) == playerId => PlayerBegPhase
         | _ => PlayerIdlePhase
@@ -386,6 +390,12 @@ let needsSubstitutes = state =>
   | _ => false
   };
 
+let getTrumpCardExn = state =>
+  switch (state.maybeTrumpCard) {
+  | None => failwith("RunPack action expected state.maybeTrumpCard to be Some thing but got None")
+  | Some(k) => k
+  };
+
 type event =
   | Noop
   | PlayCard(Player.id, Card.t)
@@ -405,6 +415,7 @@ type event =
   | AttachClient(Quad.id, clientState)
   | PlayerRematch(Player.id)
   | StartRematch
+  | FlipAgain
 and transitionContext = {
   fromPhase: phase,
   toPhase: phase
