@@ -10,12 +10,12 @@ body {
 }
 
 .all-fours-game {
-  height: 100vh;
+  min-height: 100vh;
   max-width: 100vw;
   display: flex;
 }
 
-@media (min-aspect-ratio: 12/16) {
+@media (min-aspect-ratio: 10/16) {
   .all-fours-game {
     width: 63vh;
   }

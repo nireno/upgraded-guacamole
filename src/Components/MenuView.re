@@ -7,6 +7,7 @@ let make = (~children=?) => {
      ~backgroundSize="contain",
      ~backgroundPosition="center",
      ~backgroundRepeat="no-repeat",
+     ~minHeight="100vh",
      (),
    )}>
    {Js.Option.getWithDefault(ReasonReact.null, children)}

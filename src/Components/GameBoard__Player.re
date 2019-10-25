@@ -57,15 +57,15 @@ let make =
     let class_ = "player-tags flex";
     let playerTagsClass =
       fun
-      | North => {j|$class_ justify-center horizontal|j}
-      | South => {j|$class_ justify-center horizontal|j}
+      | North => {j|$class_ justify-center items-center horizontal|j}
+      | South => {j|$class_ justify-center items-center horizontal|j}
       | East => {j|$class_ flex-col justify-center w-1/5|j}
       | West => {j|$class_ flex-col justify-center w-1/5|j};
 
     <div className={"player-section w-full relative flex " ++ getMainDivClass(zone)}>
       <PlayerTagsView className=playerTagsClass(zone) isDealer />
       <div
-        className="flex-grow relative w-4/5 self-center"
+        className="flex-grow relative w-3/4 self-center"
         style={ReactDOMRe.Style.make(~zIndex=zIndex->string_of_int, ())}>
         <img className="card__placeholder relative block " src="./static/img/card_transparent.svg" />
         {
