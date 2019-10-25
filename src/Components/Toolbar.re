@@ -16,14 +16,14 @@ let make = (~onToggleSortClick, ~onSignalClick, ~sortHand) => {
         <ToolbarSignal onClick={onSignalClick(PlayerSignal.Crying)} img="./static/img/emoji_crying.svg" />
         <img
           className="toolbar__button"
-          onClick=onSignalClick(PlayerSignal.ThumbsUp)
-          src="./static/img/emoji_thumbs_up.svg"
+          onClick=onSignalClick(PlayerSignal.ThumbsDown)
+          src="./static/img/emoji_thumbs_down.svg"
           style={ReactDOMRe.Style.make(~width="8%", ~height="auto", ())}
         />
         <img
           className="toolbar__button"
-          onClick=onSignalClick(PlayerSignal.ThumbsDown)
-          src="./static/img/emoji_thumbs_down.svg"
+          onClick=onSignalClick(PlayerSignal.ThumbsUp)
+          src="./static/img/emoji_thumbs_up.svg"
           style={ReactDOMRe.Style.make(~width="8%", ~height="auto", ())}
         />
       </div>
