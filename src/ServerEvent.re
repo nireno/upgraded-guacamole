@@ -55,8 +55,6 @@ type event =
   | RemovePlayerBySocket(sock_id)
   | AttachSubstitute(attachSubstituteData)
   | KickActivePlayer(game_key)
-  | InsertKickTimeoutId(game_key, Js.Global.timeoutId)
-  | DeleteKickTimeoutId(game_key)
   | UpdateGame(game_key, Game.event)
   | UpdateGameBySocket(sock_id, Game.event)
   | TriggerEffects(list(effect))

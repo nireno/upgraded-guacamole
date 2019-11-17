@@ -141,7 +141,6 @@ type state = {
   maybeTeamLow: option(GameAward.luckyAwardData),
   maybeTeamJack: option(GameAward.jackAwardData),
   phase,
-  maybeKickTimeoutId: option(Js.Global.timeoutId),
   game_follow_suit: option(Card.Suit.t),
 };
 
@@ -244,7 +243,6 @@ let initialState = () => {
     maybeTeamLow: None,
     maybeTeamJack: None,
     phase: FindPlayersPhase({ emptySeatCount: 4, canSub: false }),
-    maybeKickTimeoutId: None,
     game_follow_suit: None,
   };
 };

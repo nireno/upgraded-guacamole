@@ -119,8 +119,6 @@ let stringOfMsg = fun
   | RemovePlayerBySocket(_sock_id) => "RemovePlayerBySocket"
   | AttachSubstitute(_data) => "AttachSubstitute"
   | KickActivePlayer(_game_id) => "KickActivePlayer"
-  | InsertKickTimeoutId(_game_id, _timeoutId) => "InsertKickTimeoutId"
-  | DeleteKickTimeoutId(_game_id) => "DeleteKickTimeoutId"
   | UpdateGame(_game_id, _action) => "UpdateGame"
   | UpdateGameBySocket(_sock_id, _action) => "UpdateGameBySocket"
   | TriggerEffects(_effects) => "TriggerEffects"
@@ -365,7 +363,6 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
             },
             "Removing player from game.",
           );
-          My.Global.clearMaybeTimeout(gameForLeave.maybeKickTimeoutId);
           let ( gameAftLeave, effects ) = GameReducer.reduce(LeaveGame(player_id), gameForLeave);
 
           if (gameAftLeave.clients
@@ -545,30 +542,6 @@ let rec update: (ServerEvent.event, db) => update(db, ServerEvent.effect) =
           }
         };
       };
-
-    | InsertKickTimeoutId(game_key, timeoutId) =>
-      switch (db_game->StringMap.get(game_key)) {
-      | None => NoUpdate(db)
-      | Some(gameState) =>
-        let db_game =
-          db_game->StringMap.set(
-            game_key,
-            {...gameState, maybeKickTimeoutId: Some(timeoutId)},
-          );
-        Update({...db, db_game});
-      }
-
-    | DeleteKickTimeoutId(game_key) =>
-      switch (db_game->StringMap.get(game_key)) {
-      | None => NoUpdate(db)
-      | Some(gameState) =>
-        let db_game =
-          db_game->StringMap.set(
-            game_key,
-            {...gameState, maybeKickTimeoutId: None},
-          );
-        Update({...db, db_game});
-      }
 
     | UpdateGameBySocket(sock_id, action) =>
       switch (db->getGameBySocket(sock_id, _)) {

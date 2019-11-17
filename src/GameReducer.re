@@ -1024,7 +1024,6 @@ let reduce = (action, state) => {
               game_id: nextGameId,
               clients: nextClients,
               phase: nextPhase,
-              maybeKickTimeoutId: None /* This timeout should be cleared by the code issuing the LeaveGame action */
             };
           };
         
