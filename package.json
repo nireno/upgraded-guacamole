@@ -55,5 +55,8 @@
     "webpack-cli": "^3.3.9",
     "webpack-dev-middleware": "^3.7.2",
     "webpack-dev-server": "^3.8.2"
+  },
+  "volta": {
+    "node": "12.16.3"
   }
 }
