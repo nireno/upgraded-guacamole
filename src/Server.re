@@ -1,4 +1,3 @@
-[%%debugger.chrome];
 open AppPrelude;
 
 [%%raw "require('dotenv').config()"]

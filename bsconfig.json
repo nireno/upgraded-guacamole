@@ -21,10 +21,10 @@
     "bs-socket",
     "bs-webapi",
     "reason-react",
-    "@ryb73/decco",
+    "decco",
     "@glennsl/bs-json",
-    "@nireno/reasonably-typed",
+    "@nireno/reasonably-typed"
   ],
-  "ppx-flags": ["ppx_decco"],
+  "ppx-flags": ["decco/ppx"],
   "refmt": 3
 }

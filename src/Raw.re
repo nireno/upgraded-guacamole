@@ -12,20 +12,20 @@ let preventUnloadListener: eventListener = [%raw
 ];
 
 let addUnloadListener: eventListener => unit = [%raw
-  (listener) => {|
-    window.addEventListener("beforeunload", listener);
+  {|  (listener) =>
+    window.addEventListener("beforeunload", listener)
   |}
 ];
 
 let removeUnloadListener: eventListener => unit = [%raw
-  (listener) => {|
-    window.removeEventListener("beforeunload", listener);
+  {|listener =>
+    window.removeEventListener("beforeunload", listener)
   |}
 ];
 
 let authMiddleware: (string, string) => Express.Middleware.t = [%raw
-  (user, pass) => {|
-    return (req, res, next) => {
+  {|  (user, pass) =>
+    (req, res, next) => {
 
       // parse login and password from headers
       const b64auth = (req.headers.authorization || '').split(' ')[1] || ''
