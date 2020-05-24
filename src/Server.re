@@ -36,10 +36,8 @@ let http = Http.create(app);
 
 let io =
   SocketServer.createWithHttpAndOption(http, SocketServer.makeOptions(~pingInterval=55000, ()));
-let ns = SocketServer.Ns.of_(io, "/");
 
-// let getKeysToRooms = () =>
-//   SocketServer.Ns.getAdapter(ns) |> Obj.magic |> BsSocketExtra.Adapter.rooms;
+
 
 module StringMap = Belt.Map.String;
 
@@ -223,6 +221,10 @@ switch (Js.Nullable.toOption(adminPasswordEnv)) {
     "An environment variable 'allfours_admin_password' must be provided.\nThis defines the password for the admin dashboard.",
   )
 | Some(adminPassword) =>
+  let adminNamespace = SocketServer.Ns.of_(io, adminPassword);
+
+// let getKeysToRooms = () =>
+//   SocketServer.Ns.getAdapter(ns) |> Obj.magic |> BsSocketExtra.Adapter.rooms;
   Express.App.get(app, ~path="/dashboard", Raw.authMiddleware("admin", adminPassword));
   Express.App.get(
     app,
