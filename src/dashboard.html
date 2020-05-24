@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>All Fours</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <link rel="stylesheet" href="./theme.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <link href="https://fonts.googleapis.com/css?family=Days+One&display=swap" rel="stylesheet">
+  <script src="./socket.io/socket.io.js"></script>
+</head>
+
+<body>
+  <div class="app"></div>
+  <script>
+    /* 
+      When the app is being proxied through wordpress this variable is meant to hold
+      the display name of the currently logged in wordpress user. It is left
+      undefined here so that the app can still run independently of wordpress.
+    */ 
+    let g_display_name = undefined; 
+  </script>
+  <script src="./Dashboard.js"></script>
+</body>
+
+</html>
