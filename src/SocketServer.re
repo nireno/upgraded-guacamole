@@ -1,7 +1,7 @@
 open AppPrelude;
 
-include BsSocket.Server.Make(SocketMessages);
-module Ns = BsSocket.Namespace.Make(SocketMessages);
+include BsSocketio.Server.Make(SocketMessages);
+module Ns = BsSocketio.Namespace.Make(SocketMessages);
 
 let logger = appLogger.makeChild({"_context": "SocketStore"});
 
@@ -24,17 +24,17 @@ module Handshake = {
 
 module Store: {
   type msg =
-    | AddSocket(BsSocket.Server.socketT)
-    | RemoveSocket(BsSocket.Server.socketT);
+    | AddSocket(BsSocketio.Server.socketT)
+    | RemoveSocket(BsSocketio.Server.socketT);
 
   let dispatch: msg => unit;
-  let getState: unit => StringMap.t(BsSocket.Server.socketT);
+  let getState: unit => StringMap.t(BsSocketio.Server.socketT);
 } = {
   let store = ref(StringMap.empty);
 
   type msg =
-    | AddSocket(BsSocket.Server.socketT)
-    | RemoveSocket(BsSocket.Server.socketT);
+    | AddSocket(BsSocketio.Server.socketT)
+    | RemoveSocket(BsSocketio.Server.socketT);
 
   let dispatch = msg => {
     let sockets = store^;

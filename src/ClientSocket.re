@@ -1,1 +1,1 @@
-module T = BsSocket.Client.Make(SocketMessages);
+module T = BsSocketio.Client.Make(SocketMessages);

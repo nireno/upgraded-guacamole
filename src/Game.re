@@ -146,7 +146,7 @@ type state = {
 
 
 
-module SockServ = BsSocket.Server.Make(SocketMessages);
+module SockServ = BsSocketio.Server.Make(SocketMessages);
 
 let debugOfState = (state) => {
   let stringOfPlayer = player => {
