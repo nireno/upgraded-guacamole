@@ -57,7 +57,7 @@ let getClientSettings = () => {
     | Some(client_initials) => client_initials
     };
   
-  let sort_hand = getItemWithDefault(`SortHand, ClientSettings.sortHand_decode, ClientSettings.defaults.sort_hand);
+  let sort_hand = getItemWithDefault(`SortHand, Decco.boolFromJson, ClientSettings.defaults.sort_hand);
   ClientSettings.{volume, client_id, client_profile_type, client_initials, sort_hand};
 };
 

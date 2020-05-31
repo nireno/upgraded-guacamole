@@ -211,7 +211,7 @@ module App = {
 
     let onToggleSortClick = _event => {
       updateSortHand(b => !b);
-      LocalStorage.(setItem(keyToJs(`SortHand), Json.Encode.bool(sortHand)->Js.Json.stringify));
+      LocalStorage.(setItem(keyToJs(`SortHand), Decco.boolToJson(sortHand)->Js.Json.stringify));
     };
 
     let onSignalClick = (signal, _event)  => {

@@ -22,7 +22,6 @@
     "bs-webapi",
     "reason-react",
     "decco",
-    "@glennsl/bs-json",
     "@nireno/reasonably-typed"
   ],
   "ppx-flags": ["decco/ppx"],
