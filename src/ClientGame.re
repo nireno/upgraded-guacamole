@@ -72,21 +72,6 @@ type state = {
   maybeTrumpCard: maybeCard,
 };
 
-let initialState = {
-  gameId: Public(""),
-  phase: PlayerIdlePhase,
-  gamePhase: FindPlayersPhase({ emptySeatCount: 3, canSub: false }),
-  players: Quad.make(_ => initPlayerState()),
-  me: N1,
-  maybePartnerInfo: None,
-  myTricks: [],
-  teams: (initialTeamState, initialTeamState),
-  dealer: N1,
-  leader: N1,
-  handFacing: FaceDownHand(0),
-  maybeLeadCard: None,
-  maybeTrumpCard: None,
-};
 
 let stringOfPhase = fun
   | IdlePhase(_reason) => "IdlePhase"
