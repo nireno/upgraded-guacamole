@@ -45,7 +45,7 @@ module StringMap = Belt.Map.String;
 let getGameStats = () => {
   let {ServerState.db_game, db_public_games_created} = ServerStore.getState();
   {
-    "games-active": StringMap.valuesToArray(db_game) |> Array.length,
+    "games-active": StringMap.size(db_game),
     "public-games-since-epoch": db_public_games_created,
   };
 };
