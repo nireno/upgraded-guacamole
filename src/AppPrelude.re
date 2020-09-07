@@ -41,3 +41,8 @@ type update('state, 'effect) =
 
 let daysToMillis = days => days * 24 * 60 * 60 * 1000;
 let secondsToMillis = seconds => seconds * 1000;
+
+let option_of_result =
+  fun
+  | Ok(x) => Some(x)
+  | _ => None;
