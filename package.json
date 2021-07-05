@@ -15,7 +15,8 @@
     "build:bs": "bsb -make-world",
     "build:styles": "postcss src/styles --dir ./build",
     "build:pack": "webpack",
-    "update": "./scripts/update.sh"
+    "update": "./scripts/update.sh",
+    "stmux": "stmux --mouse -- [ [ 'echo hello' .. 'npm run dev:styles' ] : [ 'npm run dev:pack' .. 'npm run dev:server' ] ]"
   },
   "keywords": [
     "BuckleScript"
