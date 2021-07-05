@@ -60,6 +60,7 @@ type serverToClient =
   | AckError(string)
   | HandshakeFailed
   | ShowSignal(Quad.id, PlayerSignal.t)
-  ;
+  | ServerPublicState(int /* Players online */, int /* Active games */);
+
 
 type ack = serverToClient => unit

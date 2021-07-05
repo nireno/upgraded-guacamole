@@ -104,6 +104,16 @@ let onSocketDisconnect = socket =>
     },
   );
 
+
+// module MainMenuSocketServer = BsSocketio.Server.Make(MainMenuView.LiveMessages);
+
+// MainMenuSocketServer.(onConnect(io, socket => {
+//   let {ServerState.db_game} = ServerStore.getState();
+//   let playersOnline = SocketServer.Store.getState()->StringMap.size;
+//   let activeGames = db_game->StringMap.size;
+//   Socket.emit(socket, MainMenuView.LiveMessages.ServerPublicState(playersOnline, activeGames));
+// }));
+
 SocketServer.onConnect(
   io,
   socket => {
@@ -206,6 +216,7 @@ SocketServer.onConnect(
       logger.info("Socket connected");
       onSocketDisconnect(socket);
       SocketServer.Socket.emit(socket, SocketMessages.Reset);
+      SocketServer.Socket.emit(socket, SocketMessages.ServerPublicState(1,1));
     } else {
       logger.warn2("Handshake failed. Disconnecting socket.", socket->SocketServer.Socket.getId);
       SocketServer.Socket.emit(socket, SocketMessages.HandshakeFailed);
