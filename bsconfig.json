@@ -18,7 +18,7 @@
   "namespace": true,
   "bs-dependencies": [
     "bs-express",
-    "@nireno/bs-socketio",
+    "@nireno/rescript-socket.io",
     "bs-webapi",
     "reason-react",
     "decco",
