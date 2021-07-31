@@ -154,7 +154,6 @@ module ValidatePlay = {
     | MustFollowSuit
     | MustFollowTrumpedSuit
 
-  // TODO - Still need to handle CantUnderTrump and MustFollowSuit
   let validate = (
     game_phase,
     game_leader_id,
