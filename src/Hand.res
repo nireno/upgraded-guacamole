@@ -50,14 +50,14 @@ module FaceDownHand = {
         let props = transition->Transition.propsGet
 
         let springStyle = switch props->TransitionConf.leftGet {
-        | None => ReactDOMRe.Style.make()
-        | Some(left) => ReactDOMRe.Style.make(~left, ())
+        | None => ReactDOM.Style.make()
+        | Some(left) => ReactDOM.Style.make(~left, ())
         }
 
         let springStyle = switch props->TransitionConf.topGet {
         | None => springStyle
         | Some(top) =>
-          open ReactDOMRe
+          open ReactDOM
           Style.combine(springStyle, Style.make(~top, ()))
         }
 
@@ -71,7 +71,7 @@ module FaceDownHand = {
         {{
           open Belt.Array
           map(transitions, makeAnimatedCard)
-        } |> ReasonReact.array}
+        } |> React.array}
       </div>
     }
 }
@@ -150,21 +150,21 @@ module FaceUpHand = {
     let props = transition->HandTransition.propsGet
 
     let springStyle = switch props->HandTransitionConf.leftGet {
-    | None => ReactDOMRe.Style.make(~left="0", ())
-    | Some(left) => ReactDOMRe.Style.make(~left, ())
+    | None => ReactDOM.Style.make(~left="0", ())
+    | Some(left) => ReactDOM.Style.make(~left, ())
     }
 
     let springStyle = switch props->HandTransitionConf.topGet {
     | None => springStyle
     | Some(top) =>
-      open ReactDOMRe
+      open ReactDOM
       Style.combine(springStyle, Style.make(~top, ()))
     }
 
     let springStyle = switch props->HandTransitionConf.opacityGet {
     | None => springStyle
     | Some(opacity') =>
-      open ReactDOMRe
+      open ReactDOM
       Style.combine(springStyle, Style.make(~opacity=opacity', ()))
     }
 
@@ -205,21 +205,21 @@ module FaceUpHand = {
       let props = transition->HandTransition.propsGet
 
       let springStyle = switch props->HandTransitionConf.leftGet {
-      | None => ReactDOMRe.Style.make(~left="0", ())
-      | Some(left) => ReactDOMRe.Style.make(~left, ())
+      | None => ReactDOM.Style.make(~left="0", ())
+      | Some(left) => ReactDOM.Style.make(~left, ())
       }
 
       let springStyle = switch props->HandTransitionConf.topGet {
       | None => springStyle
       | Some(top) =>
-        open ReactDOMRe
+        open ReactDOM
         Style.combine(springStyle, Style.make(~top, ()))
       }
 
       let springStyle = switch props->HandTransitionConf.opacityGet {
       | None => springStyle
       | Some(opacity') =>
-        open ReactDOMRe
+        open ReactDOM
         Style.combine(springStyle, Style.make(~opacity=opacity', ()))
       }
 
@@ -258,14 +258,14 @@ module FaceUpHand = {
       <div className="player-hand-row flex flex-row justify-around content-center">
         {
           let first6 = transitions->Belt.Array.slice(~offset=0, ~len=6)
-          Array.map(makeAnimatedCard, first6) |> ReasonReact.array
+          Array.map(makeAnimatedCard, first6) |> React.array
         }
       </div>
       <div
         className="player-hand-row flex flex-row justify-center content-center pointer pointer-events-none">
         {
           let second6 = transitions->Belt.Array.slice(~offset=6, ~len=6)
-          Array.map(makeAnimatedCard, second6) |> ReasonReact.array
+          Array.map(makeAnimatedCard, second6) |> React.array
         }
       </div>
     </>

@@ -29,5 +29,5 @@ let make = (~gameStates) =>
     ->Belt.Array.map(gameState =>
       <GameState key={Game.stringOfGameId(gameState.Game.game_id)} gameState />
     )
-    ->ReasonReact.array}
+    ->React.array}
   </div>

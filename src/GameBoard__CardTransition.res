@@ -62,26 +62,26 @@ module PlayCard = {
       let props = transition->PlayCardTransition.propsGet
 
       let springStyle = switch props->PlayCardTransitionConf.leftGet {
-      | None => ReactDOMRe.Style.make(~left="0", ())
-      | Some(left) => ReactDOMRe.Style.make(~left, ())
+      | None => ReactDOM.Style.make(~left="0", ())
+      | Some(left) => ReactDOM.Style.make(~left, ())
       }
 
       let springStyle = switch props->PlayCardTransitionConf.topGet {
-      | None => ReactDOMRe.Style.make(~top="0", ())
+      | None => ReactDOM.Style.make(~top="0", ())
       | Some(top) =>
-        open ReactDOMRe
-        Style.combine(springStyle, ReactDOMRe.Style.make(~top, ()))
+        open ReactDOM
+        Style.combine(springStyle, ReactDOM.Style.make(~top, ()))
       }
 
       let springStyle = switch props->PlayCardTransitionConf.opacityGet {
       | None => springStyle
       | Some(opacity') =>
-        open ReactDOMRe
+        open ReactDOM
         Style.combine(springStyle, Style.make(~opacity=opacity', ()))
       }
       <ReactSpring.AnimatedDiv key className="animated-card" style=springStyle>
         <Card card />
       </ReactSpring.AnimatedDiv>
-    }, transitions) |> ReasonReact.array
+    }, transitions) |> React.array
   }
 }

@@ -86,21 +86,21 @@ let make = (
 
       <div
         className="w-1/2 my-4"
-        style={ReactDOMRe.Style.make(
+        style={ReactDOM.Style.make(
           ~display="grid",
           ~gridTemplateColumns="repeat(3, 1fr)",
           ~gridGap="10px",
           (),
         )}>
-        <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
+        <div style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
+        <div style={ReactDOM.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
         {me == private_game_host
           ? switch onRotateGuestsClick {
-            | None => ReasonReact.null
+            | None => React.null
             | Some(onRotateGuestsClick) =>
-              <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="2", ())}>
+              <div style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="2", ())}>
                 <img
-                  style={ReactDOMRe.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
+                  style={ReactDOM.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
                   src="./static/img/rotate_tri.svg"
                   className={"w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full" ++ (
                     emptySeatCount == 3 ? " cursor-not-allowed" : " cursor-pointer"
@@ -109,14 +109,14 @@ let make = (
                 />
               </div>
             }
-          : ReasonReact.null}
-        <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
+          : React.null}
+        <div style={ReactDOM.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
+        <div style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
       </div>
     }
     <div className="text-center w-full">
       <div> {React.string("Your invite link")} </div>
-      <pre style={ReactDOMRe.Style.make(~whiteSpace="pre-wrap", ())}>
+      <pre style={ReactDOM.Style.make(~whiteSpace="pre-wrap", ())}>
         <a
           className="copy-invite-code block text-xs cursor-pointer border border-solid border-gray-300 bg-gray-100">
           {React.string(inviteUrl)}
@@ -142,10 +142,10 @@ let make = (
 
         //Experimental whatsapp link 2
         // {
-        //   ReactDOMRe.createElementVariadic(
+        //   ReactDOM.createElementVariadic(
         //     "a",
         //     ~props=
-        //       ReactDOMRe.objToDOMProps({
+        //       ReactDOM.objToDOMProps({
         //         "target": "_blank",
         //         "data-action": "share/whatsapp/share",
         //         "href": "whatsapp://send?text=The text to share!",
@@ -185,7 +185,7 @@ let make = (
               : <button className="btn btn-blue mt-4" onClick=onGoPublicClick>
                   {React.string("Go Public")}
                 </button>
-          : ReasonReact.null}
+          : React.null}
       </div>
     </div>
   </>

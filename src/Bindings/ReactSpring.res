@@ -79,9 +79,9 @@ module AnimatedDiv = {
   @react.component @module("react-spring") @scope("animated")
   external make: (
     ~id: string=?,
-    ~ref: ReactDOMRe.domRef=?,
+    ~ref: ReactDOM.domRef=?,
     ~key: string,
-    ~style: ReactDOMRe.Style.t,
+    ~style: ReactDOM.Style.t,
     ~className: string,
     ~children: React.element=?,
   ) => React.element = "div"
@@ -91,7 +91,7 @@ module AnimatedImg = {
   @react.component @module("react-spring") @scope("animated")
   external make: (
     ~key: string=?,
-    ~style: ReactDOMRe.Style.t=?,
+    ~style: ReactDOM.Style.t=?,
     ~className: string=?,
     ~src: string=?,
     ~onClick: ReactEvent.Mouse.t => unit=?,

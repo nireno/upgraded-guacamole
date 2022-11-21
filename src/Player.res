@@ -125,5 +125,5 @@ let make = (
       </button>
     </Modal>
   | PlayerTurnPhase(_)
-  | PlayerIdlePhase => ReasonReact.null
+  | PlayerIdlePhase => React.null
   }

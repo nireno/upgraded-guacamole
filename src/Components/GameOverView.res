@@ -34,9 +34,9 @@ let make = (
   <>
     <div
       className={outcomeClass ++ " text-white w-full flex flex-col items-center rounded"}
-      style={ReactDOMRe.Style.make(~transition="background-color 0.5s", ())}>
+      style={ReactDOM.Style.make(~transition="background-color 0.5s", ())}>
       <div className="text-3xl"> {outcomeText |> React.string} </div>
-      <img src=outcomeImg style={ReactDOMRe.Style.make(~width="15%", ())} />
+      <img src=outcomeImg style={ReactDOM.Style.make(~width="15%", ())} />
     </div>
     {
       let decisionImage = (
@@ -47,7 +47,7 @@ let make = (
         switch decision {
         | SharedGame.RematchAccepted =>
           <img
-            style={ReactDOMRe.Style.make(
+            style={ReactDOM.Style.make(
               ~transitionProperty="transform",
               ~transitionDuration="0.3s",
               (),
@@ -57,7 +57,7 @@ let make = (
         | RematchDenied => <EmptySeatAvatarView />
         | RematchUnknown =>
           <img
-            style={ReactDOMRe.Style.make(~transform="translateX(-50%)", ())}
+            style={ReactDOM.Style.make(~transform="translateX(-50%)", ())}
             src=j`https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg`
           />
         }
@@ -75,7 +75,7 @@ let make = (
 
       <div
         className="w-2/3 my-8"
-        style={ReactDOMRe.Style.make(
+        style={ReactDOM.Style.make(
           ~display="grid",
           ~gridTemplateColumns="repeat(3, 1fr)",
           ~gridGap="10px",
@@ -83,22 +83,22 @@ let make = (
         )}>
         <div
           className="rounded border border-gray-300 w-full rounded overflow-hidden"
-          style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="1", ())}>
+          style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="1", ())}>
           top
         </div>
         <div
           className="rounded border border-gray-300 w-full rounded overflow-hidden"
-          style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}>
+          style={ReactDOM.Style.make(~gridColumn="1", ~gridRow="2", ())}>
           left
         </div>
         <div
           className="rounded border border-gray-300 w-full rounded overflow-hidden"
-          style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}>
+          style={ReactDOM.Style.make(~gridColumn="3", ~gridRow="2", ())}>
           right
         </div>
         <div
           className="rounded border border-gray-300 w-full rounded overflow-hidden"
-          style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}>
+          style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="3", ())}>
           bottom
         </div>
       </div>
@@ -108,7 +108,7 @@ let make = (
           <span> {React.string("Rematch in: ")} </span>
           <CountdownView from=SharedGame.settings.gameStartingCountdownSeconds />
         </div>
-      : ReasonReact.null}
+      : React.null}
     <div className="flex flex-row justify-around w-full">
       <button className="btn btn-grey" onClick=leaveClick>
         {React.string("Back Home")}
@@ -118,7 +118,7 @@ let make = (
       </button>
     </div>
     {switch Js.Nullable.toOption(allfours_feedback_url) {
-    | None => ReasonReact.null
+    | None => React.null
     | Some(href) =>
       <div className="text-xs text-center mt-8">
         <span> {React.string("Love it / Hate it: ")} </span>

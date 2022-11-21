@@ -17,7 +17,7 @@ let removeUnloadListener: eventListener => unit = %raw(`listener =>
     window.removeEventListener("beforeunload", listener)
   `)
 
-let authMiddleware: (string, string) => Express.Middleware.t = %raw(`  (user, pass) =>
+let authMiddleware: (string, string) => Express.middleware = %raw(`  (user, pass) =>
     (req, res, next) => {
 
       // parse login and password from headers

@@ -20,21 +20,21 @@ let makeAnimatedSignal = (transition: SignalTransition.transition) => {
   let props = transition->SignalTransition.propsGet
 
   let springStyle = switch props->SignalTransitionConf.leftGet {
-  | None => ReactDOMRe.Style.make(~left="0", ())
-  | Some(left) => ReactDOMRe.Style.make(~left, ())
+  | None => ReactDOM.Style.make(~left="0", ())
+  | Some(left) => ReactDOM.Style.make(~left, ())
   }
 
   let springStyle = switch props->SignalTransitionConf.topGet {
   | None => springStyle
   | Some(top) =>
-    open ReactDOMRe
+    open ReactDOM
     Style.combine(springStyle, Style.make(~top, ()))
   }
 
   let springStyle = switch props->SignalTransitionConf.opacityGet {
   | None => springStyle
   | Some(opacity') =>
-    open ReactDOMRe
+    open ReactDOM
     Style.combine(springStyle, Style.make(~opacity=opacity', ()))
   }
 
@@ -43,11 +43,11 @@ let makeAnimatedSignal = (transition: SignalTransition.transition) => {
   <ReactSpring.AnimatedDiv key className="signal absolute w-full" style=springStyle>
     <div
       className="w-full flex justify-center bg-white"
-      style={ReactDOMRe.Style.make(~paddingBottom="100%", ())}>
+      style={ReactDOM.Style.make(~paddingBottom="100%", ())}>
       <img
         src=j`./static/img/$filename`
         className="absolute"
-        style={ReactDOMRe.Style.make(~height="100%", ~width="auto", ~padding="8%", ())}
+        style={ReactDOM.Style.make(~height="100%", ~width="auto", ~padding="8%", ())}
       />
     </div>
   </ReactSpring.AnimatedDiv>
@@ -80,7 +80,7 @@ let make = (~signal=?, ~zone) => {
           (),
         ),
       )
-      transitions->Belt.Array.map(makeAnimatedSignal)->ReasonReact.array
+      transitions->Belt.Array.map(makeAnimatedSignal)->React.array
     }
   </>
 }

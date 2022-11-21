@@ -11,6 +11,3 @@ type configuration = {output: pathConfig}
 
 @module external webpack: configuration => compiler = "webpack"
 
-@module
-external webpackDevMiddleware: (compiler, 'options) => Express.Middleware.t =
-  "webpack-dev-middleware"

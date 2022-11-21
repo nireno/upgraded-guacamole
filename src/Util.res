@@ -9,3 +9,7 @@ let rec updateUntil = (fns, test, state) =>
   | list{} => state
   | list{fn, ...fns'} => test(state) ? state : updateUntil(fns', test, fn(state))
   }
+
+
+@val @return(nullable)
+external getElementById: string => option<Dom.element> = "document.getElementById"

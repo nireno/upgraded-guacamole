@@ -29,7 +29,7 @@ module AlignedIdenticon = {
       | South => "translate(100%, -10%)"
       | East => "translate(-10%, -100%)"
       }
-      ReactDOMRe.Style.make(~transform, ())
+      ReactDOM.Style.make(~transform, ())
     }
     <div className={getClassName(zone)} style={getStyle(zone)}>
       <PlayerIdentityView initials seed style /> <SignalsView ?signal zone />
@@ -64,9 +64,9 @@ let make = (
     <PlayerTagsView className={playerTagsClass(zone)} isDealer />
     <div
       className="flex-grow relative w-3/4 self-center"
-      style={ReactDOMRe.Style.make(~zIndex=zIndex->string_of_int, ())}>
+      style={ReactDOM.Style.make(~zIndex=zIndex->string_of_int, ())}>
       <img className="card__placeholder relative block " src="./static/img/card_transparent.svg" />
-      {isTurner ? <ActivePlayerCountdownView gamePhase /> : ReasonReact.null}
+      {isTurner ? <ActivePlayerCountdownView gamePhase /> : React.null}
       <GameBoard__CardTransition.PlayCard maybeCard enterFrom=zone leaveTo=cardLeavesToZone />
       <AlignedIdenticon initials seed=identiconSeed style=identiconStyle zone ?signal />
     </div>

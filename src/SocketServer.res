@@ -50,7 +50,7 @@ module Store: {
 let emit = (socketMessage, sock_id) => {
   let sockets = Store.getState()
   switch sockets->StringMap.get(sock_id) {
-  | None => logger.warn(j`"Socket \`$sock_id\` not found"`)
+  | None => logger.warn(`"Socket ${sock_id} not found"`)
   | Some(socket) => socket->Socket.emit(socketMessage)
   }
 }

@@ -382,7 +382,7 @@ let rec update: (ServerEvent.event, db) => update<db, ServerEvent.effect> = (
             list{
               ReplaceGame(game_key, gameAftLeave),
               TriggerEffects(
-                \"@"(
+                Belt.List.concat(
                   list{ServerEvent.ResetClient(sock_id), ServerEvent.EmitStateByGame(game_key)},
                   effects,
                 ),

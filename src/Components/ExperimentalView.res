@@ -13,7 +13,7 @@ let make = (~onJoinClick, ~canJoinPublicGame, ~onCancelClick) =>
     </p>
     <p> {React.string("Thank you for still giving it a shot.")} </p>
     {switch Js.Nullable.toOption(allfours_feedback_url) {
-    | None => ReasonReact.null
+    | None => React.null
     | Some(href) =>
       <p>
         <span> {React.string("If you enjoy it, or have any comments/suggestions, ")} </span>
@@ -27,7 +27,7 @@ let make = (~onJoinClick, ~canJoinPublicGame, ~onCancelClick) =>
         {React.string("Cancel")}
       </div>
       <button
-        style={ReactDOMRe.Style.make(~minWidth="7rem", ())}
+        style={ReactDOM.Style.make(~minWidth="7rem", ())}
         onClick=onJoinClick
         className={"btn btn-blue " ++ (canJoinPublicGame ? "" : "btn-disabled")}
         disabled={!canJoinPublicGame}

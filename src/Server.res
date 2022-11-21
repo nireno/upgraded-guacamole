@@ -9,31 +9,29 @@ open AppPrelude
 
 let logger = appLogger.makeChild({"_module": "Server"})
 
-let app = Express.express()
+let app = Express.expressCjs()
 
-Express.App.useOnPath(
+Express.useWithPath(
   app,
-  ~path="/",
+  "/",
   {
-    open Express.Static
-    make("./build", defaultOptions()) |> asMiddleware
+    Express.staticMiddleware("./build")
   },
 )
-
-let expressStaticOptions = Express.Static.defaultOptions()
 
 // Clients should only make a request to check for changes to /static files
 // after the maxAge has elapsed.
 let cacheMaxAgeMillis = daysToMillis(1)
-expressStaticOptions->Express.Static.immutable(true)
-expressStaticOptions->Express.Static.maxAge(cacheMaxAgeMillis)
+let expressStaticOptions = {
+  "immutable": true,
+  "maxAge": cacheMaxAgeMillis,
+}
 
-Express.App.useOnPath(
+Express.useWithPath(
   app,
-  ~path="/static",
+  "/static",
   {
-    open Express.Static
-    make("./static", expressStaticOptions) |> asMiddleware
+    Express.staticMiddlewareWithOptions("./build", expressStaticOptions)
   },
 )
 
@@ -135,11 +133,11 @@ SocketServer.onConnect(io, socket => {
         )
         ServerStore.dispatch(
           CreatePrivateGame({
-            sock_id: sock_id,
-            client_username: client_username,
-            client_id: client_id,
-            client_initials: client_initials,
-            client_profile_type: client_profile_type,
+            sock_id,
+            client_username,
+            client_id,
+            client_initials,
+            client_profile_type,
           }),
         )
         logger.info2(getGameStats(), "Game stats:")
@@ -171,23 +169,23 @@ SocketServer.onConnect(io, socket => {
             ServerStore.dispatchMany(list{
               RemovePlayerBySocket(sock_id),
               AttachPublicPlayer({
-                sock_id: sock_id,
-                client_username: client_username,
-                client_id: client_id,
-                client_initials: client_initials,
+                sock_id,
+                client_username,
+                client_id,
+                client_initials,
                 ack: noAck,
-                client_profile_type: client_profile_type,
+                client_profile_type,
               }),
             })
           | Private(_) =>
             ServerStore.dispatchMany(list{
               RemovePlayerBySocket(sock_id),
               CreatePrivateGame({
-                sock_id: sock_id,
-                client_username: client_username,
-                client_id: client_id,
-                client_initials: client_initials,
-                client_profile_type: client_profile_type,
+                sock_id,
+                client_username,
+                client_id,
+                client_initials,
+                client_profile_type,
               }),
             })
           }
@@ -202,11 +200,11 @@ SocketServer.onConnect(io, socket => {
         } = decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings)
         ServerStore.dispatch(
           AttachSubstitute({
-            sock_id: sock_id,
-            client_username: client_username,
-            client_id: client_id,
-            client_initials: client_initials,
-            client_profile_type: client_profile_type,
+            sock_id,
+            client_username,
+            client_id,
+            client_initials,
+            client_profile_type,
           }),
         )
 
@@ -238,13 +236,13 @@ SocketServer.onConnect(io, socket => {
 
         ServerStore.dispatch(
           AttachPrivatePlayer({
-            sock_id: sock_id,
-            client_username: client_username,
-            client_id: client_id,
-            client_initials: client_initials,
-            invite_code: invite_code,
-            ack: ack,
-            client_profile_type: client_profile_type,
+            sock_id,
+            client_username,
+            client_id,
+            client_initials,
+            invite_code,
+            ack,
+            client_profile_type,
           }),
         )
 
@@ -256,12 +254,12 @@ SocketServer.onConnect(io, socket => {
         } = decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings)
         ServerStore.dispatch(
           AttachPublicPlayer({
-            sock_id: sock_id,
-            client_username: client_username,
-            client_id: client_id,
-            client_initials: client_initials,
-            ack: ack,
-            client_profile_type: client_profile_type,
+            sock_id,
+            client_username,
+            client_id,
+            client_initials,
+            ack,
+            client_profile_type,
           }),
         )
         logger.info2(getGameStats(), "Game stats:")
@@ -286,61 +284,54 @@ switch Js.Nullable.toOption(adminPasswordEnv) {
     "An environment variable 'allfours_admin_password' must be provided.\nThis defines the password for the admin dashboard.",
   )
 | Some(adminPassword) =>
-  Express.App.get(app, ~path="/dashboard", Raw.authMiddleware("admin", adminPassword))
-  Express.App.get(
-    app,
-    ~path="/dashboard",
-    Express.Middleware.from((_next, _req) => {
-      let {
-        ServerState.db_game: db_game,
-        db_public_games_created,
-        db_public_games_started,
-        db_private_games_created,
-        db_private_games_started,
-        db_server_started_at,
-      } = ServerStore.getState()
-      let gameStates = StringMap.valuesToArray(db_game)
+  Express.get(app, "/dashboard", Raw.authMiddleware("admin", adminPassword)->Obj.magic)
+  Express.get(app, "/dashboard", (_req, res) => {
+    let {
+      ServerState.db_game: db_game,
+      db_public_games_created,
+      db_public_games_started,
+      db_private_games_created,
+      db_private_games_started,
+      db_server_started_at,
+    } = ServerStore.getState()
+    let gameStates = StringMap.valuesToArray(db_game)
+    let html = <div>
       <div>
-        <div>
-          <span> {"Server started at: " |> React.string} </span>
-          <span> {db_server_started_at->Js.Date.toISOString |> React.string} </span>
-        </div>
-        <div>
-          <span> {"Public games created: " |> React.string} </span>
-          <span> {db_public_games_created |> string_of_int |> React.string} </span>
-        </div>
-        <div>
-          <span> {"Public games started:" |> React.string} </span>
-          <span> {db_public_games_started |> string_of_int |> React.string} </span>
-        </div>
-        <div>
-          <span> {"Private games created: " |> React.string} </span>
-          <span> {db_private_games_created |> string_of_int |> React.string} </span>
-        </div>
-        <div>
-          <span> {"Private games started:" |> React.string} </span>
-          <span> {db_private_games_started |> string_of_int |> React.string} </span>
-        </div>
-        <div>
-          <span> {"Currently Active games: " |> React.string} </span>
-          <span> {Array.length(gameStates) |> string_of_int |> React.string} </span>
-        </div>
-        <DashView gameStates />
+        <span> {"Server started at: " |> React.string} </span>
+        <span> {db_server_started_at->Js.Date.toISOString |> React.string} </span>
       </div>
-      |> ReactDOMServerRe.renderToStaticMarkup
-      |> Express.Response.sendString
-    }),
-  )
+      <div>
+        <span> {"Public games created: " |> React.string} </span>
+        <span> {db_public_games_created |> string_of_int |> React.string} </span>
+      </div>
+      <div>
+        <span> {"Public games started:" |> React.string} </span>
+        <span> {db_public_games_started |> string_of_int |> React.string} </span>
+      </div>
+      <div>
+        <span> {"Private games created: " |> React.string} </span>
+        <span> {db_private_games_created |> string_of_int |> React.string} </span>
+      </div>
+      <div>
+        <span> {"Private games started:" |> React.string} </span>
+        <span> {db_private_games_started |> string_of_int |> React.string} </span>
+      </div>
+      <div>
+        <span> {"Currently Active games: " |> React.string} </span>
+        <span> {Array.length(gameStates) |> string_of_int |> React.string} </span>
+      </div>
+      <DashView gameStates />
+    </div> |> ReactDOMServer.renderToStaticMarkup
+    Express.send(res, html)->ignore
+  })
+// })
 }
 
 @ocaml.doc(" 
  Add catchall for requests that should be handled by react's router
  (ReasonReactRouter) on the client side
  ")
-\"@@"(
-  Express.App.get(app, ~path="/*"),
-  Express.Middleware.from((_next, _req, res) => Express.Response.redirect("/", res)),
-)
+Express.get(app, "/*", (_req, res) => Express.redirect(res, "/")->ignore)
 
 let httpPort =
   Js.Nullable.toOption(httpPortEnv) |> Js.Option.getWithDefault("3000") |> int_of_string

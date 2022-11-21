@@ -27,7 +27,7 @@ let make = (~onSave, ~settings) => {
     let floatVal = floatVal < 0.0 ? 0.0 : floatVal > 1.0 ? 1.0 : floatVal
     let volume' = floatVal == 0.0 ? ClientSettings.Mute(0.0) : Level(floatVal)
     updateVolume(_ => volume')
-    let sound = React.Ref.current(blipSoundRef)
+    let sound = blipSoundRef.current
     Howler.volume(sound, floatVal)
     if !Howler.playing(sound) {
       Howler.play(sound)
@@ -83,7 +83,7 @@ let make = (~onSave, ~settings) => {
         client_initials: client_initials,
       }
     })
-    ReasonReactRouter.replace("./")
+    RescriptReactRouter.replace("./")
   }
 
   let dicebearType = ClientSettings.dicebearTypeOfProfileType(client_profile_type)
@@ -152,7 +152,7 @@ let make = (~onSave, ~settings) => {
         // <div className="mt-4">
         //   <label htmlFor="client-initials"> {React.string("Initials: ")} </label>
         //   <input
-        //     style={ReactDOMRe.Style.make(~maxWidth="10em", ())}
+        //     style={ReactDOM.Style.make(~maxWidth="10em", ())}
         //     placeholder="Enter your initials"
         //     id="client-initials"
         //     onChange=onChangeInitials
@@ -176,7 +176,7 @@ let make = (~onSave, ~settings) => {
           <img
             src=j`./static/img/$volumeIcon.svg`
             className="block mx-4"
-            style={ReactDOMRe.Style.make(
+            style={ReactDOM.Style.make(
               ~height="100%",
               ~width="auto",
               ~minHeight="32px",
@@ -188,7 +188,7 @@ let make = (~onSave, ~settings) => {
         <input
           id="volume"
           type_="range"
-          min=0
+          min="0"
           max="1"
           value={Js.Float.toString(volumeLevel)}
           step=0.05
@@ -197,7 +197,7 @@ let make = (~onSave, ~settings) => {
         />
       </div>
       <div className="flex items-center justify-around">
-        <div onClick={_ => ReasonReactRouter.replace("./")} className="link link-blue" href="#">
+        <div onClick={_ => RescriptReactRouter.replace("./")} className="link link-blue" href="#">
           {React.string("Cancel")}
         </div>
         <button onClick=onSaveClick className="btn btn-blue" type_="button">

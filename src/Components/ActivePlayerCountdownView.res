@@ -33,7 +33,7 @@ let make = (~gamePhase) =>
         <text
           x="50%"
           y="50%"
-          style={ReactDOMRe.Style.make(
+          style={ReactDOM.Style.make(
             ~lineHeight="1",
             ~fontFamily="-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,'Noto Sans',sans-serif",
             ~fontSize="8px",

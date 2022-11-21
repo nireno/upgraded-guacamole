@@ -10,7 +10,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
     <tbody>
       <tr>
         {switch maybeTeamHigh {
-        | None => ReasonReact.null
+        | None => React.null
         | Some({GameAward.team_id: team_id, winning_card, losing_card_maybe}) =>
           team_id == weTeamId
             ? <>
@@ -49,7 +49,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
       </tr>
       <tr>
         {switch maybeTeamLow {
-        | None => ReasonReact.null
+        | None => React.null
         | Some({GameAward.team_id: team_id, winning_card, losing_card_maybe}) =>
           team_id == weTeamId
             ? <>
@@ -88,7 +88,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
       </tr>
       <tr>
         {switch maybeTeamJack {
-        | None => ReasonReact.null
+        | None => React.null
         | Some({GameAward.team_id: team_id, jack_award_type}) =>
           team_id == weTeamId
             ? <>
@@ -115,7 +115,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
       </tr>
       <tr>
         {switch maybeTeamGame {
-        | None => ReasonReact.null
+        | None => React.null
         | Some({GameAward.team_id_maybe: Some(T1 as team_id), winning_count, losing_count})
         | Some({GameAward.team_id_maybe: Some(T2 as team_id), winning_count, losing_count}) =>
           team_id == weTeamId
