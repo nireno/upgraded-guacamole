@@ -35,6 +35,14 @@ Express.useWithPath(
   },
 )
 
+Express.useWithPath(
+  app,
+  "/static",
+  {
+    Express.staticMiddleware("./static")
+  },
+)
+
 let http = Http.create(app)
 
 let io = SocketServer.createWithHttpAndOption(
