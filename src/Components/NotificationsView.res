@@ -37,21 +37,21 @@ let make = (~id=?, ~appRect, ~notis=list{}, ~teamId) => {
     let props = transition->NotiTransition.propsGet
 
     let springStyle = switch props->NotiTransitionConf.leftGet {
-    | None => ReactDOMRe.Style.make(~left="0", ())
-    | Some(left) => ReactDOMRe.Style.make(~left, ())
+    | None => ReactDOM.Style.make(~left="0", ())
+    | Some(left) => ReactDOM.Style.make(~left, ())
     }
 
     let springStyle = switch props->NotiTransitionConf.topGet {
-    | None => ReactDOMRe.Style.make(~top="0", ())
+    | None => ReactDOM.Style.make(~top="0", ())
     | Some(top) =>
-      open ReactDOMRe
-      Style.combine(springStyle, ReactDOMRe.Style.make(~top, ()))
+      open ReactDOM
+      Style.combine(springStyle, ReactDOM.Style.make(~top, ()))
     }
 
     let springStyle = switch props->NotiTransitionConf.opacityGet {
     | None => springStyle
     | Some(opacity') =>
-      open ReactDOMRe
+      open ReactDOM
       Style.combine(springStyle, Style.make(~opacity=opacity', ()))
     }
 
@@ -114,6 +114,6 @@ let make = (~id=?, ~appRect, ~notis=list{}, ~teamId) => {
 
   <div
     className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center z-30">
-    {elements |> ReasonReact.array}
+    {elements |> React.array}
   </div>
 }

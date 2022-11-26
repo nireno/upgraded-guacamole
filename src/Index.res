@@ -30,7 +30,7 @@ type machineState =
 module App = {
   @react.component
   let make = () => {
-    let url = ReasonReactRouter.useUrl()
+    let url = RescriptReactRouter.useUrl()
     let (maybeSocket, setMaybeSocket) = React.useState(() => None)
     let (notis, updateNotis) = React.useReducer(Noti.State.reducer, Noti.State.initial)
     let (clientSettings, updateClientSettings) = React.useState(() =>
@@ -54,10 +54,10 @@ module App = {
       Webapi.Dom.DomRect.make(~x=0.0, ~y=0.0, ~width=0.0, ~height=0.0)
     )
 
-    let appRef: React.Ref.t<Js.Nullable.t<Webapi.Dom.Element.t>> = React.useRef(Js.Nullable.null)
+    let appRef: React.ref<Js.Nullable.t<Webapi.Dom.Element.t>> = React.useRef(Js.Nullable.null)
 
     React.useEffect0(() => {
-      let el = My.Nullable.getUnsafe(React.Ref.current(appRef))
+      let el = My.Nullable.getUnsafe(appRef.current)
       setAppRect(_ => Webapi.Dom.Element.getBoundingClientRect(el))
       None
     })
@@ -95,20 +95,21 @@ module App = {
           | Belt.Result.Ok(toast) => updateNotis(AddOne(toast))
           }
         | Reset =>
-          updateMachineState(machineState =>
-            switch machineState {
-            | ActiveGameState(_) =>
-              Raw.removeUnloadListener(Raw.preventUnloadListener)
-              MainMenuState(MainMenuDefaultState)
-            | otherState => otherState
-            }
+          updateMachineState(
+            machineState =>
+              switch machineState {
+              | ActiveGameState(_) =>
+                Raw.removeUnloadListener(Raw.preventUnloadListener)
+                MainMenuState(MainMenuDefaultState)
+              | otherState => otherState
+              },
           )
           updateNotis(Reset(Noti.State.initial))
         | AckOk | AckError(_) => ()
         | HandshakeFailed => updateMachineState(_curr => MainMenuState(MainMenuReloadState))
         | ShowSignal(fromQid, signal) =>
-          updateSignals(signals =>
-            signals->Quad.update(fromQid, _ => Some((signal, Nanoid.nanoid())), _)
+          updateSignals(
+            signals => signals->Quad.update(fromQid, _ => Some((signal, Nanoid.nanoid())), _),
           )
 
           let timeoutId = Js.Global.setTimeout(
@@ -125,7 +126,7 @@ module App = {
         }
       )
       switch maybeInviteCode {
-      | Some(inviteCode) => ReasonReactRouter.replace("./private-games?g=" ++ inviteCode)
+      | Some(inviteCode) => RescriptReactRouter.replace("./private-games?g=" ++ inviteCode)
       | None => ()
       }
       None
@@ -147,15 +148,11 @@ module App = {
       <div className="column">
         {List.length(tricks) == 0
           ? <div> {React.string("No tricks")} </div>
-          : <div>
-              {List.map(
-                trick =>
-                  <div key={Trick.stringOfTrick(trick)} className="section"> <Trick trick /> </div>,
-                tricks,
-              )
-              |> Belt.List.toArray
-              |> ReasonReact.array}
-            </div>}
+          : <div> {List.map(trick =>
+                <div key={Trick.stringOfTrick(trick)} className="section">
+                  <Trick trick />
+                </div>
+              , tricks) |> Belt.List.toArray |> React.array} </div>}
       </div>
 
     let handleAppClick = _ =>
@@ -177,13 +174,13 @@ module App = {
         ack,
       )
 
-    let onExperimentalClick = _event => ReasonReactRouter.replace("./feedback")
+    let onExperimentalClick = _event => RescriptReactRouter.replace("./feedback")
 
     let onExperimentalJoinClick = _event => {
       updateCanJoinPublicGame(_ => false)
       let ackJoinGame = _response => {
         updateCanJoinPublicGame(_ => true)
-        ReasonReactRouter.replace("./")
+        RescriptReactRouter.replace("./")
       }
       sendIOWithAck(
         IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
@@ -193,7 +190,7 @@ module App = {
 
     let onExperimentalCancelClick = _event => {
       updateCanJoinPublicGame(_ => true)
-      ReasonReactRouter.replace("./")
+      RescriptReactRouter.replace("./")
     }
 
     let onJoinPublicGameClick = _event => {
@@ -228,7 +225,7 @@ module App = {
     switch List.rev(url.path) {
     | list{"feedback", ..._rest} =>
       <div
-        ref={ReactDOMRe.Ref.domRef(appRef)}
+        ref={ReactDOM.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
         <MenuView>
           <ExperimentalView
@@ -240,13 +237,15 @@ module App = {
       </div>
     | list{"settings", ..._rest} =>
       <div
-        ref={ReactDOMRe.Ref.domRef(appRef)}
+        ref={ReactDOM.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
-        <MenuView> <SettingsView onSave=saveClientSettings settings=clientSettings /> </MenuView>
+        <MenuView>
+          <SettingsView onSave=saveClientSettings settings=clientSettings />
+        </MenuView>
       </div>
     | list{"private-games", ..._rest} =>
       <div
-        ref={ReactDOMRe.Ref.domRef(appRef)}
+        ref={ReactDOM.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col justify-center relative mx-auto">
         <MenuView>
           <JoinPrivateGameView sendJoinGame=sendIoJoinPrivateGame inviteCode=?maybeInviteCode />
@@ -254,7 +253,7 @@ module App = {
       </div>
     | _ =>
       <div
-        ref={ReactDOMRe.Ref.domRef(appRef)}
+        ref={ReactDOM.Ref.domRef(appRef)}
         className="all-fours-game font-sans flex flex-col relative mx-auto"
         onClick=handleAppClick>
         {switch machineState {
@@ -262,7 +261,7 @@ module App = {
           <MenuView>
             <div
               className="app-name text-white text-5xl"
-              style={ReactDOMRe.Style.make(
+              style={ReactDOM.Style.make(
                 ~fontFamily="'Days One', sans-serif",
                 ~textShadow="-1px 1px 2px black, 1px -1px 0px #00000080",
                 (),
@@ -277,7 +276,7 @@ module App = {
             </button>
             <button
               className="btn btn-blue mt-1 hidden"
-              onClick={_ => ReasonReactRouter.replace("./private-games/")}>
+              onClick={_ => RescriptReactRouter.replace("./private-games/")}>
               {React.string("Join Private Game")}
             </button>
             <button className="btn btn-blue mt-1" onClick=handleCreatePrivateGameClick>
@@ -285,15 +284,15 @@ module App = {
             </button>
             <div
               className="link link-white mt-4"
-              onClick={_ => ReasonReactRouter.replace("./settings")}>
+              onClick={_ => RescriptReactRouter.replace("./settings")}>
               {React.string("Settings")}
             </div>
             {switch Js.Nullable.toOption(allfours_rules_url) {
-            | None => ReasonReact.null
+            | None => React.null
             | Some(allfours_rules_url) =>
               <div
                 className="help absolute w-full flex justify-around"
-                style={ReactDOMRe.Style.make(~bottom="5%", ~height="5%", ())}>
+                style={ReactDOM.Style.make(~bottom="5%", ~height="5%", ())}>
                 <div className="w-1/2 flex flex-col items-center justify-center">
                   <a
                     className="flex flex-col items-center justify-around h-full link-blue"
@@ -327,8 +326,11 @@ module App = {
               </div>
             }}
             {switch state {
-            | MainMenuDefaultState => ReasonReact.null
-            | MainMenuReloadState => <Modal visible=true> <RefreshPrompt /> </Modal>
+            | MainMenuDefaultState => React.null
+            | MainMenuReloadState =>
+              <Modal visible=true>
+                <RefreshPrompt />
+              </Modal>
             }}
           </MenuView>
         | ActiveGameState(state) =>
@@ -495,8 +497,8 @@ module App = {
               demPoints=demTeam.team_points
             />
             <div
-              className=j`the-rest relative flex-grow flex $bgBoard justify-between`
-              style={ReactDOMRe.Style.make(~minHeight="50vh", ())}>
+              className={j`the-rest relative flex-grow flex $bgBoard justify-between`}
+              style={ReactDOM.Style.make(~minHeight="50vh", ())}>
               {
                 Belt.List.forEach(notis, notiToRemove =>
                   switch notiToRemove.noti_kind {
@@ -527,25 +529,25 @@ module App = {
               <div
                 className="mid-partners relative self-stretch w-1/3 flex flex-col justify-between">
                 {switch state.maybePartnerInfo {
-                | None => ReasonReact.null
+                | None => React.null
                 | Some(partnerInfo) =>
                   <PlayerCardTagsView
                     className="absolute w-full top-0 left-0 leading-none"
-                    style={ReactDOMRe.Style.make(~transform="translate(100%)", ())}
+                    style={ReactDOM.Style.make(~transform="translate(100%)", ())}
                     cards=partnerInfo.cardsToDisplay
                   />
                 }}
                 {switch state.maybeTrumpCard {
-                | None => ReasonReact.null
+                | None => React.null
                 | Some(trumpCard) =>
                   switch state.maybePartnerInfo {
-                  | None => ReasonReact.null
+                  | None => React.null
                   | Some(partnerInfo) =>
                     <PlayerTrumpsView
                       suit=trumpCard.suit
                       n=partnerInfo.trumpCount
                       className="w-full absolute"
-                      style={ReactDOMRe.Style.make(~transform="translateX(-100%)", ())}
+                      style={ReactDOM.Style.make(~transform="translateX(-100%)", ())}
                     />
                   }
                 }}
@@ -595,7 +597,7 @@ module App = {
             <Toolbar onToggleSortClick onSignalClick sortHand />
             <div
               className="player-hand flex flex-col z-20"
-              style={ReactDOMRe.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
+              style={ReactDOM.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
               <div className="player-hand__placeholder-row flex flex-row justify-around">
                 <img className="hand-card" src="./static/img/card_placeholder.svg" />
                 <img className="hand-card" src="./static/img/card_placeholder.svg" />
@@ -717,16 +719,16 @@ module App = {
                   leaveClick={_event => sendIO(IO_LeaveGame)}
                 />
               </Modal>
-            | _ => ReasonReact.null
+            | _ => React.null
             }}
             {
               // {createPlayerTricks(state.myTricks)}
               if isProduction {
-                ReasonReact.null
+                React.null
               } else {
                 <div
                   className="debug-info"
-                  style={ReactDOMRe.Style.make(~position="fixed", ~bottom="0", ())}>
+                  style={ReactDOM.Style.make(~position="fixed", ~bottom="0", ())}>
                   <div className="text-gray-500 text-xs">
                     {React.string(Player.stringOfId(state.me))}
                   </div>
@@ -743,4 +745,8 @@ module App = {
   }
 }
 
-ReactDOMRe.renderToElementWithClassName(<App />, "app")
+let rootEl = Util.getElementById("all-fours-app")
+switch rootEl {
+| None => ()
+| Some(rootEl) => ReactDOM.render(<App />, rootEl)
+}

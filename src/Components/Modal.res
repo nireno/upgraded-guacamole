@@ -6,7 +6,7 @@ let make = (~visible=false, ~children=?) => {
     classes}>
     <div
       className={"p-4 border border-solid border-gray-200 absolute w-11/12" ++ " bg-white rounded-sm shadow-lg flex flex-col items-center justify-center rounded"}>
-      {Js.Option.getWithDefault(ReasonReact.null, children)}
+      {Js.Option.getWithDefault(React.null, children)}
     </div>
   </div>
 }

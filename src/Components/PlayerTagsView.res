@@ -5,7 +5,7 @@ let make = (~isDealer, ~className=?, ~style=?) => {
     <img
       className="player-tag__dealer__img player-tags__item"
       src="./static/img/emoji_pack.svg"
-      style={ReactDOMRe.Style.make(~opacity=dealerImgOpacity, ())}
+      style={ReactDOM.Style.make(~opacity=dealerImgOpacity, ())}
     />
   </div>
 }

@@ -2,7 +2,7 @@
 let make = (~children=?) =>
   <div
     className="main-menu flex flex-col justify-center items-center w-full h-full"
-    style={ReactDOMRe.Style.make(
+    style={ReactDOM.Style.make(
       ~backgroundImage="url('./static/img/logo.svg')",
       ~backgroundSize="contain",
       ~backgroundPosition="center",
@@ -10,5 +10,5 @@ let make = (~children=?) =>
       ~minHeight="100vh",
       (),
     )}>
-    {Js.Option.getWithDefault(ReasonReact.null, children)}
+    {Js.Option.getWithDefault(React.null, children)}
   </div>

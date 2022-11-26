@@ -9,7 +9,7 @@ let useInterval = (nextCallback, maybeDelay) => {
 
   // Remember the latest callback.
   React.useEffect1(() => {
-    React.Ref.setCurrent(callbackRef, nextCallback)
+    callbackRef.current = nextCallback
     None
   }, [nextCallback])
 
@@ -17,7 +17,7 @@ let useInterval = (nextCallback, maybeDelay) => {
   React.useEffect1(
     () => {
       let tick = () => {
-        let callback = React.Ref.current(callbackRef)
+        let callback = callbackRef.current
         callback()
       }
 
@@ -57,9 +57,9 @@ let useReducer = (initialState, reducer) => {
   let ({state, sideEffects}, send) = React.useReducer(({state, sideEffects} as fullState, action) =>
     switch reducer(action, state) {
     | NoUpdate => fullState
-    | Update(state) => {...fullState, state: state}
+    | Update(state) => {...fullState, state}
     | UpdateWithSideEffects(state, sideEffect) => {
-        state: state,
+        state,
         sideEffects: ref(Array.concat(sideEffects.contents, [sideEffect])),
       }
     | SideEffects(sideEffect) => {
@@ -70,9 +70,7 @@ let useReducer = (initialState, reducer) => {
   , {state: initialState, sideEffects: ref([])})
   React.useEffect1(() =>
     if Array.length(sideEffects.contents) > 0 {
-      let cancelFuncs = Array.keepMap(sideEffects.contents, func =>
-        func({state: state, send: send})
-      )
+      let cancelFuncs = Array.keepMap(sideEffects.contents, func => func({state, send}))
       sideEffects := []
       Array.length(cancelFuncs) > 0 ? Some(() => cancelFuncs->Array.forEach(func => func())) : None
     } else {

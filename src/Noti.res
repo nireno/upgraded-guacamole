@@ -57,8 +57,8 @@ module State = {
 
   let reducer = (prevNotis, action) =>
     switch action {
-    | Add(notis) => \"@"(prevNotis, notis)
-    | AddOne(noti) => \"@"(prevNotis, list{noti})
+    | Add(notis) => Belt.List.concat(prevNotis, notis)
+    | AddOne(noti) => Belt.List.concat(prevNotis, list{noti})
     | Remove(notiToRemove) => List.filter(noti => noti != notiToRemove, prevNotis)
     | RemoveKind(kind) => Belt.List.keep(prevNotis, noti => noti.noti_kind != kind)
     | Reset(notis) => notis

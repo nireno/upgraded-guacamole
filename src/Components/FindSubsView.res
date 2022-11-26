@@ -21,16 +21,16 @@ let make = (~emptySeatCount as n, ~onLeaveClick, ~players: Quad.t<ClientGame.pla
         , _)
       <div
         className="w-2/3 my-8"
-        style={ReactDOMRe.Style.make(
+        style={ReactDOM.Style.make(
           ~display="grid",
           ~gridTemplateColumns="repeat(3, 1fr)",
           ~gridGap="10px",
           (),
         )}>
-        <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
-        <div style={ReactDOMRe.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
+        <div style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="1", ())}> top </div>
+        <div style={ReactDOM.Style.make(~gridColumn="1", ~gridRow="2", ())}> left </div>
+        <div style={ReactDOM.Style.make(~gridColumn="3", ~gridRow="2", ())}> right </div>
+        <div style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="3", ())}> bottom </div>
       </div>
     }
     {n == 0

@@ -15,7 +15,7 @@ let make = () => {
     <img
       src="./static/img/avatar_placeholder.svg"
       className="w-full "
-      style={ReactDOMRe.Style.make(
+      style={ReactDOM.Style.make(
         ~opacity=isOpaque ? opacityMax : opacityMin,
         ~transition="opacity 1s ease-out",
         (),

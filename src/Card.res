@@ -52,8 +52,8 @@ module Suit = {
   let listOfSuits = () => {
     let rec loop = (v, l) =>
       switch v {
-      | x if x == last => \"@"(l, list{x})
-      | x => loop(next(x), \"@"(l, list{x}))
+      | x if x == last => Belt.List.concat(l, list{x})
+      | x => loop(next(x), Belt.List.concat(l, list{x}))
       }
     loop(first, list{})
   }
@@ -194,8 +194,8 @@ module Rank = {
   let listOfRanks = () => {
     let rec loop = (v, l) =>
       switch v {
-      | x if x == last => \"@"(l, list{x})
-      | x => loop(next(x), \"@"(l, list{x}))
+      | x if x == last => Belt.List.concat(l, list{x})
+      | x => loop(next(x), Belt.List.concat(l, list{x}))
       }
     loop(first, list{})
   }

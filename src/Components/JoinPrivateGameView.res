@@ -18,7 +18,7 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=?) => {
       switch response {
       | SocketMessages.AckOk =>
         updateState(_ => Initial)
-        ReasonReactRouter.replace("./")
+        RescriptReactRouter.replace("./")
       | _ => updateState(_ => Error)
       }
     }
@@ -63,7 +63,7 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=?) => {
           </form>
         </div>
         <div className="flex items-center justify-around">
-          <div onClick={_ => ReasonReactRouter.replace("../")} className="link link-blue" href="#">
+          <div onClick={_ => RescriptReactRouter.replace("../")} className="link link-blue" href="#">
             {React.string("Cancel")}
           </div>
           <button
@@ -81,7 +81,7 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=?) => {
         <div className="text-xl"> {React.string("No games found")} </div>
         <div> {React.string("Verify your invite link and try again.")} </div>
         <button
-          onClick={_ => ReasonReactRouter.replace("./")}
+          onClick={_ => RescriptReactRouter.replace("./")}
           className="btn btn-blue mt-4"
           type_="button">
           {React.string("Ok")}
