@@ -46,6 +46,9 @@ module.exports = {
     port: process.env.PORT || 8000,
     historyApiFallback: true
   },
+  watchOptions: {
+    ignored: /node_modules/,
+  },
   optimization: {
     minimizer: [
       new TerserPlugin({
