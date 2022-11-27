@@ -1,9 +1,19 @@
-.DS_Store
+# Environment
+.env
+.vscode
+
+# Rescript
 .merlin
 .bsb.lock
-npm-debug.log
 /lib/bs/
-/node_modules/
-/build/
 *.bs.js
-.env
+
+#Node
+npm-debug.log
+/node_modules/
+
+#Build
+/build/
+
+# OS
+.DS_Store
