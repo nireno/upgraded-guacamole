@@ -52,7 +52,7 @@
 }
 
 .link-white {
-  @apply text-gray-300
+  @apply text-gray-200
 }
 
 .link-white:hover {

@@ -260,7 +260,7 @@ module App = {
         | MainMenuState(state) =>
           <MenuView>
             <div
-              className="app-name text-white text-5xl"
+              className="app-name text-white text-5xl leading-[1.5]"
               style={ReactDOM.Style.make(
                 ~fontFamily="'Days One', sans-serif",
                 ~textShadow="-1px 1px 2px black, 1px -1px 0px #00000080",
