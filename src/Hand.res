@@ -242,7 +242,7 @@ module FaceUpHand = {
 
         let msg =
           handPhase != HandPlayPhase
-            ? "Wait for your turn client"
+            ? "Wait for your turn"
             : j`You must follow suit ($leadSuit) or play trump ($trumpSuit)`
 
         checkIsCardPlayable(kCard.card) ? sendPlayCard(card) : onInvalidCardClick(msg)

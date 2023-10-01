@@ -198,7 +198,7 @@ let playCard = (~game_key, ~playerId, ~state: Game.state, ~effects, c) => {
           let suitToFollowText = suitToFollow->Card.Suit.toString
           Text(j`You must follow with the suit you trumped on ($suitToFollowText) or play trump ($trumpSuitText).`)
         }
-      | WaitForTurn => Text("Wait for your turn server.")
+      | WaitForTurn => Text("Wait for your turn.")
       | AlreadyPlayed => Text("You already have a card in play.")
       }
 
