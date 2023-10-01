@@ -1,6 +1,7 @@
 open AppPrelude
 open Game
-module EventHandler = GameReducer__EventHandler
+
+module Action = GameReducer__Action
 
 let logger = appLogger.makeChild({"_context": "GameReducer"})
 
@@ -349,10 +350,10 @@ let reduce = (action, state) => {
     | PlayCard(playerId, c) =>
       switch state.phase {
       | BegPhase(BegPhaseStanding) =>
-        EventHandler.playCard(~game_key, ~state, ~effects, ~playerId, c)
+        Action.playCard(~game_key, ~state, ~effects, ~playerId, c)
 
       | PlayerTurnPhase(phasePlayerId) if phasePlayerId == playerId =>
-        EventHandler.playCard(~game_key, ~state, ~effects, ~playerId, c)
+        Action.playCard(~game_key, ~state, ~effects, ~playerId, c)
 
       | _ =>
         let playerIdText = playerId->Player.stringOfId
