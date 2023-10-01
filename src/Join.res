@@ -10,12 +10,12 @@ let clientGamePhaseOfGamePhase = x =>
   switch x {
   | Game.IdlePhase(idleReason) => ClientGame.IdlePhase(idleReason)
   | FindSubsPhase({emptySeatCount}) =>
-    open ClientGame
     FindSubsPhase({emptySeatCount: emptySeatCount})
   | FindPlayersPhase({emptySeatCount, canSub}) =>
     FindPlayersPhase({emptySeatCount: emptySeatCount, canSub: canSub})
   | DealPhase => DealPhase
-  | BegPhase => BegPhase
+  | BegPhase(BegPhaseDeciding) => BegPhase(BegPhaseDeciding)
+  | BegPhase(BegPhaseStanding) => BegPhase(BegPhaseStanding)
   | GiveOnePhase => GiveOnePhase
   | RunPackPhase => RunPackPhase
   | FlipFinalTrumpPhase => FlipFinalTrumpPhase

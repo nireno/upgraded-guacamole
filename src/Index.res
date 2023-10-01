@@ -455,6 +455,7 @@ module App = {
           }
 
           let addUniqueTimoutNoti = msg => {
+            Js.log((__LOC__, "foo"))
             let isTimeoutNoti = noti =>
               switch noti.Noti.noti_kind {
               | Duration(_) => true

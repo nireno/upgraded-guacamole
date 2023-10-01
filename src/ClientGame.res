@@ -39,12 +39,15 @@ type findPlayersContext = {
 }
 
 @decco
+type begPhaseContext = BegPhaseDeciding | BegPhaseStanding
+
+@decco
 type phase =
   | IdlePhase(idleReason)
   | FindSubsPhase(findSubsContext)
   | FindPlayersPhase(findPlayersContext)
   | DealPhase
-  | BegPhase
+  | BegPhase(begPhaseContext)
   | GiveOnePhase
   | RunPackPhase
   | FlipFinalTrumpPhase
@@ -75,7 +78,8 @@ let stringOfPhase = x =>
   | FindSubsPhase(_) => "FindSubsPhase"
   | FindPlayersPhase(_) => "FindPlayersPhase"
   | DealPhase => "DealPhase"
-  | BegPhase => "BegPhase"
+  | BegPhase(BegPhaseDeciding) => "BegPhase(BegPhaseDeciding)"
+  | BegPhase(BegPhaseStanding) => "BegPhase(BegPhaseStanding)"
   | GiveOnePhase => "GiveOnePhase"
   | RunPackPhase => "RunPackPhase"
   | FlipFinalTrumpPhase => "FlipFinalTrumpPhase"

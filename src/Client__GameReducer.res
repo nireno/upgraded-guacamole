@@ -85,7 +85,7 @@ let reducer = (prevState, action) =>
       switch nextState.gamePhase {
       | IdlePhase(_)
       | DealPhase
-      | BegPhase
+      | BegPhase(_)
       | GiveOnePhase
       | RunPackPhase
       | FlipFinalTrumpPhase

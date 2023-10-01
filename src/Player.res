@@ -48,11 +48,14 @@ let stringOfMaybeId = x =>
   }
 
 @decco
+type begPhaseContext = PlayerBegPhaseDeciding | PlayerBegPhaseStanding
+
+@decco
 type phase =
   | PlayerIdlePhase
   | PlayerTurnPhase(id)
   | PlayerDealPhase
-  | PlayerBegPhase
+  | PlayerBegPhase(begPhaseContext)
   | PlayerGiveOnePhase
   | PlayerRunPackPhase
   | PlayerFlipFinalTrumpPhase
@@ -65,7 +68,8 @@ let stringOfPhase = x =>
     let str_playerId = stringOfId(id)
     j`PlayerTurnPhase($str_playerId)`
   | PlayerDealPhase => "PlayerDealPhase"
-  | PlayerBegPhase => "PlayerBegPhase"
+  | PlayerBegPhase(PlayerBegPhaseDeciding) => "PlayerBegPhase(PlayerBegPhaseDeciding)"
+  | PlayerBegPhase(PlayerBegPhaseStanding) => "PlayerBegPhase(PlayerBegPhaseStanding)"
   | PlayerGiveOnePhase => "PlayerGiveOnePhase"
   | PlayerRunPackPhase => "PlayerRunPackPhase"
   | PlayerFlipFinalTrumpPhase => "PlayerFlipFinalTrumpPhase"
@@ -90,27 +94,20 @@ let make = (
     <Modal visible=true>
       <button className="btn btn-blue" onClick=sendDeal> {React.string("Deal")} </button>
     </Modal>
-  | PlayerBegPhase =>
+  | PlayerBegPhase(PlayerBegPhaseDeciding) =>
     <Modal visible=true>
       <button className="btn btn-blue m-2" onClick=sendBeg> {React.string("Beg")} </button>
-      <button className="btn btn-blue m-2" onClick=sendStandUp>
-        {React.string("Stand")}
-      </button>
+      <button className="btn btn-blue m-2" onClick=sendStandUp> {React.string("Stand")} </button>
     </Modal>
+  | PlayerBegPhase(PlayerBegPhaseStanding) => React.null
   | PlayerGiveOnePhase =>
     <Modal visible=true>
-      <button className="btn btn-blue m-2" onClick=sendGiveOne>
-        {React.string("Give One")}
-      </button>
-      <button className="btn btn-blue m-2" onClick=sendRunPack>
-        {React.string("Run Pack")}
-      </button>
+      <button className="btn btn-blue m-2" onClick=sendGiveOne> {React.string("Give One")} </button>
+      <button className="btn btn-blue m-2" onClick=sendRunPack> {React.string("Run Pack")} </button>
     </Modal>
   | PlayerRunPackPhase =>
     <Modal visible=true>
-      <button className="btn btn-blue" onClick=sendRunPack>
-        {React.string("Run Again")}
-      </button>
+      <button className="btn btn-blue" onClick=sendRunPack> {React.string("Run Again")} </button>
     </Modal>
   | PlayerFlipFinalTrumpPhase =>
     <Modal visible=true>
@@ -120,9 +117,7 @@ let make = (
     </Modal>
   | PlayerRedealPhase =>
     <Modal visible=true>
-      <button className="btn btn-blue" onClick=sendReshuffle>
-        {React.string("Reshuffle")}
-      </button>
+      <button className="btn btn-blue" onClick=sendReshuffle> {React.string("Reshuffle")} </button>
     </Modal>
   | PlayerTurnPhase(_)
   | PlayerIdlePhase => React.null
