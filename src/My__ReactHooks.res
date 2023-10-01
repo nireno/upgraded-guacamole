@@ -39,6 +39,7 @@ let useInterval = (nextCallback, maybeDelay) => {
 
 open Belt
 
+@@warning("-30")
 type rec update<'action, 'state> =
   | NoUpdate
   | Update('state)
@@ -79,3 +80,4 @@ let useReducer = (initialState, reducer) => {
   , [sideEffects])
   (state, send)
 }
+@@warning("+30")

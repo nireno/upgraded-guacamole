@@ -44,6 +44,7 @@ type attachSubstituteData = {
   client_profile_type: ClientSettings.profileType,
 }
 
+@@warning("-30")
 type rec event =
   | AddGame(Game.state)
   | RemoveGame(game_key)
@@ -107,6 +108,8 @@ and gameTimerType =
   | DelayedGameEvent(Game.event, int /* delayMilliseconds */)
   | TransitionGameCountdown(Game.phase /* fromPhase */, Game.phase /* toPhase */)
   | KickInactiveClientCountdown
+@@warning("+30")
+
 
 let debugOfEffect = x =>
   switch x {

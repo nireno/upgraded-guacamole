@@ -70,13 +70,14 @@ let initPlayerData = () => {
 @decco type notis = list<Noti.t>
 
 type findPlayersContext = {emptySeatCount: int, canSub: bool}
+type begPhaseContext = BegPhaseDeciding | BegPhaseStanding
 
 type rec phase =
   | IdlePhase(idleReason)
   | FindSubsPhase(findSubsContext)
   | FindPlayersPhase(findPlayersContext)
   | DealPhase
-  | BegPhase
+  | BegPhase(begPhaseContext)
   | GiveOnePhase
   | RunPackPhase
   | PlayerTurnPhase(Player.id)
@@ -96,7 +97,8 @@ let rec stringOfPhase = x =>
     (string_of_int(emptySeatCount) ++
     (", " ++ (string_of_bool(canSub) ++ ")")))
   | DealPhase => "DealPhase"
-  | BegPhase => "BegPhase"
+  | BegPhase(BegPhaseDeciding) => "BegPhase(BegPhaseDeciding)"
+  | BegPhase(BegPhaseStanding) => "BegPhase(BegPhaseStanding)"
   | GiveOnePhase => "GiveOnePhase"
   | RunPackPhase => "RunPackPhase"
   | FlipFinalTrumpPhase => "FlipFinalTrumpPhase"
@@ -108,7 +110,8 @@ let rec stringOfPhase = x =>
 let isPlayerActivePhase = x =>
   switch x {
   | DealPhase
-  | BegPhase
+  | BegPhase(BegPhaseDeciding)
+  | BegPhase(BegPhaseStanding)
   | GiveOnePhase
   | RunPackPhase
   | FlipFinalTrumpPhase
@@ -122,8 +125,8 @@ let isPlayerActivePhase = x =>
 
 let isFaceDownPhase = x =>
   switch x {
-  | FindSubsPhase({phase: BegPhase})
-  | BegPhase
+  | FindSubsPhase({phase: BegPhase(_)})
+  | BegPhase(_)
   | FindSubsPhase({phase: GiveOnePhase})
   | GiveOnePhase => true
   | _ => false
@@ -338,7 +341,10 @@ let decidePlayerPhase: (phase, Player.id, Player.id) => (Player.id, Player.phase
   | RunPackPhase if dealerId == playerId => PlayerRunPackPhase
   | FlipFinalTrumpPhase if dealerId == playerId => PlayerFlipFinalTrumpPhase
   | PackDepletedPhase if dealerId == playerId => PlayerRedealPhase
-  | BegPhase if Quad.nextId(dealerId) == playerId => PlayerBegPhase
+  | BegPhase(BegPhaseDeciding) if Quad.nextId(dealerId) == playerId =>
+    PlayerBegPhase(PlayerBegPhaseDeciding)
+  | BegPhase(BegPhaseStanding) if Quad.nextId(dealerId) == playerId =>
+    PlayerBegPhase(PlayerBegPhaseStanding)
   | _ => PlayerIdlePhase
   }
   (playerId, playerPhase)

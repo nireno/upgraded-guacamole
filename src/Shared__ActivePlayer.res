@@ -11,7 +11,10 @@ let find: (ClientGame.phase, Player.id) => option<t> = (gamePhase, dealerId) =>
   | FlipFinalTrumpPhase => Some({id: dealerId, phase: Player.PlayerFlipFinalTrumpPhase})
   | PackDepletedPhase => Some({id: dealerId, phase: Player.PlayerRedealPhase})
 
-  | BegPhase => Some({id: Quad.nextId(dealerId), phase: Player.PlayerBegPhase})
+  | BegPhase(BegPhaseDeciding) =>
+    Some({id: Quad.nextId(dealerId), phase: Player.PlayerBegPhase(PlayerBegPhaseDeciding)})
+  | BegPhase(BegPhaseStanding) =>
+    Some({id: Quad.nextId(dealerId), phase: Player.PlayerBegPhase(PlayerBegPhaseStanding)})
   | GiveOnePhase => Some({id: dealerId, phase: Player.PlayerGiveOnePhase})
 
   | PlayerTurnPhase(playerId) => Some({id: playerId, phase: Player.PlayerTurnPhase(playerId)})
