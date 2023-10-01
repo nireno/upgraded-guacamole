@@ -11,7 +11,7 @@ let default = {
   nCardsToRun: 3,
   winningScore: 14,
   kickPlayerMillis: 60 * 1000,
-  gameStartingCountdownSeconds: 1,
+  gameStartingCountdownSeconds: 5,
 }
 
 let debug = {
