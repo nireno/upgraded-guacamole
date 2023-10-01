@@ -5,7 +5,6 @@ let logger = appLogger.makeChild({"_context": "GameReducer__Action"})
 
 module ValidatePlay = {
   let isPlayerTurn = (~game_phase, ~game_leader_id, ~playerId) => {
-    Js.log((__LOC__, game_phase, game_leader_id, playerId))
     switch game_phase {
     | PlayerTurnPhase(playerId') => playerId == playerId'
     | BegPhase(BegPhaseStanding) => playerId == game_leader_id
