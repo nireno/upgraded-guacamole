@@ -5,8 +5,8 @@ let infoTextOfPhase = x =>
   | FlipFinalTrumpPhase => "Kicking Again"
   | PackDepletedPhase => "Redealing"
 
-  | BegPhase(BegPhaseDeciding) => "Beg Phase Deciding"
-  | BegPhase(BegPhaseStanding) => "Beg Phase Standing"
+  | BegPhase(BegPhaseDeciding) => "Beg Decision"
+  | BegPhase(BegPhaseStanding) => "Standing"
   | GiveOnePhase => "Run Decision"
 
   | PlayerTurnPhase(_) => "Playing"
