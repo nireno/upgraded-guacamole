@@ -1,7 +1,7 @@
 open AppPrelude
 open Game
 
-let logger = appLogger.makeChild({"_context": "EventHandler"})
+let logger = appLogger.makeChild({"_context": "GameReducer__Action"})
 
 module ValidatePlay = {
   let isPlayerTurn = (~game_phase, ~game_leader_id, ~playerId) => {
