@@ -79,22 +79,22 @@ let make = (
           (),
         )}>
         <div
-          className="rounded border border-gray-300 w-full rounded overflow-hidden"
+          className="rounded border border-gray-300 w-full overflow-hidden"
           style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="1", ())}>
           top
         </div>
         <div
-          className="rounded border border-gray-300 w-full rounded overflow-hidden"
+          className="rounded border border-gray-300 w-full overflow-hidden"
           style={ReactDOM.Style.make(~gridColumn="1", ~gridRow="2", ())}>
           left
         </div>
         <div
-          className="rounded border border-gray-300 w-full rounded overflow-hidden"
+          className="rounded border border-gray-300 w-full overflow-hidden"
           style={ReactDOM.Style.make(~gridColumn="3", ~gridRow="2", ())}>
           right
         </div>
         <div
-          className="rounded border border-gray-300 w-full rounded overflow-hidden"
+          className="rounded border border-gray-300 w-full overflow-hidden"
           style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="3", ())}>
           bottom
         </div>
