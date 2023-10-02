@@ -1,4 +1,5 @@
-const {green, yellow} = require('ansi-colors');
+const { green, yellow } = require('ansi-colors');
+const packageJson = require('./package.json');
 require('dotenv').config();
 
 if (process.env.NODE_ENV === "production") {
@@ -31,14 +32,15 @@ module.exports = {
   plugins: [
     new HtmlWebpackPlugin({
       template: 'src/index.html',
-      inject: false
+      inject: false,
+      allfoursVersion: packageJson.version,
     }),
     new webpack.EnvironmentPlugin([
-      'NODE_ENV', 
+      'NODE_ENV',
       'allfours_base_url',
       'allfours_feedback_url',
-      'allfours_help_url', 
-      'allfours_rules_url']), 
+      'allfours_help_url',
+      'allfours_rules_url']),
   ],
   devServer: {
     compress: true,

@@ -17,7 +17,7 @@ So all the action starts at `Index.re` specifically with the ReasonReactRouter u
 ## Deployment checklist
 1. Bump client and server version. This should force out of date clients to require a refresh to get the latest client code.
 In production we ensure that the client and server versions are in sync when the client first creates a ClientSocket which passes a query string that specifies the client's version.
-So before deploying a new version of the Server code, bump the `?clientVersion={version}` query string at `Index.re` and the `~clientVersion` parameter where the SocketServer.Handshake is done (currently `Server.re`).
+So before deploying a new version of the Server code, bump the version value in `package.json`.
 
 ## Run Project
 

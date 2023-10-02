@@ -66,7 +66,7 @@ module App = {
     let maybeInviteCode = queryParams->My.URL.getSearchParam("g")
 
     React.useEffect0(() => {
-      let socket = ClientSocket.T.createWithUrl("/?clientVersion=0.7.0")
+      let socket = ClientSocket.T.createWithUrl(`/?clientVersion=${Shared.packageJson["version"]}`)
       setMaybeSocket(_ => Some(socket))
       ClientSocket.T.on(socket, x =>
         switch x {
