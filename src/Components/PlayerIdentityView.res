@@ -2,7 +2,7 @@
 let make = (~initials, ~seed, ~style) =>
   <div className="w-full flex flex-col">
     <img
-      src=j`https://avatars.dicebear.com/v2/$style/$seed.svg`
+      src={LibAvatar.getAvatarUri(~client_id=seed, ~client_profile_type=style)}
       className="w-full border border-gray-300 rounded-t bg-white"
       style={ReactDOM.Style.make(~margin="auto", ())}
     />

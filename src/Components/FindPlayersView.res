@@ -27,10 +27,9 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
           switch pla_profile_maybe {
           | None => <EmptySeatAvatarView />
           | Some({client_identicon, client_profile_type}) =>
-            let identicon_style = ClientSettings.dicebearTypeOfProfileType(client_profile_type)
             <img
-              src=j`https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg`
-              className="rounded border border-gray-300 w-full rounded"
+              src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
+              className="rounded border border-gray-300 w-full"
             />
           }
         , _)
@@ -57,8 +56,6 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
       : <div className="text-xl mt-6">
           {React.string(j`Finding $emptySeatText more $playersText`)}
         </div>}
-    <button className="btn btn-blue mt-4" onClick=onLeaveClick>
-      {React.string("Cancel")}
-    </button>
+    <button className="btn btn-blue mt-4" onClick=onLeaveClick> {React.string("Cancel")} </button>
   </>
 }

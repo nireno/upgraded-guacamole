@@ -77,16 +77,14 @@ let make = (~onSave, ~settings) => {
       open ClientSettings
       {
         ...settings,
-        volume: volume,
-        client_id: client_id,
-        client_profile_type: client_profile_type,
-        client_initials: client_initials,
+        volume,
+        client_id,
+        client_profile_type,
+        client_initials,
       }
     })
     RescriptReactRouter.replace("./")
   }
-
-  let dicebearType = ClientSettings.dicebearTypeOfProfileType(client_profile_type)
 
   <div
     className="bg-white shadow-md border border-solid border-gray-300 rounded px-8 pt-6 pb-8 mb-4 w-10/12">
@@ -94,7 +92,7 @@ let make = (~onSave, ~settings) => {
     <div className="mb-4 text-lg"> {React.string("Profile")} </div>
     <div className="flex flex-col">
       <img
-        src=j`https://avatars.dicebear.com/v2/$dicebearType/$client_id.svg`
+        src={LibAvatar.getAvatarUri(~client_id, ~client_profile_type)}
         className="self-center rounded border border-gray-300 p-2 w-1/3 cursor-pointer"
         onClick=onChangeClientId
       />
@@ -174,7 +172,7 @@ let make = (~onSave, ~settings) => {
           className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded inline-flex items-center cursor-pointer"
           onClick=handleVolumeIconClick>
           <img
-            src=j`./static/img/$volumeIcon.svg`
+            src={j`./static/img/$volumeIcon.svg`}
             className="block mx-4"
             style={ReactDOM.Style.make(
               ~height="100%",
