@@ -43,7 +43,7 @@ let make = (
         {ClientGame.client_identicon: client_identicon, client_profile_type},
         decision,
       ) => {
-        let identicon_style = ClientSettings.dicebearTypeOfProfileType(client_profile_type)
+        let avatarUri = LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)
         switch decision {
         | SharedGame.RematchAccepted =>
           <img
@@ -52,14 +52,11 @@ let make = (
               ~transitionDuration="0.3s",
               (),
             )}
-            src=j`https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg`
+            src=avatarUri
           />
         | RematchDenied => <EmptySeatAvatarView />
         | RematchUnknown =>
-          <img
-            style={ReactDOM.Style.make(~transform="translateX(-50%)", ())}
-            src=j`https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg`
-          />
+          <img style={ReactDOM.Style.make(~transform="translateX(-50%)", ())} src=avatarUri />
         }
       }
 
@@ -110,9 +107,7 @@ let make = (
         </div>
       : React.null}
     <div className="flex flex-row justify-around w-full">
-      <button className="btn btn-grey" onClick=leaveClick>
-        {React.string("Back Home")}
-      </button>
+      <button className="btn btn-grey" onClick=leaveClick> {React.string("Back Home")} </button>
       <button className="btn btn-blue" onClick=playAgainClick disabled=isPlayAgainButtonDisabled>
         {(isPlayAgainButtonDisabled ? "Ready" : "Play Again") |> React.string}
       </button>

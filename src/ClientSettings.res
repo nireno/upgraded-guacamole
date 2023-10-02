@@ -11,13 +11,6 @@ type profileType =
 @decco
 type sortHand = bool
 
-let dicebearTypeOfProfileType = x =>
-  switch x {
-  | Masculine => "male"
-  | Feminine => "female"
-  | Machine => "bottts"
-  | Abstract => "jdenticon"
-  }
 
 @decco
 type t = {

@@ -406,11 +406,8 @@ module App = {
                 }
 
                 let (identiconSeed, identiconStyle) = switch x.pla_profile_maybe {
-                | None => ("no-profile", "identicon")
-                | Some(profile) => (
-                    profile.client_identicon,
-                    profile.client_profile_type->ClientSettings.dicebearTypeOfProfileType,
-                  )
+                | None => ("no-profile", ClientSettings.Abstract)
+                | Some(profile) => (profile.client_identicon, profile.client_profile_type)
                 }
 
                 let signal = signals->Quad.get(playerId, _)

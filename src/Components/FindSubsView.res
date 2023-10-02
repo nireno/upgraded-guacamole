@@ -12,10 +12,9 @@ let make = (~emptySeatCount as n, ~onLeaveClick, ~players: Quad.t<ClientGame.pla
           switch pla_profile_maybe {
           | None => <EmptySeatAvatarView />
           | Some({client_identicon, client_profile_type}) =>
-            let identicon_style = ClientSettings.dicebearTypeOfProfileType(client_profile_type)
             <img
-              src=j`https://avatars.dicebear.com/v2/$identicon_style/$client_identicon.svg`
-              className="rounded border border-gray-300 w-full rounded"
+              src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
+              className="rounded border border-gray-300 w-full"
             />
           }
         , _)
