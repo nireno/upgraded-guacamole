@@ -121,7 +121,7 @@ SocketServer.onConnect(io, socket => {
 
   let isHandshakeOk =
     SocketServer.Socket.getHandshake(socket)->SocketServer.Handshake.isHandshakeOk(
-      ~clientVersion="0.6.0",
+      ~clientVersion="0.7.0",
     )
   if isHandshakeOk {
     SocketServer.Socket.on(socket, io => {
