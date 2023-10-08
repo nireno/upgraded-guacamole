@@ -1,5 +1,5 @@
 @ocaml.doc(" Game.phase and dealerId is sufficient for deducing if there is an active player ")
-let find: (Game.phase, Player.id) => option<Shared.ActivePlayer.t> = (gamePhase, dealerId) =>
+let find: (Game.Phase.t, Player.id) => option<Shared.ActivePlayer.t> = (gamePhase, dealerId) =>
   switch gamePhase {
   | DealPhase => Some({id: dealerId, phase: Player.PlayerDealPhase})
   | RunPackPhase => Some({id: dealerId, phase: Player.PlayerRunPackPhase})

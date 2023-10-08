@@ -7,7 +7,9 @@ let appLogger = Pino.make({
 })
 
 type str_json = string
+@decco
 type sock_id = string
+@decco
 type milliseconds = float
 type game_key = string
 type direction = North | South | East | West

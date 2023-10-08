@@ -1,6 +1,7 @@
 let suits = Card.Suit.listOfSuits()
 let ranks = Card.Rank.listOfRanks()
 
+@decco
 type t = list<Card.t>
 
 let make = () => List.map(suit => List.map(rank => {

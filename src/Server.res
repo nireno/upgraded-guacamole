@@ -64,7 +64,7 @@ let getGameStats = () => {
   }
 }
 
-let actionOfIO_Action: SocketMessages.clientToServer => Game.event = x =>
+let actionOfIO_Action: SocketMessages.clientToServer => Game.Action.t = x =>
   switch x {
   | IO_JoinGame(_)
   | IO_StartPrivateGame(_)

@@ -6,7 +6,7 @@ let logger = appLogger.makeChild({"_context": "GameReducer__Action"})
 module ValidatePlay = {
   let isPlayerTurn = (~game_phase, ~game_leader_id, ~playerId) => {
     switch game_phase {
-    | PlayerTurnPhase(playerId') => playerId == playerId'
+    | Game.Phase.PlayerTurnPhase(playerId') => playerId == playerId'
     | BegPhase(BegPhaseStanding) => playerId == game_leader_id
     | _ => false
     }
@@ -107,7 +107,7 @@ let playCard = (~game_key, ~playerId, ~state: Game.state, ~effects, c) => {
               the game into another active phase. */
       let nextPlayer = Quad.nextId(playerId)
       let phase' =
-        nextPlayer == state.leader ? IdlePhase(DelayTrickCollection) : PlayerTurnPhase(nextPlayer)
+        nextPlayer == state.leader ? Game.Phase.IdlePhase(DelayTrickCollection) : PlayerTurnPhase(nextPlayer)
 
       let nextPlayers = Quad.update(
         playerId,

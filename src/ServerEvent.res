@@ -56,8 +56,8 @@ type rec event =
   | RemovePlayerBySocket(sock_id)
   | AttachSubstitute(attachSubstituteData)
   | KickActivePlayer(game_key)
-  | UpdateGame(game_key, Game.event)
-  | UpdateGameBySocket(sock_id, Game.event)
+  | UpdateGame(game_key, Game.Action.t)
+  | UpdateGameBySocket(sock_id, Game.Action.t)
   | TriggerEffects(list<effect>)
   | ReconcileSubstitution
   | Rematch(sock_id)
@@ -87,13 +87,13 @@ and clientToast = {
 }
 and idleThenUpdateGame = {
   game_key: game_key,
-  game_reducer_action: Game.event,
+  game_reducer_action: Game.Action.t,
   idle_milliseconds: int,
 }
 and transitionGameContext = {
   game_key: game_key,
-  fromPhase: Game.phase,
-  toPhase: Game.phase,
+  fromPhase: Game.Phase.t,
+  toPhase: Game.Phase.t,
 }
 and addGameDelayedEventContext = {
   game_key: game_key,
@@ -105,8 +105,8 @@ and addGameTimeoutContext = {
   timeout: Timer.timeout,
 }
 and gameTimerType =
-  | DelayedGameEvent(Game.event, int /* delayMilliseconds */)
-  | TransitionGameCountdown(Game.phase /* fromPhase */, Game.phase /* toPhase */)
+  | DelayedGameEvent(Game.Action.t, int /* delayMilliseconds */)
+  | TransitionGameCountdown(Game.Phase.t /* fromPhase */, Game.Phase.t /* toPhase */)
   | KickInactiveClientCountdown
 @@warning("+30")
 
