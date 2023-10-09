@@ -30,6 +30,9 @@ module.exports = {
     filename: '[name]'
   },
   plugins: [
+    new webpack.ProvidePlugin({
+      process: "process",
+    }),
     new HtmlWebpackPlugin({
       template: 'src/index.html',
       inject: false,
@@ -54,7 +57,6 @@ module.exports = {
   optimization: {
     minimizer: [
       new TerserPlugin({
-        sourceMap: false, // Must be set to true if using source-maps in production
         terserOptions: {
           compress: {
             drop_console: true,
