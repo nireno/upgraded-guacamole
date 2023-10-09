@@ -995,7 +995,9 @@ let reduce = (action, state) => {
     | (_phase, action) =>
       logger.warn2(
         {"action": action->Game.Action.t_encode, "state": state->Game.state_encode},
-        "Ignored action",
+        `Ignored invalid action ${action
+          ->Game.Action.t_encode
+          ->Js.Json.stringify} for phase ${state.phase->Game.Phase.toString}`,
       )
       (state, effects)
     }

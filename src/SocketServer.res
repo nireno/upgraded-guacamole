@@ -3,7 +3,7 @@ open AppPrelude
 include BsSocketio.Server.Make(SocketMessages)
 module Ns = BsSocketio.Namespace.Make(SocketMessages)
 
-let logger = appLogger.makeChild({"_context": "SocketStore"})
+let logger = appLogger.makeChild({"_context": "SocketServer"})
 
 module Handshake = {
   type query = {"clientVersion": Js.undefined<string>}
@@ -50,7 +50,10 @@ module Store: {
 let emit = (socketMessage, sock_id) => {
   let sockets = Store.getState()
   switch sockets->StringMap.get(sock_id) {
-  | None => logger.warn(`"Socket ${sock_id} not found"`)
+  | None =>
+    logger.warn(
+      `Failed to emit ${socketMessage->SocketMessages.stringOfServerToClient} to socket with id "${sock_id}}`,
+    )
   | Some(socket) => socket->Socket.emit(socketMessage)
   }
 }

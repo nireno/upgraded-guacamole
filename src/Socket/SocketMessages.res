@@ -66,4 +66,16 @@ type serverToClient =
   | HandshakeFailed
   | ShowSignal(Quad.id, PlayerSignal.t)
 
+let stringOfServerToClient = x => {
+  switch x {
+  | SetState(_) => "SetState"
+  | ShowToast(_) => "ShowToast"
+  | Reset => "Reset"
+  | AckOk => "AckOk"
+  | AckError(_) => "AckError"
+  | HandshakeFailed => "HandshakeFailed"
+  | ShowSignal(_, _) => "ShowSignal"
+  }
+}
+
 type ack = serverToClient => unit
