@@ -39,7 +39,10 @@ Express.useWithPath(
   app,
   "/static",
   {
-    Express.staticMiddleware("./static")
+    Express.staticMiddlewareWithOptions("./static", {
+      "immutable": true,
+      "maxAge": "30d",
+    })
   },
 )
 
