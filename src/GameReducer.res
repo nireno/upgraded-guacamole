@@ -994,7 +994,17 @@ let reduce = (action, state) => {
       )
     | (_phase, action) =>
       logger.warn2(
-        {"action": action->Game.Action.t_encode, "state": state->Game.state_encode},
+        {
+          "action": action->Game.Action.t_encode,
+          "state": Js.Dict.fromArray([
+            ("game_id", state.game_id->SharedGame.game_id_encode),
+            ("phase", state.phase->Game.Phase.t_encode),
+            (
+              "clients",
+              state.clients->Quad.toArray |> Array.map(Game.clientState_encode) |> Js.Json.array,
+            ),
+          ]),
+        },
         `Ignored invalid action ${action
           ->Game.Action.t_encode
           ->Js.Json.stringify} for phase ${state.phase->Game.Phase.toString}`,
