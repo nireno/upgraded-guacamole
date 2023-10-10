@@ -406,7 +406,7 @@ let reduce = (action, state) => {
         Belt.List.concat(kickTrumpNotiEffects, effects),
       )
 
-    | (_anyPhase, AdvanceRound) =>
+    | (IdlePhase(DelayTrickCollection), AdvanceRound) =>
       let (p1CardMaybe, p2CardMaybe, p3CardMaybe, p4CardMaybe) =
         state.players->Quad.map(p => p.pla_card, _)
 
