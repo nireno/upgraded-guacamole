@@ -1,6 +1,6 @@
 {
   "name": "all-fours",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "scripts": {
     "dev": "npm-run-all dev:preflight -p dev:res dev:styles dev:pack dev:server",
     "build": "run-s build:preflight clean:res build:res build:styles build:pack",
