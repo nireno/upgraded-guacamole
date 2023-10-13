@@ -36,6 +36,20 @@ let isClientAttached = clientState =>
   | Vacant => false
   }
 
+let isClientDetached = clientState =>
+  switch clientState {
+  | Detached(_, _) => true
+  | Attached(_)
+  | Vacant => false
+  }
+
+let isClientVacant = clientState =>
+  switch clientState {
+  | Vacant => true
+  | Attached(_)
+  | Detached(_, _) => false
+  }
+
 let getUsername = (clients, quadId) =>
   switch clients->Quad.get(quadId, _) {
   | Attached(client)

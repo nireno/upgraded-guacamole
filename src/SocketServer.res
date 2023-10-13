@@ -52,7 +52,7 @@ let emit = (socketMessage, sock_id) => {
   switch sockets->StringMap.get(sock_id) {
   | None =>
     logger.warn(
-      `Failed to emit ${socketMessage->SocketMessages.stringOfServerToClient} to socket with id "${sock_id}}`,
+      `Socket "${sock_id}" not found in socket store. Failed to emit "${socketMessage->SocketMessages.stringOfServerToClient}".`,
     )
   | Some(socket) => socket->Socket.emit(socketMessage)
   }

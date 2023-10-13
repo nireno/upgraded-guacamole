@@ -1,4 +1,5 @@
 open AppPrelude
+open Belt
 
 %%raw("require('dotenv').config()")
 @val external nodeEnv: string = "process.env.NODE_ENV"
@@ -39,10 +40,13 @@ Express.useWithPath(
   app,
   "/static",
   {
-    Express.staticMiddlewareWithOptions("./static", {
-      "immutable": true,
-      "maxAge": "30d",
-    })
+    Express.staticMiddlewareWithOptions(
+      "./static",
+      {
+        "immutable": true,
+        "maxAge": "30d",
+      },
+    )
   },
 )
 
@@ -306,6 +310,22 @@ switch Js.Nullable.toOption(adminPasswordEnv) {
       db_server_started_at,
     } = ServerStore.getState()
     let gameStates = StringMap.valuesToArray(db_game)
+    let activeGames =
+      gameStates->Array.keep(x => {x.clients |> Quad.every(y => y->Game.isClientAttached)})
+
+    /*
+     * Filters out the stalled games from the gameStates array.
+     * A game is considered stalled if all clients seats were taken but at least one client is detached.
+     */
+    let stalledGames = gameStates->Array.keep(x => {
+      x.clients |> Quad.every(y => !(y->Game.isClientVacant)) &&
+        x.clients |> Quad.exists(y => y->Game.isClientDetached)
+    })
+
+    let bootingGames = gameStates->Array.keep(x => {
+      x.clients |> Quad.exists(y => y->Game.isClientVacant)
+    })
+
     let html = <div>
       <div>
         <span> {"Server started at: " |> React.string} </span>
@@ -327,11 +347,29 @@ switch Js.Nullable.toOption(adminPasswordEnv) {
         <span> {"Private games started:" |> React.string} </span>
         <span> {db_private_games_started |> string_of_int |> React.string} </span>
       </div>
+      <hr />
       <div>
-        <span> {"Currently Active games: " |> React.string} </span>
+        <span> {"Total Active/Booting/Stalled Games: " |> React.string} </span>
         <span> {Array.length(gameStates) |> string_of_int |> React.string} </span>
       </div>
-      <DashView gameStates />
+      <div>
+        <span> {"Currently Stalled games: " |> React.string} </span>
+        <span> {Array.length(stalledGames) |> string_of_int |> React.string} </span>
+      </div>
+      <div>
+        <span> {"Currently Booting games: " |> React.string} </span>
+        <span> {Array.length(bootingGames) |> string_of_int |> React.string} </span>
+      </div>
+      <div>
+        <span> {"Currently Active games: " |> React.string} </span>
+        <span> {Array.length(activeGames) |> string_of_int |> React.string} </span>
+      </div>
+      <h1> {"Active Games"->React.string} </h1>
+      <DashView gameStates=activeGames />
+      <h1> {"Booting Games"->React.string} </h1>
+      <DashView gameStates=bootingGames />
+      <h1> {"Stalled Games"->React.string} </h1>
+      <DashView gameStates=stalledGames />
     </div> |> ReactDOMServer.renderToStaticMarkup
     Express.send(res, html)->ignore
   })
