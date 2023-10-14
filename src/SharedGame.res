@@ -15,6 +15,12 @@ type game_id =
   | Public(string)
   | Private(privateGameContext)
 
+let game_idToKey = x =>
+  switch x {
+  | Public(key) => key
+  | Private({private_game_key: key}) => key
+  }
+
 @decco
 type rematchDecision =
   | RematchUnknown
