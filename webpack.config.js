@@ -1,6 +1,5 @@
 const { green, yellow } = require('ansi-colors');
 const packageJson = require('./package.json');
-require('dotenv').config();
 
 if (process.env.NODE_ENV === "production") {
   console.log(green("Webpack is optimizing for production"));
@@ -43,7 +42,9 @@ module.exports = {
       'allfours_base_url',
       'allfours_feedback_url',
       'allfours_help_url',
-      'allfours_rules_url']),
+      'allfours_rules_url',
+      'allfours_kick_player_seconds',
+      'allfours_game_starting_countdown_seconds']),
   ],
   devServer: {
     compress: true,

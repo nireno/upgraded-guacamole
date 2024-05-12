@@ -10,8 +10,8 @@ let default = {
   nCardsToDeal: 6,
   nCardsToRun: 3,
   winningScore: 14,
-  kickPlayerMillis: 60 * 1000,
-  gameStartingCountdownSeconds: 5,
+  kickPlayerMillis: ServerEnv.kickPlayerSeconds * 1000,
+  gameStartingCountdownSeconds: ServerEnv.gameStartingCountdownSeconds,
 }
 
 let debug = {

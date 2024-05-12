@@ -1,9 +1,18 @@
+
 open AppPrelude
 open Belt
 
+
 let logger = appLogger.makeChild({"_context": "ServerStore"})
 
-let store: ref<ServerState.db> = ref(ServerState.empty())
+let store: ref<ServerState.db> = switch ServerEnv.nodeEnv {
+| "development" =>
+  logger.debug("Running in development mode")
+  ref(MockServerState.make())
+| _ =>
+  logger.debug("Running in production mode")
+  ref(ServerState.empty())
+}
 
 let getState: unit => ServerState.db = () => store.contents
 
@@ -85,15 +94,14 @@ and perform: (ServerState.db, ServerEvent.effect) => unit = ({db_game} as db, ef
         () => dispatch(KickActivePlayer(game_key)),
         SharedGame.settings.kickPlayerMillis,
       )
-      dispatch(AddGameTimeout({game_key: game_key, timeout: kickTimer}))
+      dispatch(AddGameTimeout({game_key, timeout: kickTimer}))
 
     | TransitionGameCountdown(fromPhase, toPhase) =>
       dispatch(
         AddGameTimeout({
-          game_key: game_key,
+          game_key,
           timeout: Timer.startTimeout(
-            () =>
-              dispatch(UpdateGame(game_key, Transition({fromPhase: fromPhase, toPhase: toPhase}))),
+            () => dispatch(UpdateGame(game_key, Transition({fromPhase, toPhase}))),
             SharedGame.settings.gameStartingCountdownSeconds->secondsToMillis,
           ),
         }),
@@ -102,7 +110,7 @@ and perform: (ServerState.db, ServerEvent.effect) => unit = ({db_game} as db, ef
     | DelayedGameEvent(event, delayMilliseconds) =>
       dispatch(
         AddGameTimeout({
-          game_key: game_key,
+          game_key,
           timeout: Timer.startTimeout(
             () => dispatch(UpdateGame(game_key, event)),
             delayMilliseconds,

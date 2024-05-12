@@ -1,11 +1,6 @@
 open AppPrelude
 open Belt
 
-%%raw("require('dotenv').config()")
-@val external nodeEnv: string = "process.env.NODE_ENV"
-@val external httpPortEnv: Js.Nullable.t<string> = "process.env.allfours_port"
-@val external adminPasswordEnv: Js.Nullable.t<string> = "process.env.allfours_admin_password"
-
 @module external nanoid: unit => string = "nanoid"
 
 let logger = appLogger.makeChild({"_module": "Server"})
@@ -293,7 +288,7 @@ SocketServer.onConnect(io, socket => {
   }
 })
 
-switch Js.Nullable.toOption(adminPasswordEnv) {
+switch Js.Nullable.toOption(ServerEnv.adminPasswordEnv) {
 | None =>
   failwith(
     "An environment variable 'allfours_admin_password' must be provided.\nThis defines the password for the admin dashboard.",
@@ -383,6 +378,6 @@ switch Js.Nullable.toOption(adminPasswordEnv) {
 Express.get(app, "/*", (_req, res) => Express.redirect(res, "/")->ignore)
 
 let httpPort =
-  Js.Nullable.toOption(httpPortEnv) |> Js.Option.getWithDefault("3000") |> int_of_string
+  Js.Nullable.toOption(ServerEnv.httpPortEnv) |> Js.Option.getWithDefault("3000") |> int_of_string
 
 Http.listen(http, httpPort, () => logger.info("Listening on *:" ++ string_of_int(httpPort)))
