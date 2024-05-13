@@ -1,59 +1,52 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Generator: Adobe Illustrator 25.2.3, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+
 <svg
-   xmlns:dc="http://purl.org/dc/elements/1.1/"
-   xmlns:cc="http://creativecommons.org/ns#"
-   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-   xmlns:svg="http://www.w3.org/2000/svg"
-   xmlns="http://www.w3.org/2000/svg"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   width="47.789963"
-   height="59.373001"
-   id="svg5318"
    version="1.1"
-   inkscape:version="0.91 r13725"
-   sodipodi:docname="spade.svg">
-  <metadata
-     id="metadata5332">
-    <rdf:RDF>
-      <cc:Work
-         rdf:about="">
-        <dc:format>image/svg+xml</dc:format>
-        <dc:type
-           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
-      </cc:Work>
-    </rdf:RDF>
-  </metadata>
-  <defs
-     id="defs5330" />
-  <sodipodi:namedview
-     pagecolor="#ffffff"
-     bordercolor="#666666"
-     borderopacity="1"
-     objecttolerance="10"
-     gridtolerance="10"
-     guidetolerance="10"
-     inkscape:pageopacity="0"
-     inkscape:pageshadow="2"
-     inkscape:window-width="640"
-     inkscape:window-height="480"
-     id="namedview5328"
-     showgrid="false"
-     inkscape:zoom="0.75445637"
-     inkscape:cx="23.053951"
-     inkscape:cy="29.581993"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="0"
-     inkscape:current-layer="svg5318"
-     fit-margin-top="0"
-     fit-margin-left="0"
-     fit-margin-right="0"
-     fit-margin-bottom="0" />
-  <path
-     d="m 21.765448,41.137 c 0.015,-2.026 -1.587,-2.064 -1.569,-0.586 -0.134,7.429 -6.416,11.087 -10.9799999,10.219 -7.036,-1.338 -9.28199996,-8.322 -9.21499996,-12.435 C 0.20844814,25.638 12.989448,16.276 24.521448,0 c 8.45,14.69 22.398,26.23 23.223,37.586 1.098,15.098 -18.009,20.73 -20.737,3.132 -0.176,-1.243 -1.64,-1.8 -1.526,-0.065 0.415,4.823 -0.175,6.832 5.266,18.72 l -14.222,0 c 3.15,-5.555 5.026,-12.375 5.24,-18.236 z"
-     id="path5326"
-     inkscape:connector-curvature="0"
-     sodipodi:nodetypes="ccccccccccc" />
+   id="Layer_2"
+   x="0px"
+   y="0px"
+   viewBox="0 0 128 128"
+   style="enable-background:new 0 0 128 128;"
+   xml:space="preserve"
+   sodipodi:docname="spade.svg"
+   inkscape:version="1.1.2 (0a00cf5339, 2022-02-04)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg"><defs
+   id="defs13" /><sodipodi:namedview
+   id="namedview11"
+   pagecolor="#ffffff"
+   bordercolor="#666666"
+   borderopacity="1.0"
+   inkscape:pageshadow="2"
+   inkscape:pageopacity="0.0"
+   inkscape:pagecheckerboard="0"
+   showgrid="false"
+   inkscape:zoom="8.3203125"
+   inkscape:cx="63.939906"
+   inkscape:cy="63.939906"
+   inkscape:window-width="3840"
+   inkscape:window-height="2091"
+   inkscape:window-x="1920"
+   inkscape:window-y="32"
+   inkscape:window-maximized="1"
+   inkscape:current-layer="Layer_2" />
+<path
+   style="fill:#3c3d3f;fill-opacity:1"
+   d="M29.46,69.64L10.32,80.17c0,0-0.22,14.91,14.36,20.2c12.22,4.44,23.49-1.78,28.95-6.97  c3.92-3.73,9.7-12.29,9.7-12.29L29.46,69.64z"
+   id="path2" />
+<path
+   style="fill:#3c3d3f;fill-opacity:1"
+   d="M67.7,80.71l0.96,5.6c0,0,8.33,14.34,24.86,14.75c14.2,0.35,21.31-9.15,23.35-15.84  c2.05-6.69,0.58-13.36,0.58-13.36L67.7,80.71z"
+   id="path4" />
+<path
+   style="fill:#171818;fill-opacity:1"
+   d="M63.81,3.14C62.19,3.02,38.89,24.46,27,40.28c-6.75,8.98-14.14,21.14-16.12,31.69  c-2.05,10.93,0.67,17.99,8.33,21.85c16.25,8.19,28.66-3.64,30.66-5.42c2.66-2.37,5.84-6.88,7.38-6.05c0.76,0.41,0.2,7.84-0.36,12.78  c-0.53,4.71-2.82,10.38-10.38,13.49s-10.71,3.22-13.49,5.67c-2.78,2.44-2.98,4.24-2.98,4.24l3.11,2.33l59.79-0.22l2.33-1.65  c0,0-1.07-3.17-6.24-5.73c-4.13-2.05-8.1-3.11-12.59-5.75c-4.19-2.46-5.91-8.67-5.99-12.05c-0.08-3.75-0.87-13.19,0.09-13.67  c1.51-0.75,2.88,2.88,7.53,6.84c2.75,2.35,16.36,12.01,29.36,3.82c7.38-4.64,10.84-11.77,10.11-19.67  c-1.24-13.31-12.7-28.98-21.44-38.92C82.18,18.02,65.79,3.29,63.81,3.14z"
+   id="path6" />
+<path
+   style="fill:#3c3d3f;fill-opacity:1"
+   d="M30.05,118.53c0,0-0.32,1.2-0.38,2.43c-0.06,1.34-0.01,2.53,1.67,2.65c1.68,0.11,61.56,0,62.56,0  s1.71-1.12,1.74-2.48c0.05-1.71-0.5-2.41-0.5-2.41L30.05,118.53z"
+   id="path8" />
 </svg>

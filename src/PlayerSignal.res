@@ -7,6 +7,8 @@ type t =
   | Diamonds
   | Beaming
   | Crying
+  | Jack
+  | Ten
 
 let toFileName = x =>
   switch x {
@@ -18,4 +20,6 @@ let toFileName = x =>
   | Diamonds => "diamond.svg"
   | Beaming => "emoji_beaming.svg"
   | Crying => "emoji_crying.svg"
+  | Jack => "emoji_winking_face.svg"
+  | Ten => "emoji_fist.svg"
   }

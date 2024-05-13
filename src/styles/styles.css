@@ -148,7 +148,3 @@ img.card {
 .toolbar__button:active  {
   transform: scale(0.92);
 }
-
-.toolbar__button + .toolbar__button {
-  margin-left: 1%;
-}

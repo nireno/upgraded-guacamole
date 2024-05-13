@@ -1,6 +1,6 @@
 @react.component
 let make = (~onClick, ~img) =>
-  <div onClick className="toolbar__button" style={ReactDOM.Style.make(~width="8%", ())}>
+  <div onClick className="toolbar__button">
     <div
       className="frame1x1 flex flex-row justify-center items-center relative"
       style={ReactDOM.Style.make(~paddingBottom="100%", ())}>
