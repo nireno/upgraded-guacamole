@@ -126,10 +126,11 @@ SocketServer.onConnect(io, socket => {
       ~clientVersion=Shared.packageJson["version"],
     )
   if isHandshakeOk {
-    SocketServer.Socket.on(socket, io => {
+    SocketServer.Socket.onWithAck(socket, (io, ack) => {
       let stringOfEvent = SocketMessages.stringOfClientToServer(io)
-      let logger = logger.makeChild({"_context": "socket-onevent", "event": stringOfEvent})
+      let logger = logger.makeChild({"_context": "socket-onevent-with-ack", "event": stringOfEvent})
       logger.debug2("Handling `%s` event. ", stringOfEvent)
+
       switch io {
       | IO_StartPrivateGame(client_username, ioClientSettingsJson) =>
         let {
@@ -152,9 +153,43 @@ SocketServer.onConnect(io, socket => {
         )
         logger.info2(getGameStats(), "Game stats:")
 
-      | IO_JoinPrivateGame(_inviteCode, _client_username, _ioClientSettings) => () // handled later by Socket.onWithAck
+      | IO_JoinPrivateGame(invite_code, client_username, ioClientSettings) =>
+        let {
+          ClientSettings.client_id: client_id,
+          client_initials,
+          client_profile_type,
+        } = decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings)
+        logger.info("Invite code: " ++ invite_code)
 
-      | IO_JoinGame(_client_username, _ioClientSettingsJson) => () // handled later by Socket.onWithAck
+        ServerStore.dispatch(
+          AttachPrivatePlayer({
+            sock_id,
+            client_username,
+            client_id,
+            client_initials,
+            invite_code,
+            ack,
+            client_profile_type,
+          }),
+        )
+
+      | IO_JoinGame(client_username, ioClientSettings) =>
+        let {
+          ClientSettings.client_id: client_id,
+          client_initials,
+          client_profile_type,
+        } = decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings)
+        ServerStore.dispatch(
+          AttachPublicPlayer({
+            sock_id,
+            client_username,
+            client_id,
+            client_initials,
+            ack,
+            client_profile_type,
+          }),
+        )
+        logger.info2(getGameStats(), "Game stats:")
 
       | IO_LeaveGame =>
         ServerStore.dispatch(RemovePlayerBySocket(sock_id))
@@ -226,55 +261,6 @@ SocketServer.onConnect(io, socket => {
       | ioAction =>
         let action = ioAction |> actionOfIO_Action
         ServerStore.dispatch(UpdateGameBySocket(sock_id, action))
-      }
-    })
-
-    SocketServer.Socket.onWithAck(socket, (io, ack) => {
-      let stringOfEvent = SocketMessages.stringOfClientToServer(io)
-      let logger = logger.makeChild({"_context": "socket-onevent-with-ack", "event": stringOfEvent})
-
-      // logger.debug2("Handling `%s` event. ", stringOfEvent);
-
-      switch io {
-      | IO_JoinPrivateGame(invite_code, client_username, ioClientSettings) =>
-        let {
-          ClientSettings.client_id: client_id,
-          client_initials,
-          client_profile_type,
-        } = decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings)
-        logger.info("Invite code: " ++ invite_code)
-
-        ServerStore.dispatch(
-          AttachPrivatePlayer({
-            sock_id,
-            client_username,
-            client_id,
-            client_initials,
-            invite_code,
-            ack,
-            client_profile_type,
-          }),
-        )
-
-      | IO_JoinGame(client_username, ioClientSettings) =>
-        let {
-          ClientSettings.client_id: client_id,
-          client_initials,
-          client_profile_type,
-        } = decodeWithDefault(ClientSettings.t_decode, ClientSettings.defaults, ioClientSettings)
-        ServerStore.dispatch(
-          AttachPublicPlayer({
-            sock_id,
-            client_username,
-            client_id,
-            client_initials,
-            ack,
-            client_profile_type,
-          }),
-        )
-        logger.info2(getGameStats(), "Game stats:")
-      | _ => // todo: merge on and onWith ack so I don't have to ignore other messages like this
-        ()
       }
     })
     SocketServer.Store.dispatch(AddSocket(socket))
