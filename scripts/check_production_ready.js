@@ -1,7 +1,7 @@
 let { red, yellow } = require("ansi-colors");
 let path = require('path');
 let fs = require('fs-extra');
-let dotenv = require('dotenv');
+let dotenv = require('@dotenvx/dotenvx');
 
 // Ensure .env exists
 if (!(fs.existsSync(path.resolve(process.cwd(), ".env")))) {

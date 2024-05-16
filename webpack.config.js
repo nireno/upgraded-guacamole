@@ -19,6 +19,11 @@ const isProd = process.env.NODE_ENV === 'production';
 
 
 module.exports = {
+  resolve: {
+    alias: {
+      '$': path.resolve(__dirname, 'src/'),
+    }
+  },
   entry: {
     "Index.js": './src/Index.bs.js',
   },
