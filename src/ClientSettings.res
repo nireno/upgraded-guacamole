@@ -1,18 +1,17 @@
-@decco
+@spice
 type volume = Mute(float) | Level(float)
 
-@decco
+@spice
 type profileType =
   | Masculine
   | Feminine
   | Machine
   | Abstract
 
-@decco
+@spice
 type sortHand = bool
 
-
-@decco
+@spice
 type t = {
   volume: volume,
   client_id: string,

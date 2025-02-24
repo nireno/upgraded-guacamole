@@ -1,4 +1,4 @@
-@decco
+@spice
 type id =
   | T1
   | T2

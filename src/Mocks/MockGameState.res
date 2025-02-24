@@ -20,18 +20,22 @@ let makeMockSocketId = () => {
   "mock-socket-id-" ++ string_of_int(random)
 }
 
-let mockClients = Quad.make(_ => {
-  let mockSocketId = makeMockSocketId()
+let mockClients = Quad.put(
+  N1,
+  Game.Vacant,
+  Quad.make(_ => {
+    let mockSocketId = makeMockSocketId()
 
-  Game.Attached({
-    client_socket_id: mockSocketId,
-    client_username: mockSocketId,
-    client_id: mockSocketId,
-    client_initials: "MK",
-    client_profile_type: Machine,
-    client_connected_at: Js.Date.now(),
-  })
-}) |> Quad.put(N1, Game.Vacant)
+    Game.Attached({
+      client_socket_id: mockSocketId,
+      client_username: mockSocketId,
+      client_id: mockSocketId,
+      client_initials: "MK",
+      client_profile_type: Machine,
+      client_connected_at: Js.Date.now(),
+    })
+  }),
+)
 
 let make: unit => Game.state = () => {
   game_id: Public("1"),

@@ -5,5 +5,5 @@ let make = (~from, ~className=?, ~style=?) => {
     () => setCountdown(prevCountdown => prevCountdown <= 0 ? 0 : prevCountdown - 1),
     countdown <= 0 ? None : Some(1000),
   )
-  <div ?className ?style> {React.string(countdown |> string_of_int)} </div>
+  <div ?className ?style> {React.string(string_of_int(countdown))} </div>
 }

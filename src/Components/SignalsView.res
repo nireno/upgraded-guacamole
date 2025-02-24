@@ -45,7 +45,7 @@ let makeAnimatedSignal = (transition: SignalTransition.transition) => {
       className="w-full flex justify-center bg-white"
       style={ReactDOM.Style.make(~paddingBottom="100%", ())}>
       <img
-        src=j`./static/img/$filename`
+        src={`./static/img/${filename}`}
         className="absolute"
         style={ReactDOM.Style.make(~height="100%", ~width="auto", ~padding="8%", ())}
       />

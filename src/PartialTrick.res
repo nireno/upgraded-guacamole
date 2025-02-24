@@ -18,13 +18,15 @@ let stringOfTrick = r => {
   let stringOfPlayerCardSlot = ((playerId, cardSlot)) =>
     Player.stringOfId(playerId) ++ (": " ++ Card.stringOfMaybeCard(cardSlot))
 
-  listOfTrick(r)
-  |> List.map(stringOfPlayerCardSlot)
-  |> List.fold_left((acc, s) => acc ++ (" " ++ s), "")
+  List.fold_left(
+    (acc, s) => acc ++ (" " ++ s),
+    "",
+    List.map(stringOfPlayerCardSlot, listOfTrick(r)),
+  )
 }
 
 let isComplete = partialTrick =>
   Belt.List.every(
-    listOfTrick(partialTrick) |> List.map(((_playerId, cardSlot: option<Card.t>)) => cardSlot),
+    List.map(((_playerId, cardSlot: option<Card.t>)) => cardSlot, listOfTrick(partialTrick)),
     Belt.Option.isSome,
   )

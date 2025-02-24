@@ -12,17 +12,18 @@ let make = (
   ~rematchDecisions: Quad.t<SharedGame.rematchDecision>,
 ) => {
   let rotatedPlayerDecisions =
-    Player.playersAsQuad(~startFrom=me, ())->Quad.map(
-      playerId => (Quad.get(playerId, players), Quad.get(playerId, rematchDecisions)),
-      _,
+    Player.playersAsQuad(~startFrom=me, ())->(
+      Quad.map(playerId => (Quad.get(playerId, players), Quad.get(playerId, rematchDecisions)), _)
     )
   // Disable the play-again button if this player (me) has already chosen to rematch
   let isPlayAgainButtonDisabled =
     rematchDecisions
     ->Quad.withId
-    ->Quad.exists(
-      ((playerId, decision)) => decision == SharedGame.RematchAccepted && playerId == me,
-      _,
+    ->(
+      Quad.exists(
+        ((playerId, decision)) => decision == SharedGame.RematchAccepted && playerId == me,
+        _,
+      )
     )
 
   let (outcomeText, outcomeImg, outcomeClass) =
@@ -35,7 +36,7 @@ let make = (
     <div
       className={outcomeClass ++ " text-white w-full flex flex-col items-center rounded"}
       style={ReactDOM.Style.make(~transition="background-color 0.5s", ())}>
-      <div className="text-3xl"> {outcomeText |> React.string} </div>
+      <div className="text-3xl"> {React.string(outcomeText)} </div>
       <img src=outcomeImg style={ReactDOM.Style.make(~width="15%", ())} />
     </div>
     {
@@ -61,13 +62,13 @@ let make = (
       }
 
       let (bottom, right, top, left) =
-        rotatedPlayerDecisions->Quad.map(
-          (({ClientGame.pla_profile_maybe: pla_profile_maybe}, decision)) =>
+        rotatedPlayerDecisions->(
+          Quad.map((({ClientGame.pla_profile_maybe: pla_profile_maybe}, decision)) =>
             switch pla_profile_maybe {
             | None => <EmptySeatAvatarView />
             | Some(pla_profile) => decisionImage(pla_profile, decision)
-            },
-          _,
+            }
+          , _)
         )
 
       <div
@@ -109,7 +110,7 @@ let make = (
     <div className="flex flex-row justify-around w-full">
       <button className="btn btn-grey" onClick=leaveClick> {React.string("Back Home")} </button>
       <button className="btn btn-blue" onClick=playAgainClick disabled=isPlayAgainButtonDisabled>
-        {(isPlayAgainButtonDisabled ? "Ready" : "Play Again") |> React.string}
+        {React.string(isPlayAgainButtonDisabled ? "Ready" : "Play Again")}
       </button>
     </div>
     {switch Js.Nullable.toOption(allfours_feedback_url) {

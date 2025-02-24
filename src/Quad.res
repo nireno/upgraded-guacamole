@@ -1,7 +1,7 @@
-@decco
+@spice
 type t<'a> = ('a, 'a, 'a, 'a)
 
-@decco
+@spice
 type id =
   | N1
   | N2
@@ -78,7 +78,7 @@ let getPairWhere = (f, (r1, r2, r3, r4)) =>
     ? Some((N4, r4))
     : None
 
-let select = (id, f, quad) => get(id, quad) |> f
+let select = (id, f, quad) => f(get(id, quad))
 
 let put = (id, r', quad) => {
   let (r1, r2, r3, r4) = quad
@@ -90,16 +90,16 @@ let put = (id, r', quad) => {
   }
 }
 
-let update = (id, f, quad) => put(id, get(id, quad) |> f, quad)
+let update = (id, f, quad) => put(id, f(get(id, quad)), quad)
 
 let map = (f, (r1, r2, r3, r4)) => (f(r1), f(r2), f(r3), f(r4))
 
 let foldLeft = (reduce, (r1, r2, r3, r4)) => {
   let f = (acc, r) => reduce(acc, r)
-  f(r1, r2) |> f(r3) |> f(r4)
+  f(r4, f(r3, f(r1, r2)))
 }
 
-let reduce = ((r1, r2, r3, r4), f, initialValue) => f(r1, initialValue) |> f(r2) |> f(r3) |> f(r4)
+let reduce = ((r1, r2, r3, r4), f, initialValue) => f(r4, f(r3, f(r2, f(r1, initialValue))))
 
 let foldLeftUntil = (f, test, acc, (r1, r2, r3, r4)) => {
   let fns = list{f(r1), f(r2), f(r3), f(r4)}
@@ -108,7 +108,7 @@ let foldLeftUntil = (f, test, acc, (r1, r2, r3, r4)) => {
 
 let rotate = ((a, b, c, d)) => (b, c, d, a)
 
-let rec rotateBy = (n, quad) => n <= 0 ? quad : rotate(quad) |> rotateBy(n - 1)
+let rec rotateBy = (n, quad) => n <= 0 ? quad : rotateBy(n - 1, rotate(quad))
 
 let toList = ((a, b, c, d)) => list{a, b, c, d}
 
@@ -127,7 +127,7 @@ let forEach: ('a => unit, ('a, 'a, 'a, 'a)) => unit = (f, (r1, r2, r3, r4)) => {
   f(r4)
 }
 
-let make = f => (N1, N2, N3, N4)->map(id => f(id), _)
+let make = f => (N1, N2, N3, N4)->(map(id => f(id), _))
 
 let zip = ((x1, x2, x3, x4), (y1, y2, y3, y4)) => ((x1, y1), (x2, y2), (x3, y3), (x4, y4))
 

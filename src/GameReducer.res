@@ -22,10 +22,10 @@ let getTeamHighAndLowMaybes: (
       player4Hand->Belt.List.map(card => (Quad.N4, card)),
     })
 
-    let playersTrumpAsc: list<(Player.id, Card.t)> =
-      playerCards
-      |> List.filter(((_, {Card.suit: suit})) => suit == trumpSuit)
-      |> List.sort(((_, {Card.rank: rank1}), (_, {rank: rank2})) => compare(rank1, rank2))
+    let playersTrumpAsc: list<(Player.id, Card.t)> = List.sort(
+      ((_, {Card.rank: rank1}), (_, {rank: rank2})) => compare(rank1, rank2),
+      List.filter(((_, {Card.suit: suit})) => suit == trumpSuit, playerCards),
+    )
 
     let playersTrumpDesc = List.rev(playersTrumpAsc)
 
@@ -112,9 +112,9 @@ let maybeAddJackPoints = ((state, awards)) =>
   }
 
 let isCardInTrick = card => Quad.exists(c => c == card, _)
-let isCardInPlayerTricks = (card, player) => player.pla_tricks |> List.exists(isCardInTrick(card))
+let isCardInPlayerTricks = (card, player) => List.exists(isCardInTrick(card), player.pla_tricks)
 
-let isCardInGameTrick = (state, card) => state.players->Quad.exists(isCardInPlayerTricks(card), _)
+let isCardInGameTrick = (state, card) => state.players->(Quad.exists(isCardInPlayerTricks(card), _))
 
 let isHighTrumpInGameTrick = state =>
   switch state.maybeTeamHigh {
@@ -142,7 +142,7 @@ let getKickTrumpNotis = maybeTrumpCard =>
   | Some(trumpCard) if kickPoints(trumpCard.Card.rank) > 0 =>
     let trumpCardText = trumpCard->Card.stringOfCard
     let kickPointsText = kickPoints(trumpCard.rank)->string_of_int
-    let msg = j`Dealer kicked $trumpCardText:  +$kickPointsText`
+    let msg = `Dealer kicked ${trumpCardText}:  +${kickPointsText}`
     Noti.broadcast(~msg=Text(msg), ~kind=Confirm, ())
   | _ => list{}
   }
@@ -162,9 +162,9 @@ let addLeaveStateEffects = (statePrev, (stateNext, effects)) =>
         | FindSubsPhase({emptySeatCount: 0}) as phase
         | IdlePhase(DelayTrickCollection) as phase
         | phase
-          if phase->Game.isPlayerActivePhase => /* At the moment I assume there is only 1 concurrent timer in effect for a game
-           at any given moment. So If I'm leaving a phase that sets up a timer,
-           I should clean up afterwards */
+          if phase->Game.isPlayerActivePhase => //At the moment I assume there is only 1 concurrent timer in effect for a game
+          //at any given moment. So If I'm leaving a phase that sets up a timer,
+          //I should clean up afterwards
           (stateNext, Belt.List.concat(effects, list{ServerEvent.DiscardGameTimer(game_key)}))
         | _ => (stateNext, effects)
         }
@@ -228,11 +228,9 @@ let initializeRematch = (game_id, rematchClients, rematchPhase, rematchDealerId)
   phase: rematchPhase,
 }
 
-/*
-  This module should probably be called GameMachine and this function should
-  be the gameState machine. It takes some (before) state and an action and
-  produces some (after) state state.
-*/
+//This module should probably be called GameMachine and this function should
+//be the gameState machine. It takes some (before) state and an action and
+//produces some (after) state state.
 let reduce = (action, state) => {
   let game_key = state.game_id->SharedGame.stringOfGameId
 
@@ -255,10 +253,11 @@ let reduce = (action, state) => {
       )
 
       let calcPoints = tricks =>
-        tricks
-        |> List.map(Quad.toList)
-        |> List.concat
-        |> List.fold_left((acc, {Card.rank: rank}) => acc + Card.Rank.pointsOfRank(rank), 0)
+        List.fold_left(
+          (acc, {Card.rank: rank}) => acc + Card.Rank.pointsOfRank(rank),
+          0,
+          List.concat(List.map(Quad.toList, tricks)),
+        )
 
       let team1Points = calcPoints(team1Tricks)
       let team2Points = calcPoints(team2Tricks)
@@ -335,7 +334,7 @@ let reduce = (action, state) => {
         {
           ...state,
           phase: isGameOverTest(state) ? GameOverPhase(Quad.make(_ => RematchUnknown)) : DealPhase,
-          deck: Deck.make() |> Deck.shuffle,
+          deck: Deck.shuffle(Deck.make()),
           players: Quad.map(x => {...x, pla_tricks: list{}}, state.players),
           dealer: nextDealer,
           maybeTrumpCard: None,
@@ -361,11 +360,19 @@ let reduce = (action, state) => {
           ...state,
           deck,
           leader: Quad.nextId(state.dealer),
-          players: state.players
-          |> Quad.update(N1, x => {...x, pla_hand: p1Hand})
-          |> Quad.update(N2, x => {...x, pla_hand: p2Hand})
-          |> Quad.update(N3, x => {...x, pla_hand: p3Hand})
-          |> Quad.update(N4, x => {...x, pla_hand: p4Hand}),
+          players: Quad.update(
+            N4,
+            x => {...x, pla_hand: p4Hand},
+            Quad.update(
+              N3,
+              x => {...x, pla_hand: p3Hand},
+              Quad.update(
+                N2,
+                x => {...x, pla_hand: p2Hand},
+                Quad.update(N1, x => {...x, pla_hand: p1Hand}, state.players),
+              ),
+            ),
+          ),
           teams: GameTeams.map(x => {...x, team_points: 0}, state.teams),
         }
       }
@@ -388,7 +395,7 @@ let reduce = (action, state) => {
         }
       }
 
-      let state = state |> dealCards |> kickTrump
+      let state = kickTrump(dealCards(state))
 
       let kickTrumpNotiEffects =
         getKickTrumpNotis(state.maybeTrumpCard)->Belt.List.map(noti => ServerEvent.NotifyPlayer(
@@ -408,7 +415,7 @@ let reduce = (action, state) => {
 
     | (IdlePhase(DelayTrickCollection), AdvanceRound) =>
       let (p1CardMaybe, p2CardMaybe, p3CardMaybe, p4CardMaybe) =
-        state.players->Quad.map(p => p.pla_card, _)
+        state.players->(Quad.map(p => p.pla_card, _))
 
       switch My.Option.all6(
         p1CardMaybe,
@@ -441,7 +448,7 @@ let reduce = (action, state) => {
             // and must still have a leading-suit card in hand
             Quad.select(
               trickWinner,
-              p => p.pla_hand->List.exists(({Card.suit: suit}) => suit == leadSuit, _),
+              p => p.pla_hand->(List.exists(({Card.suit: suit}) => suit == leadSuit, _)),
               state.players,
             ))
             ? Some(leadSuit)
@@ -472,11 +479,14 @@ let reduce = (action, state) => {
         //   );
         let advanceRound = state => {
           ...state,
-          players: Quad.update(
-            trickWinner,
-            x => {...x, pla_tricks: Belt.List.concat(x.pla_tricks, list{trick})},
-            state.players,
-          ) |> Quad.map(x => {...x, pla_card: None}),
+          players: Quad.map(
+            x => {...x, pla_card: None},
+            Quad.update(
+              trickWinner,
+              x => {...x, pla_tricks: Belt.List.concat(x.pla_tricks, list{trick})},
+              state.players,
+            ),
+          ),
           teams: GameTeams.update(
             teamOfPlayer(trickWinner),
             x => {...x, team_points: x.team_points + Trick.getValue(trick)},
@@ -489,7 +499,7 @@ let reduce = (action, state) => {
           // notis: state.notis @ followSuitNotis
         }
 
-        let state = state |> advanceRound
+        let state = advanceRound(state)
 
         let (gameOverTestState, (h, l, j, g)) = Util.updateUntil(
           getActiveScoreMods(state),
@@ -527,7 +537,7 @@ let reduce = (action, state) => {
       }
     | (BegPhase(BegPhaseDeciding), Beg) =>
       let beggerId = Quad.nextId(state.dealer)
-      switch state.clients->Quad.get(beggerId, _) {
+      switch state.clients->(Quad.get(beggerId, _)) {
       | Vacant => (state, effects)
       | Detached(client, _)
       | Attached(client) =>
@@ -554,7 +564,7 @@ let reduce = (action, state) => {
       | Detached(begger, _)
       | Attached(begger) =>
         let (maybeTeamHigh, maybeTeamLow) = getTeamHighAndLowMaybes(
-          state.players->Quad.map(player => player.pla_hand, _),
+          state.players->(Quad.map(player => player.pla_hand, _)),
           state.maybeTrumpCard,
         )
 
@@ -601,7 +611,7 @@ let reduce = (action, state) => {
         }
 
         let (maybeTeamHigh, maybeTeamLow) = getTeamHighAndLowMaybes(
-          state.players->Quad.map(player => player.pla_hand, _),
+          state.players->(Quad.map(player => player.pla_hand, _)),
           state.maybeTrumpCard,
         )
 
@@ -669,11 +679,11 @@ let reduce = (action, state) => {
       let nextPlayers =
         state.players
         ->Quad.zip((p1Hand, p2Hand, p3Hand, p4Hand))
-        ->Quad.map(((p, hand)) => {...p, pla_hand: Belt.List.concat(p.pla_hand, hand)}, _)
+        ->(Quad.map(((p, hand)) => {...p, pla_hand: Belt.List.concat(p.pla_hand, hand)}, _))
 
       let nextTrumpCardMaybe = Some(nextTrumpCard)
       let (maybeTeamHigh, maybeTeamLow) = getTeamHighAndLowMaybes(
-        nextPlayers->Quad.map(player => player.pla_hand, _),
+        nextPlayers->(Quad.map(player => player.pla_hand, _)),
         nextTrumpCardMaybe,
       )
 
@@ -721,13 +731,13 @@ let reduce = (action, state) => {
           ...state,
           players: Quad.map(x => {...x, pla_hand: list{}}, state.players),
           maybeTrumpCard: None,
-          deck: Deck.make() |> Deck.shuffle,
+          deck: Deck.shuffle(Deck.make()),
           phase: DealPhase,
         },
         Belt.List.concat(redealNotiEffects, effects),
       )
     | (_anyPhase, LeaveGame(leavingPlayerId)) =>
-      switch state.clients->Quad.get(leavingPlayerId, _) {
+      switch state.clients->(Quad.get(leavingPlayerId, _)) {
       | Vacant
       | Detached(_) =>
         logger.warn("Ignoring `LeaveGame` recieved for headless player.")
@@ -743,9 +753,9 @@ let reduce = (action, state) => {
             | FindPlayersPhase({canSub}) =>
               FindPlayersPhase({emptySeatCount: nPlayersToFind, canSub})
             | GameOverPhase(rematchDecisions) =>
-              let rematchDecisions = rematchDecisions->Quad.put(leavingPlayerId, RematchDenied, _)
+              let rematchDecisions = rematchDecisions->(Quad.put(leavingPlayerId, RematchDenied, _))
               let numRematchUnknowns =
-                rematchDecisions->Quad.countHaving(_, decision => decision == RematchUnknown)
+                rematchDecisions->(Quad.countHaving(_, decision => decision == RematchUnknown))
               if numRematchUnknowns == 0 {
                 FindPlayersPhase({emptySeatCount: nPlayersToFind, canSub: false})
               } else {
@@ -759,10 +769,8 @@ let reduce = (action, state) => {
           }
 
         let nextClients =
-          state.clients->Quad.put(
-            leavingPlayerId,
-            Detached(client, {client_detached_at: Js.Date.now()}),
-            _,
+          state.clients->(
+            Quad.put(leavingPlayerId, Detached(client, {client_detached_at: Js.Date.now()}), _)
           )
 
         let playerLeftNotiEffects =
@@ -773,18 +781,16 @@ let reduce = (action, state) => {
             (),
           )->Belt.List.map(noti => ServerEvent.NotifyPlayer(game_key, noti))
 
-        /*
-         * When the leaving player was the game master and the game has at least
-         * one other seat still taken, choose a new game master from one of the
-         * taken seats.
-         */
+        // When the leaving player was the game master and the game has at least
+        // one other seat still taken, choose a new game master from one of the
+        // taken seats.
         let nextGameId = switch state.game_id {
         | Private({private_game_key, private_game_host}) if private_game_host == leavingPlayerId =>
           switch nextClients
           ->Quad.withId
           ->Quad.find(((_quadId, client)) => client->Game.isClientAttached) {
-          /* None means no taken seats were found => no players in the game => this game will be discarded by the ServerStore
-           So I just leave the id as it is. */
+          //  None means no taken seats were found => no players in the game => this game will be discarded by the ServerStore
+          // So I just leave the id as it is.
           | None => state.game_id
           | Some((idOfTakenSeat, _client)) =>
             Private({private_game_key, private_game_host: idOfTakenSeat})
@@ -852,7 +858,7 @@ let reduce = (action, state) => {
       | Vacant => (state, effects)
       | Attached({client_username})
       | Detached({client_username}, _) =>
-        let clients = state.clients->Quad.put(seat_id, clientState, _)
+        let clients = state.clients->(Quad.put(seat_id, clientState, _))
         let playersNeeded =
           clients->Quad.countHaving(clientState => !Game.isClientAttached(clientState))
         let phase: Game.Phase.t = switch state.phase {
@@ -903,7 +909,7 @@ let reduce = (action, state) => {
         switch state.phase {
         | GameOverPhase(rematchDecisions) =>
           let nextRematchDecisions =
-            rematchDecisions->Quad.put(seat_id, SharedGame.RematchAccepted, _)
+            rematchDecisions->(Quad.put(seat_id, SharedGame.RematchAccepted, _))
           let nextPhase = getNextPhase(nextRematchDecisions)
           let nextDealerId = getRematchDealerId(state.dealer, state.teams)
           switch nextPhase {
@@ -952,7 +958,7 @@ let reduce = (action, state) => {
       let nextTrumpCardMaybe = Some(nextTrumpCard)
 
       let (maybeTeamHigh, maybeTeamLow) = getTeamHighAndLowMaybes(
-        state.players->Quad.map(player => player.pla_hand, _),
+        state.players->(Quad.map(player => player.pla_hand, _)),
         nextTrumpCardMaybe,
       )
 
@@ -1001,7 +1007,7 @@ let reduce = (action, state) => {
             ("phase", state.phase->Game.Phase.t_encode),
             (
               "clients",
-              state.clients->Quad.toArray |> Array.map(Game.clientState_encode) |> Js.Json.array,
+              Js.Json.array(Array.map(Game.clientState_encode, state.clients->Quad.toArray)),
             ),
           ]),
         },
@@ -1012,5 +1018,5 @@ let reduce = (action, state) => {
       (state, effects)
     }
 
-  reduceRec(action, state, list{}) |> addLeaveStateEffects(state) |> addEnterStateEffects(state)
+  addEnterStateEffects(state, addLeaveStateEffects(state, reduceRec(action, state, list{})))
 }

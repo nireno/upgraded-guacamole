@@ -19,7 +19,7 @@ module AlignedIdenticon = {
       | East => "top-0 right-0"
       }
 
-      j`w-1/3 absolute opacity-80 $class_`
+      `w-1/3 absolute opacity-80 ${class_}`
     }
 
     let getStyle = zone => {
@@ -32,7 +32,8 @@ module AlignedIdenticon = {
       ReactDOM.Style.make(~transform, ())
     }
     <div className={getClassName(zone)} style={getStyle(zone)}>
-      <PlayerIdentityView initials seed style /> <SignalsView ?signal zone />
+      <PlayerIdentityView initials seed style />
+      <SignalsView ?signal zone />
     </div>
   }
 }
@@ -54,10 +55,10 @@ let make = (
   let class_ = "player-tags flex"
   let playerTagsClass = x =>
     switch x {
-    | North => j`$class_ justify-center items-center horizontal`
-    | South => j`$class_ justify-center items-center horizontal`
-    | East => j`$class_ flex-col justify-center w-1/5`
-    | West => j`$class_ flex-col justify-center w-1/5`
+    | North => `${class_} justify-center items-center horizontal`
+    | South => `${class_} justify-center items-center horizontal`
+    | East => `${class_} flex-col justify-center w-1/5`
+    | West => `${class_} flex-col justify-center w-1/5`
     }
 
   <div className={"player-section w-full relative flex " ++ getMainDivClass(zone)}>

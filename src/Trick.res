@@ -1,20 +1,18 @@
 @@ocaml.doc(" One trick is completed when each player play's one card on the board ")
 
-@decco
+@spice
 type t = (Card.t, Card.t, Card.t, Card.t)
 
 let codeOfTrick = trick => {
   let (card1Code, card2Code, card3Code, card4Code) = Quad.map(card => Card.codeOfCard(card), trick)
-  j`($card1Code, $card2Code, $card3Code, $card4Code)`
+  `(${card1Code}, ${card2Code}, ${card3Code}, ${card4Code})`
 }
 
 let stringOfTrick = r => {
   let stringOfPlayerCard = ((playerId, card)) =>
     Player.stringOfId(playerId) ++ (": " ++ Card.stringOfCard(card))
 
-  Quad.toDict(r)
-  |> List.map(stringOfPlayerCard)
-  |> List.fold_left((acc, s) => acc ++ (" " ++ s), "")
+  List.fold_left((acc, s) => acc ++ (" " ++ s), "", List.map(stringOfPlayerCard, Quad.toDict(r)))
 }
 
 let getWinnerCard = (trumpCardSuit, leadCardSuit, trick) => {
@@ -23,19 +21,22 @@ let getWinnerCard = (trumpCardSuit, leadCardSuit, trick) => {
     : leadCardSuit
 
   // which player has the highest card in the ruling suit
-  Quad.withId(trick) |> Quad.foldLeft(@ocaml.doc(" Compare cards in pairs ")
-  ((_prevPlayerId, prevCard) as prevPlayerCard, (_playerId, card) as currPlayerCard) =>
-    if card.Card.suit == rulingSuit && prevCard.Card.suit == rulingSuit {
-      @ocaml.doc(" If both cards are in the ruling suit then compare by rank ")
-      Card.Rank.intOfRank(card.rank) >
-      Card.Rank.intOfRank(prevCard.Card.rank)
-        ? currPlayerCard
-        : prevPlayerCard
-    } else if card.Card.suit == rulingSuit {
-      currPlayerCard
-    } else {
-      prevPlayerCard
-    }
+  Quad.foldLeft(
+    @ocaml.doc(" Compare cards in pairs ")
+    ((_prevPlayerId, prevCard) as prevPlayerCard, (_playerId, card) as currPlayerCard) =>
+      if card.Card.suit == rulingSuit && prevCard.Card.suit == rulingSuit {
+        @ocaml.doc(" If both cards are in the ruling suit then compare by rank ")
+        (
+          Card.Rank.intOfRank(card.rank) > Card.Rank.intOfRank(prevCard.Card.rank)
+            ? currPlayerCard
+            : prevPlayerCard
+        )
+      } else if card.Card.suit == rulingSuit {
+        currPlayerCard
+      } else {
+        prevPlayerCard
+      },
+    Quad.withId(trick),
   )
 }
 
@@ -51,7 +52,8 @@ let make = (~trick) => {
 }
 
 let getValue = trick =>
-  Quad.toList(trick) |> List.fold_left(
+  List.fold_left(
     (acc, {Card.rank: rank}) => acc + Card.Rank.pointsOfRank(rank),
     0,
+    Quad.toList(trick),
   )

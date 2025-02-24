@@ -1,13 +1,13 @@
 include SharedGame
 
-@decco type maybeCard = option<Card.t>
+@spice type maybeCard = option<Card.t>
 
-@decco type maybeTeamHigh = option<GameAward.luckyAwardData>
-@decco type maybeTeamLow = option<GameAward.luckyAwardData>
-@decco type maybeTeamJack = option<GameAward.jackAwardData>
-@decco type maybeTeamGame = option<GameAward.gameAwardData>
+@spice type maybeTeamHigh = option<GameAward.luckyAwardData>
+@spice type maybeTeamLow = option<GameAward.luckyAwardData>
+@spice type maybeTeamJack = option<GameAward.jackAwardData>
+@spice type maybeTeamGame = option<GameAward.gameAwardData>
 
-@decco
+@spice
 type clientProfile = {
   client_username: string,
   client_identicon: string,
@@ -15,7 +15,7 @@ type clientProfile = {
   client_profile_type: ClientSettings.profileType,
 }
 
-@decco
+@spice
 type playerState = {
   pla_card: option<Card.t>,
   pla_profile_maybe: option<clientProfile>, //optional since a user might disconnect from the game
@@ -23,25 +23,25 @@ type playerState = {
 
 let initPlayerState = () => {pla_card: None, pla_profile_maybe: None}
 
-@decco
+@spice
 type partnerInfo = {
   trumpCount: int,
   cardsToDisplay: list<Card.t>,
 }
 
-@decco
+@spice
 type findSubsContext = {emptySeatCount: int}
 
-@decco
+@spice
 type findPlayersContext = {
   emptySeatCount: int,
   canSub: bool /* when there exists a public game in FindSubsPhase */,
 }
 
-@decco
+@spice
 type begPhaseContext = BegPhaseDeciding | BegPhaseStanding
 
-@decco
+@spice
 type phase =
   | IdlePhase(idleReason)
   | FindSubsPhase(findSubsContext)
@@ -55,7 +55,7 @@ type phase =
   | PackDepletedPhase
   | GameOverPhase(Quad.t<rematchDecision>)
 
-@decco
+@spice
 type state = {
   gameId: game_id,
   phase: Player.phase,

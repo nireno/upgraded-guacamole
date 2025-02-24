@@ -65,7 +65,7 @@ let make = (~onSave, ~settings) => {
       Js.String.split("", inputVal)
       ->Belt.Array.map(Js.String.toUpperCase)
       ->Belt.Array.keepMap(Js.String.match_(%re("/[A-Za-z]/")))
-      ->Js.Array.joinWith("", _)
+      ->(Js.Array.joinWith("", _))
     updateClientInitials(_ => inputStripped)
   }
 
@@ -172,7 +172,7 @@ let make = (~onSave, ~settings) => {
           className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded inline-flex items-center cursor-pointer"
           onClick=handleVolumeIconClick>
           <img
-            src={j`./static/img/$volumeIcon.svg`}
+            src={`./static/img/${volumeIcon}.svg`}
             className="block mx-4"
             style={ReactDOM.Style.make(
               ~height="100%",

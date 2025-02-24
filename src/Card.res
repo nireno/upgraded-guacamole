@@ -1,5 +1,5 @@
 module Suit = {
-  @decco
+  @spice
   type t =
     | Clubs
     | Diamonds
@@ -60,7 +60,7 @@ module Suit = {
 }
 
 module Rank = {
-  @decco
+  @spice
   type t =
     | Two
     | Three
@@ -201,7 +201,7 @@ module Rank = {
   }
 }
 
-@decco
+@spice
 type t = {
   rank: Rank.t,
   suit: Suit.t,

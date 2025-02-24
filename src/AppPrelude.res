@@ -7,22 +7,22 @@ let appLogger = Pino.make({
 })
 
 type str_json = string
-@decco
+@spice
 type sock_id = string
-@decco
+@spice
 type milliseconds = float
 type game_key = string
 type direction = North | South | East | West
 
 let leftPad = (s, ~n=0, ~c="\t", ()) => {
   let tabs = Js.String.repeat(n, c)
-  Js.String.split("\n", s) |> Js.Array.map(line => tabs ++ line) |> Js.Array.joinWith("\n")
+  Js.Array.joinWith("\n", Js.Array.map(line => tabs ++ line, Js.String.split("\n", s)))
 }
 
 let leftPad1 = s => leftPad(s, ~n=1, ())
 
 let decodeWithDefault = (decode, default, jsonString) => {
-  let parseAndDecode = switch decode(jsonString |> Js.Json.parseExn) {
+  let parseAndDecode = switch decode(Js.Json.parseExn(jsonString)) {
   | Belt.Result.Error(_error) =>
     appLogger.error2("Failed to decode json string: %s", jsonString)
     default

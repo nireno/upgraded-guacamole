@@ -15,7 +15,7 @@ let rec updateUntil = (fns, test, state) =>
 @val @return(nullable)
 external getElementById: string => option<Dom.element> = "document.getElementById"
 
-/*
+/* 
   Creates a string of css classes from an array of strings.
 */
 let cns = classes => {

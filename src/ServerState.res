@@ -31,31 +31,33 @@ let getGameBySocket: (sock_id, db) => option<Game.state> = (sock_id, {db_game}) 
   db_game
   ->StringMap.valuesToArray
   ->Belt.Array.getBy(game =>
-    game.Game.clients->Quad.exists(
-      clientState =>
-        switch clientState {
-        | Game.Attached({client_socket_id}) if client_socket_id == sock_id => true
+    game.Game.clients->(
+      Quad.exists(
+        clientState =>
+          switch clientState {
+          | Game.Attached({client_socket_id}) if client_socket_id == sock_id => true
 
-        | _ => false
-        },
-      /* Currently we're using getGameBySocket to map client actions to a game. But if
-       * getGameBySocket is used to determine the mapping and we include games where the client
-       * was once Attached but is now Detached, then you occasionally get a bug where a client action
-       * is routed to the wrong game so that it is ignored; client game gets no update/feedback and
-       * appears to be frozen/stuck/unresponsive.
-       * To reproduce:
-       * 1. Add the case commented out below back into the switch statement above.
-       * 1. Have Client-A create a new public game (Game-A) and have 3 other players join, then deal the first card.
-       * 1. Refresh Client-A's page so that the client leaves Game-A in FindingSubs phase.
-       * 1. Having refreshed, let Client-A create another new public game Game-B, add 2 more players to Game-B
-       *    but then have Client-A leave Game-B before adding the last player. This will leave Game-B in the FindingPlayers phase.
-       * 1. Have Client-A join a public game. Client-A will initially join Game-B but click "Join as Substitute" button to join Game-A.
-       * 1. Leave Game-A before the game starts.
-       * 1. Now "Join Public Game" again - This will join you to Game-B again.
-       * 1. Let the game start. Client-A should be the dealer. Attempt to deal cards.
-       * 1. You should find that the cards are not dealt so the game appears to be frozen. */
-      // | Game.Detached({client_socket_id}, _) if client_socket_id == sock_id => true
-      _,
+          | _ => false
+          },
+        /* Currently we're using getGameBySocket to map client actions to a game. But if
+         * getGameBySocket is used to determine the mapping and we include games where the client
+         * was once Attached but is now Detached, then you occasionally get a bug where a client action
+         * is routed to the wrong game so that it is ignored; client game gets no update/feedback and
+         * appears to be frozen/stuck/unresponsive.
+         * To reproduce:
+         * 1. Add the case commented out below back into the switch statement above.
+         * 1. Have Client-A create a new public game (Game-A) and have 3 other players join, then deal the first card.
+         * 1. Refresh Client-A's page so that the client leaves Game-A in FindingSubs phase.
+         * 1. Having refreshed, let Client-A create another new public game Game-B, add 2 more players to Game-B
+         *    but then have Client-A leave Game-B before adding the last player. This will leave Game-B in the FindingPlayers phase.
+         * 1. Have Client-A join a public game. Client-A will initially join Game-B but click "Join as Substitute" button to join Game-A.
+         * 1. Leave Game-A before the game starts.
+         * 1. Now "Join Public Game" again - This will join you to Game-B again.
+         * 1. Let the game start. Client-A should be the dealer. Attempt to deal cards.
+         * 1. You should find that the cards are not dealt so the game appears to be frozen. */
+        // | Game.Detached({client_socket_id}, _) if client_socket_id == sock_id => true
+        _,
+      )
     )
   )
 
@@ -63,12 +65,12 @@ let getGameClientSeat = (db_game, sock_id) => {
   let gameMaybe =
     db_game
     ->StringMap.valuesToArray
-    ->Belt.Array.getBy(game => game.Game.clients->Quad.exists(clientState =>
-        switch clientState {
-        | Game.Attached({client_socket_id}) if client_socket_id == sock_id => true
-        | _ => false
-        }
-      , _))
+    ->Belt.Array.getBy(game => game.Game.clients->(Quad.exists(clientState =>
+          switch clientState {
+          | Game.Attached({client_socket_id}) if client_socket_id == sock_id => true
+          | _ => false
+          }
+        , _)))
   switch gameMaybe {
   | None => None
   | Some(game) =>
@@ -207,7 +209,7 @@ let buildClientState = (gameState, player, playerPhase) => {
     gamePhase: gameState.phase->Join.clientGamePhaseOfGamePhase,
     players: gameState.clients
     ->Quad.zip(gameState.players)
-    ->Quad.map(((client, player)) => getPlayerPublicState(player, client), _),
+    ->(Quad.map(((client, player)) => getPlayerPublicState(player, client), _)),
     teams: gameState.teams,
     me: player,
     maybePartnerInfo: switch gameState.phase {
@@ -231,7 +233,7 @@ let buildSocketStatePairs: Game.state => list<(option<sock_id>, ClientGame.state
 
   let buildClientState = buildClientState(gameState)
   playerPhasePairs->Belt.List.map(((playerId, playerPhase)) => (
-    switch gameState.clients->Quad.get(playerId, _) {
+    switch gameState.clients->(Quad.get(playerId, _)) {
     | Vacant
     | Detached(_, _) =>
       None
@@ -546,10 +548,9 @@ let rec update: (ServerEvent.event, db) => update<db, ServerEvent.effect> = (
         Shared.normalizeInviteCode(key) == Shared.normalizeInviteCode(inviteCode)
       }
 
-    let matchingGames =
-      StringMap.valuesToArray(db_game)
-      |> Belt.Array.keep(_, gameMatchesCode(invite_code))
-      |> Belt.List.fromArray
+    let matchingGames = Belt.List.fromArray(
+      (Belt.Array.keep(_, gameMatchesCode(invite_code)))(StringMap.valuesToArray(db_game)),
+    )
 
     switch matchingGames {
     | list{gameState, ..._rest} =>
@@ -624,7 +625,7 @@ let rec update: (ServerEvent.event, db) => update<db, ServerEvent.effect> = (
     }
 
   | UpdateGameBySocket(sock_id, action) =>
-    switch db->getGameBySocket(sock_id, _) {
+    switch db->(getGameBySocket(sock_id, _)) {
     | None => NoUpdate(db)
     | Some({game_id}) =>
       let game_key = game_id->SharedGame.stringOfGameId
