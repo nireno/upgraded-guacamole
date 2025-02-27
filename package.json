@@ -8,7 +8,7 @@
     "dev:preflight": "run-s build:res build:pack",
     "dev:styles": "postcss src/styles --verbose --dir ./build -w",
     "dev:pack": "dotenvx run -- webpack -w",
-    "dev:server": "dotenvx run -- nodemon src/Server.bs.js | pino-pretty -t -m '_msg'",
+    "dev:server": "dotenvx run -- nodemon --delay 1 src/Server.bs.js | pino-pretty -t -m '_msg'",
     "dev:res": "rescript build -w -with-deps",
     "build:preflight": "node scripts/check_production_ready.js",
     "clean:res": "rescript clean",
