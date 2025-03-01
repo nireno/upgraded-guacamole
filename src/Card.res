@@ -255,17 +255,3 @@ let sort = cards => {
   }
   List.sort(cmp, cards)
 }
-
-@react.component
-let make = (~card, ~clickAction=?, ~style=?) => {
-  let (onClick, isClickable) = switch clickAction {
-  | None => (None, false)
-  | Some(handleClick) => (Some(_event => handleClick(card)), true)
-  }
-  <ReactSpring.AnimatedImg
-    ?style
-    className={"card" ++ (isClickable ? " cursor-pointer" : "")}
-    ?onClick
-    src={getImageSrc(card)}
-  />
-}

@@ -81,9 +81,10 @@ module AnimatedDiv = {
     ~id: string=?,
     ~ref: ReactDOM.domRef=?,
     ~key: string,
-    ~style: ReactDOM.Style.t,
+    ~style: ReactDOM.Style.t=?,
     ~className: string,
     ~children: React.element=?,
+    ~onClick: ReactEvent.Mouse.t => unit=?,
   ) => React.element = "div"
 }
 

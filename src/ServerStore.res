@@ -3,13 +3,11 @@ open Belt
 
 let logger = appLogger.makeChild({"_context": "ServerStore"})
 
-let store: ref<ServerState.db> = switch ServerEnv.nodeEnv {
-| "development" =>
-  logger.debug("Running in development mode")
+let store: ref<ServerState.db> = switch ServerEnv.allFoursEnv->Js.Nullable.toOption {
+| Some("mock-server") =>
+  logger.debug("Running mock server state")
   ref(MockServerState.make())
-| _ =>
-  logger.debug("Running in production mode")
-  ref(ServerState.empty())
+| _ => ref(ServerState.empty())
 }
 
 let getState: unit => ServerState.db = () => store.contents

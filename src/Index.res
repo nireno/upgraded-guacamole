@@ -596,12 +596,24 @@ module App = {
               className="player-hand flex flex-col z-20"
               style={ReactDOM.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
               <div className="player-hand__placeholder-row flex flex-row justify-around">
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                <div className="hand-card">
+                  <Svg_Card_Transparent />
+                </div>
+                <div className="hand-card">
+                  <Svg_Card_Transparent />
+                </div>
+                <div className="hand-card">
+                  <Svg_Card_Transparent />
+                </div>
+                <div className="hand-card">
+                  <Svg_Card_Transparent />
+                </div>
+                <div className="hand-card">
+                  <Svg_Card_Transparent />
+                </div>
+                <div className="hand-card">
+                  <Svg_Card_Transparent />
+                </div>
               </div>
               <Hand
                 handFacing=state.handFacing

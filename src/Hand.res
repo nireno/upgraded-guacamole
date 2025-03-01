@@ -63,7 +63,7 @@ module FaceDownHand = {
 
         <ReactSpring.AnimatedDiv
           key={transition->Transition.keyGet} className="hand-card" style=springStyle>
-          <img className="card" src="./static/cards/Red_Back.svg" />
+          <Svg_Card_RedBack />
         </ReactSpring.AnimatedDiv>
       }
 
@@ -170,7 +170,7 @@ module FaceUpHand = {
     }
 
     <ReactSpring.AnimatedDiv key=kCard.key className="hand-card" style=springStyle>
-      <Card ?clickAction card=kCard.card />
+      <CardView ?clickAction card=kCard.card />
     </ReactSpring.AnimatedDiv>
   }
 
@@ -255,7 +255,7 @@ module FaceUpHand = {
 
       <ReactSpring.AnimatedDiv
         key=kCard.key className="hand-card pointer-events-auto" style=springStyle>
-        <Card clickAction card=kCard.card />
+        <CardView clickAction card=kCard.card />
       </ReactSpring.AnimatedDiv>
     }
 

@@ -80,7 +80,7 @@ module PlayCard = {
           Style.combine(springStyle, Style.make(~opacity=opacity', ()))
         }
         <ReactSpring.AnimatedDiv key className="animated-card" style=springStyle>
-          <Card card />
+          <CardView card />
         </ReactSpring.AnimatedDiv>
       }, transitions))
   }
