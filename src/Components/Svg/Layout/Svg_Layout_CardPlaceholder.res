@@ -1,3 +1,4 @@
+/* Originally /static/cards/card_placeholder.svg */
 @react.component
 let make = () => {
   <svg

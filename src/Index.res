@@ -597,22 +597,22 @@ module App = {
               style={ReactDOM.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
               <div className="player-hand__placeholder-row flex flex-row justify-around">
                 <div className="hand-card">
-                  <Svg_Card_Transparent />
+                  <Svg_Layout_CardPlaceholder />
                 </div>
                 <div className="hand-card">
-                  <Svg_Card_Transparent />
+                  <Svg_Layout_CardPlaceholder />
                 </div>
                 <div className="hand-card">
-                  <Svg_Card_Transparent />
+                  <Svg_Layout_CardPlaceholder />
                 </div>
                 <div className="hand-card">
-                  <Svg_Card_Transparent />
+                  <Svg_Layout_CardPlaceholder />
                 </div>
                 <div className="hand-card">
-                  <Svg_Card_Transparent />
+                  <Svg_Layout_CardPlaceholder />
                 </div>
                 <div className="hand-card">
-                  <Svg_Card_Transparent />
+                  <Svg_Layout_CardPlaceholder />
                 </div>
               </div>
               <Hand
