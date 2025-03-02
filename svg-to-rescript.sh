@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# This is a naive transform script. Should be using [html-to-rescript]
+# (https://github.com/protoship/html-to-rescript-jsx/blob/996ebc3f8dc4844b0d5d82940809667194fe4c12/src/converter.js)
+# instead.
+
 # Function to display help message
 display_help() {
   echo "Usage: $0 <svg_dir> <res_dir>"
