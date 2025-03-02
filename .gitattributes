@@ -1,1 +1,4 @@
+# The 'text=auto' attribute automatically converts files to use LF line endings
+# when they are committed, and converts them back to the appropriate line
+# endings for the user's operating system when they are checked out.
 * text=auto
