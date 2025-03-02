@@ -38,8 +38,6 @@ let makeAnimatedSignal = (transition: SignalTransition.transition) => {
     Style.combine(springStyle, Style.make(~opacity=opacity', ()))
   }
 
-  // let filename = PlayerSignal.toFileName(signal)
-
   <ReactSpring.AnimatedDiv key className="signal absolute w-full" style=springStyle>
     <div className="w-full flex justify-center bg-white">
       <PlayerSignalView signal />
