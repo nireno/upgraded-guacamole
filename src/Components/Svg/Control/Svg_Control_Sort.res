@@ -1,6 +1,6 @@
 @react.component
 let make = () => {
-  <svg xmlns="http://www.w3.org/2000/svg" width="24mm" height="24mm" viewBox="0 0 24 24">
+  <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 24 24">
     <path
       d="M8.844 22.91v-.884h.813V20.57H5.594v-1.028L9.99 12.91l.718.002v6.629h1.243v1.027h-1.243l-.024 1.458h.681v.884zm.813-7.574-2.79 4.205h2.79z"
     />
