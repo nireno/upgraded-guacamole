@@ -232,12 +232,6 @@ let stringOfSpriteOffset = ({rank, suit}) => {
   "-" ++ (string_of_int(xOffset) ++ ("px " ++ ("-" ++ (string_of_int(yOffset) ++ "px"))))
 }
 
-let getImageSrc = ({rank, suit}) => {
-  let suitCode = Suit.codeOfSuit(suit)
-  let rankCode = Rank.codeOfRank(rank)
-  "./static/cards/" ++ (rankCode ++ (suitCode ++ ".svg"))
-}
-
 let sort = cards => {
   let cmp = (c1, c2) => {
     let multiplier = x =>
