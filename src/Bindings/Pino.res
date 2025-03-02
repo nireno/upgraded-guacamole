@@ -1,13 +1,3 @@
-// type logger
-
-// @module external make: {..} => logger = "pino"
-
-// @send external makeChild: (logger, {..}) => logger = "child"
-// @send external error: (logger, string) => unit = "error"
-// @send external error2: (logger, string, string) => unit = "error"
-// @send external warn: (logger, string) => unit = "warn"
-// @send external warn2: (logger, string, string) => unit = "warn"
-
 type t
 @module external instantiate: 'options => t = "pino"
 
