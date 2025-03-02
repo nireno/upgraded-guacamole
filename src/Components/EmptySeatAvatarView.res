@@ -12,14 +12,14 @@ let make = () => {
   )
 
   <div className="border border-gray-300 rounded">
-    <img
-      src="./static/img/avatar_placeholder.svg"
-      className="w-full "
+    <div
+      className="w-full"
       style={ReactDOM.Style.make(
         ~opacity=isOpaque ? opacityMax : opacityMin,
         ~transition="opacity 1s ease-out",
         (),
-      )}
-    />
+      )}>
+      <Svg_Decor_AvatarPlaceholder />
+    </div>
   </div>
 }

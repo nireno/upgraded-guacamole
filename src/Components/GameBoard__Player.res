@@ -66,7 +66,9 @@ let make = (
     <div
       className="flex-grow relative w-3/4 self-center"
       style={ReactDOM.Style.make(~zIndex=zIndex->string_of_int, ())}>
-      <img className="card__placeholder relative block " src="./static/img/card_transparent.svg" />
+      <div className="card__placeholder relative block">
+        <Svg_Decor_CardPlaceholder />
+      </div>
       {isTurner ? <ActivePlayerCountdownView gamePhase /> : React.null}
       <GameBoard__CardTransition.PlayCard maybeCard enterFrom=zone leaveTo=cardLeavesToZone />
       <AlignedIdenticon initials seed=identiconSeed style=identiconStyle zone ?signal />

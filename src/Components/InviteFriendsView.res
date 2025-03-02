@@ -98,14 +98,14 @@ let make = (
             | None => React.null
             | Some(onRotateGuestsClick) =>
               <div style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="2", ())}>
-                <img
+                <div
                   style={ReactDOM.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
-                  src="./static/img/rotate_tri.svg"
                   className={"w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full" ++ (
                     emptySeatCount == 3 ? " cursor-not-allowed" : " cursor-pointer"
                   )}
-                  onClick=?{emptySeatCount == 3 ? None : Some(onRotateGuestsClick)}
-                />
+                  onClick=?{emptySeatCount == 3 ? None : Some(onRotateGuestsClick)}>
+                  <Svg_Control_RotateSeating />
+                </div>
               </div>
             }
           : React.null}
