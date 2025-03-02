@@ -3,10 +3,7 @@ let make = () => {
   <svg
     xmlns="http://www.w3.org/2000/svg"
     xmlnsXlink="http://www.w3.org/1999/xlink"
-    width="100%"
-    height="100%"
-    viewBox="0 0 223.228 311.811"
-    preserveAspectRatio="xMidYMid meet">
+    viewBox="0 0 223.228 311.811">
     <defs>
       <pattern
         patternTransform="rotate(-45 711.917 114.198)"

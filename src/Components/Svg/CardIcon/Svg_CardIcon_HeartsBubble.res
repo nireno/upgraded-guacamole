@@ -1,6 +1,6 @@
 @react.component
 let make = () => {
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" preserveAspectRatio="xMidYMid meet">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
     <circle
       cx="32"
       cy="32"

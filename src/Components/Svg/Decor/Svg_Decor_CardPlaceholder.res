@@ -1,7 +1,7 @@
 /* Originally /static/cards/card_transparent.svg */
 @react.component
 let make = () => {
-  <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 224.225 312.808">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224.225 312.808">
     <g stroke="#fff" strokeOpacity=".50196081" opacity="1" fill="#fff" fillOpacity=".25098041">
       <rect
         width="223.228"

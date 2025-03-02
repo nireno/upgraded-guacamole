@@ -1,11 +1,6 @@
 @react.component
 let make = () => {
-  <svg
-    xmlns="http://www.w3.org/2000/svg"
-    width="100%"
-    height="100%"
-    viewBox="0 0 224.218 312.801"
-    preserveAspectRatio="xMidYMid meet">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 224.218 312.801">
     <g transform="translate(-6034.206 2435.495)">
       <rect
         ry="10.63"
