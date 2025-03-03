@@ -20,7 +20,7 @@ let make = (~id=?, ~appRect, ~notis=list{}, ~teamId) => {
   let leaveTop = fromTop
 
   let notiTransitions = NotiTransition.useTransition(
-    notis |> Belt.List.toArray,
+    Belt.List.toArray(notis),
     NotiTransition.options(
       ~from=NotiTransitionConf.props(~left="0px", ~top=fromTop, ~opacity="0", ()),
       ~enter=NotiTransitionConf.props(~left="0px", ~top="0px", ~opacity="1", ()),
@@ -98,7 +98,8 @@ let make = (~id=?, ~appRect, ~notis=list{}, ~teamId) => {
       {switch noti.noti_message {
       | Text(message) =>
         <div className="flex items-center justify-center">
-          icon <div> {React.string(message)} </div>
+          icon
+          <div> {React.string(message)} </div>
         </div>
       | RoundSummary(summary) =>
         <RoundSummaryView
@@ -114,6 +115,6 @@ let make = (~id=?, ~appRect, ~notis=list{}, ~teamId) => {
 
   <div
     className="notifications pointer-events-none absolute w-full h-full top-0 left-0 flex flex-col items-center z-30">
-    {elements |> React.array}
+    {React.array(elements)}
   </div>
 }

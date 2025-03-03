@@ -18,30 +18,26 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
                   {React.string(
                     winning_card.rank->Card.Rank.stringOfRank ++
                       (" for high (+" ++
-                      ((Ruleset.default.highAwardValue |> string_of_int) ++ ")")),
+                      (string_of_int(Ruleset.default.highAwardValue) ++ ")")),
                   )}
                 </td>
                 {switch losing_card_maybe {
                 | None => <td> {React.string("-")} </td>
                 | Some(losing_card) =>
-                  <td>
-                    {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for high")}
-                  </td>
+                  <td> {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for high")} </td>
                 }}
               </>
             : <>
                 {switch losing_card_maybe {
                 | None => <td> {React.string("-")} </td>
                 | Some(losing_card) =>
-                  <td>
-                    {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for high")}
-                  </td>
+                  <td> {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for high")} </td>
                 }}
                 <td>
                   {React.string(
                     winning_card.rank->Card.Rank.stringOfRank ++
                       (" for high (+" ++
-                      ((Ruleset.default.highAwardValue |> string_of_int) ++ ")")),
+                      (string_of_int(Ruleset.default.highAwardValue) ++ ")")),
                   )}
                 </td>
               </>
@@ -57,30 +53,26 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
                   {React.string(
                     winning_card.rank->Card.Rank.stringOfRank ++
                       (" for low (+" ++
-                      ((Ruleset.default.lowAwardValue |> string_of_int) ++ ")")),
+                      (string_of_int(Ruleset.default.lowAwardValue) ++ ")")),
                   )}
                 </td>
                 {switch losing_card_maybe {
                 | None => <td> {React.string("-")} </td>
                 | Some(losing_card) =>
-                  <td>
-                    {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for low")}
-                  </td>
+                  <td> {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for low")} </td>
                 }}
               </>
             : <>
                 {switch losing_card_maybe {
                 | None => <td> {React.string("-")} </td>
                 | Some(losing_card) =>
-                  <td>
-                    {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for low")}
-                  </td>
+                  <td> {React.string(losing_card.rank->Card.Rank.stringOfRank ++ " for low")} </td>
                 }}
                 <td>
                   {React.string(
                     winning_card.rank->Card.Rank.stringOfRank ++
                       (" for low (+" ++
-                      ((Ruleset.default.lowAwardValue |> string_of_int) ++ ")")),
+                      (string_of_int(Ruleset.default.lowAwardValue) ++ ")")),
                   )}
                 </td>
               </>
@@ -96,7 +88,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
                   {React.string(
                     GameAward.stringOfJackAward(jack_award_type) ++
                     (" (+" ++
-                    ((GameAward.jackAwardValue(jack_award_type) |> string_of_int) ++ ")")),
+                    (string_of_int(GameAward.jackAwardValue(jack_award_type)) ++ ")")),
                   )}
                 </td>
                 <td> {React.string("-")} </td>
@@ -107,7 +99,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
                   {React.string(
                     GameAward.stringOfJackAward(jack_award_type) ++
                     (" (+" ++
-                    ((GameAward.jackAwardValue(jack_award_type) |> string_of_int) ++ ")")),
+                    (string_of_int(GameAward.jackAwardValue(jack_award_type)) ++ ")")),
                   )}
                 </td>
               </>
@@ -124,7 +116,7 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
                   {React.string(
                     winning_count->string_of_int ++
                       (" for game (+" ++
-                      ((Ruleset.default.gameAwardValue |> string_of_int) ++ ")")),
+                      (string_of_int(Ruleset.default.gameAwardValue) ++ ")")),
                   )}
                 </td>
                 <td> {React.string(losing_count->string_of_int ++ " for game")} </td>
@@ -135,11 +127,14 @@ let make = (~weTeamId, ~maybeTeamHigh, ~maybeTeamLow, ~maybeTeamJack, ~maybeTeam
                   {React.string(
                     winning_count->string_of_int ++
                       (" for game (+" ++
-                      ((Ruleset.default.gameAwardValue |> string_of_int) ++ ")")),
+                      (string_of_int(Ruleset.default.gameAwardValue) ++ ")")),
                   )}
                 </td>
               </>
-        | Some(_gameAwardData) => <> <td colSpan=2> {React.string("Tied for game.")} </td> </>
+        | Some(_gameAwardData) =>
+          <>
+            <td colSpan=2> {React.string("Tied for game.")} </td>
+          </>
         }}
       </tr>
     </tbody>

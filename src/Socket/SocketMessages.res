@@ -39,7 +39,7 @@ let stringOfClientToServer = x =>
     "JoinPrivateGame(" ++
     (inviteCode ++
     (", " ++ ((username == "" ? "--blank-username--" : username) ++ ")")))
-  | IO_PlayCard(ioPlayerId, ioCard) => j`PlayCard($ioPlayerId, $ioCard)`
+  | IO_PlayCard(ioPlayerId, ioCard) => `PlayCard(${ioPlayerId}, ${ioCard})`
   | IO_Beg => "Beg"
   | IO_Stand => "Stand"
   | IO_GiveOne => "GiveOne"
@@ -48,9 +48,9 @@ let stringOfClientToServer = x =>
   | IO_FlipFinalTrump => "FlipFinalTrump"
   | IO_DealAgain => "DealAgain"
   | IO_LeaveGame => "LeaveGame"
-  | IO_PlayAgain(ioUsername, _ioClientSettings) => j`PlayAgain($ioUsername)`
+  | IO_PlayAgain(ioUsername, _ioClientSettings) => `PlayAgain(${ioUsername})`
   | IO_Rematch => "Rematch"
-  | IO_Substitute(ioUsername, _ioClientSettings) => j`Substitute($ioUsername)`
+  | IO_Substitute(ioUsername, _ioClientSettings) => `Substitute(${ioUsername})`
   | IO_PrivateToPublic => "PrivateToPublic"
   | IO_RotateGuests => "RotateGuests"
   | IO_TransitionGameNow => "SelectPartner"

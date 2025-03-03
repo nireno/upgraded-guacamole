@@ -1,10 +1,10 @@
-@ocaml.doc(" For notification messages such as \"player left the game\" ") @decco
+@ocaml.doc(" For notification messages such as \"player left the game\" ") @spice
 type level = Success | Info | Warning | Danger
 
-@decco
+@spice
 type kind = Confirm | Duration(int)
 
-@decco
+@spice
 type roundSummary = {
   noti_maybeTeamHigh: option<GameAward.luckyAwardData>,
   noti_maybeTeamLow: option<GameAward.luckyAwardData>,
@@ -12,10 +12,10 @@ type roundSummary = {
   noti_maybeTeamGame: option<GameAward.gameAwardData>,
 }
 
-@decco
+@spice
 type message = Text(string) | RoundSummary(roundSummary)
 
-@decco
+@spice
 type t = {
   noti_id: string,
   noti_recipient: Player.id,
@@ -28,22 +28,21 @@ type t = {
   Helper for broadcasting information from one player to all other players.
 ")
 let playerBroadcast = (~from: Player.id, ~msg, ~level=Info, ~kind=Duration(3375), ()) =>
-  List.filter(playerId => playerId != from, list{Quad.N1, N2, N3, N4}) |> List.map(playerId => {
+  List.map(playerId => {
     noti_id: Nanoid.nanoid(),
     noti_recipient: playerId,
     noti_message: msg,
     noti_level: level,
     noti_kind: kind,
-  })
+  }, List.filter(playerId => playerId != from, list{Quad.N1, N2, N3, N4}))
 
-let broadcast = (~msg, ~level=Info, ~kind=Duration(3375), ()) =>
-  list{Quad.N1, N2, N3, N4} |> List.map(playerId => {
+let broadcast = (~msg, ~level=Info, ~kind=Duration(3375), ()) => List.map(playerId => {
     noti_id: Nanoid.nanoid(),
     noti_recipient: playerId,
     noti_message: msg,
     noti_level: level,
     noti_kind: kind,
-  })
+  }, list{Quad.N1, N2, N3, N4})
 
 module State = {
   let initial = list{}

@@ -31,7 +31,7 @@ module ValidatePlay = {
     leadSuitMaybe,
     trumpSuit,
   ) => {
-    let pla_card = cardMaybesOnBoard->Quad.get(playerId, _)
+    let pla_card = cardMaybesOnBoard->(Quad.get(playerId, _))
     let willUnderTrump = (
       cardPlayed: Card.t,
       pla_hand,
@@ -44,12 +44,14 @@ module ValidatePlay = {
         // the lead-suit is *not* trump
         (leadSuitMaybe->Belt.Option.mapWithDefault(false, suit => suit != trumpSuit) &&
         (// There is a trump card on the board that ranks higher than the card being played
-        cardMaybesOnBoard->Quad.exists(
-          Belt.Option.mapWithDefault(_, false, ({Card.suit: suit, rank}) =>
-            suit == trumpSuit && rank->Card.Rank.intOfRank > cardPlayed.rank->Card.Rank.intOfRank
-          ),
-          _,
-        ) && pla_hand->List.exists(({Card.suit: suit}) => suit != trumpSuit, _)))
+        cardMaybesOnBoard->(
+          Quad.exists(
+            Belt.Option.mapWithDefault(_, false, ({Card.suit: suit, rank}) =>
+              suit == trumpSuit && rank->Card.Rank.intOfRank > cardPlayed.rank->Card.Rank.intOfRank
+            ),
+            _,
+          )
+        ) && pla_hand->(List.exists(({Card.suit: suit}) => suit != trumpSuit, _))))
     // The player is still holding a non-trump card
 
     !isPlayerTurn(~game_phase, ~game_leader_id, ~playerId)
@@ -75,7 +77,7 @@ let playCard = (~game_key, ~playerId, ~state: Game.state, ~effects, c) => {
   let logger = logger.makeChild({"_context": "playCard"})
   let player = Quad.get(playerId, state.players)
   let hand' = List.filter(c' => c != c', player.pla_hand)
-  let cardMaybesOnBoard = state.players->Quad.map(player => player.Game.pla_card, _)
+  let cardMaybesOnBoard = state.players->(Quad.map(player => player.Game.pla_card, _))
   switch state.maybeTrumpCard {
   | None =>
     // This should be an impossible state.
@@ -96,18 +98,20 @@ let playCard = (~game_key, ~playerId, ~state: Game.state, ~effects, c) => {
     )
 
     let updateGame = () => {
-      /*
-              When the current player is the last player in the trick (i.e. the next player
-              is the lead player), it means this current player will end the trick. There
-              is no need to advance the turn since The true next player will be determined
-              later by computing the trick winner. This test keeps the ui more consistent
-              if the player who wins the trick is the last player in the trick. I can't keep
-              the game in the PlayerTurnPhase since the client needs to know its in a State
-              where the player is not allowed to trigger any events until the timer transitions 
-              the game into another active phase. */
+      // When the current player is the last player in the trick (i.e. the next player
+      // is the lead player), it means this current player will end the trick. There
+      // is no need to advance the turn since The true next player will be determined
+      // later by computing the trick winner. This test keeps the ui more consistent
+      // if the player who wins the trick is the last player in the trick. I can't keep
+      // the game in the PlayerTurnPhase since the client needs to know its in a State
+      // where the player is not allowed to trigger any events until the timer transitions
+      // the game into another active phase.
+
       let nextPlayer = Quad.nextId(playerId)
       let phase' =
-        nextPlayer == state.leader ? Game.Phase.IdlePhase(DelayTrickCollection) : PlayerTurnPhase(nextPlayer)
+        nextPlayer == state.leader
+          ? Game.Phase.IdlePhase(DelayTrickCollection)
+          : PlayerTurnPhase(nextPlayer)
 
       let nextPlayers = Quad.update(
         playerId,
@@ -134,7 +138,7 @@ let playCard = (~game_key, ~playerId, ~state: Game.state, ~effects, c) => {
             (card1, card2, card3, card4),
           )
           let trickWinnerTeamId = Game.teamOfPlayer(trickWinnerId)
-          switch Quad.withId(trick) |> Quad.getWhere(((_playerId, card)) => card == jackOfTrump) {
+          switch Quad.getWhere(((_playerId, card)) => card == jackOfTrump, Quad.withId(trick)) {
           | None => None
           | Some((playerId, _card)) =>
             let jackHolderTeamId = Game.teamOfPlayer(playerId)
@@ -188,7 +192,9 @@ let playCard = (~game_key, ~playerId, ~state: Game.state, ~effects, c) => {
         switch My.Option.all2(state.maybeLeadCard, state.maybeTrumpCard) {
         | None => Text("You can't play that card.")
         | Some(({suit: leadSuit}, {suit: trumpSuit})) =>
-          Text(j`You must follow suit ($leadSuit) or play trump ($trumpSuit).`)
+          let leadSuitText = leadSuit->Card.Suit.toString
+          let trumpSuitText = trumpSuit->Card.Suit.toString
+          Text(`You must follow suit (${leadSuitText}) or play trump (${trumpSuitText}).`)
         }
       | MustFollowTrumpedSuit =>
         switch My.Option.all2(state.maybeTrumpCard, state.game_follow_suit) {
@@ -196,7 +202,9 @@ let playCard = (~game_key, ~playerId, ~state: Game.state, ~effects, c) => {
         | Some(({suit: trumpSuit}, suitToFollow)) =>
           let trumpSuitText = trumpSuit->Card.Suit.toString
           let suitToFollowText = suitToFollow->Card.Suit.toString
-          Text(j`You must follow with the suit you trumped on ($suitToFollowText) or play trump ($trumpSuitText).`)
+          Text(
+            `You must follow with the suit you trumped on (${suitToFollowText}) or play trump (${trumpSuitText}).`,
+          )
         }
       | WaitForTurn => Text("Wait for your turn.")
       | AlreadyPlayed => Text("You already have a card in play.")

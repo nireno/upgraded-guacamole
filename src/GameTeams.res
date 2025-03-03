@@ -8,7 +8,7 @@ let get = (id, rs: teamData<'a>) => {
   }
 }
 
-let select = (id, f, rs: teamData<'a>) => get(id, rs) |> f
+let select = (id, f, rs: teamData<'a>) => f(get(id, rs))
 
 let map = (f, (a, b): teamData<'a>) => (f(a), f(b))
 
@@ -20,7 +20,7 @@ let put = (id, r', rs: teamData<'a>) => {
   }
 }
 
-let update = (id, f, rs: teamData<'a>) => put(id, get(id, rs) |> f, rs)
+let update = (id, f, rs: teamData<'a>) => put(id, f(get(id, rs)), rs)
 
 let toList = ((a, b)) => list{a, b}
 

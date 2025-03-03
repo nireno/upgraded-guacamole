@@ -10,4 +10,3 @@ type pathConfig = {publicPath: string}
 type configuration = {output: pathConfig}
 
 @module external webpack: configuration => compiler = "webpack"
-

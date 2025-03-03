@@ -8,4 +8,4 @@ external packageJson: {..} = "../package.json"
 
 let normalizeInviteCode = code =>
   // Lowercases all letters and removes spaces
-  Js.String.toLowerCase(code) |> Js.String.replaceByRe(%re("/ /g"), "")
+  Js.String.replaceByRe(%re("/ /g"), "", Js.String.toLowerCase(code))

@@ -2,10 +2,10 @@
 let make = (~isDealer, ~className=?, ~style=?) => {
   let dealerImgOpacity = isDealer ? "1" : "0"
   <div ?className ?style>
-    <img
+    <div
       className="player-tag__dealer__img player-tags__item"
-      src="./static/img/emoji_pack.svg"
-      style={ReactDOM.Style.make(~opacity=dealerImgOpacity, ())}
-    />
+      style={ReactDOM.Style.make(~opacity=dealerImgOpacity, ())}>
+      <Svg_Emoji_Pack />
+    </div>
   </div>
 }

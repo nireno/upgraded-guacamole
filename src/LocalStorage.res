@@ -25,10 +25,7 @@ type key = [
 ")
 let getItemWithDefault = (key, jsonDecoder, default) => {
   let jsonDecoder = decodeWithDefault(jsonDecoder, default)
-  keyToJs(key)
-  |> getItem
-  |> Js.Nullable.toOption
-  |> Belt.Option.mapWithDefault(_, default, jsonDecoder)
+  (Belt.Option.mapWithDefault(_, default, jsonDecoder))(Js.Nullable.toOption(getItem(keyToJs(key))))
 }
 
 let getClientSettings = () => {
@@ -60,32 +57,32 @@ let getClientSettings = () => {
 
   let sort_hand = getItemWithDefault(
     #SortHand,
-    Decco.boolFromJson,
+    Spice.boolFromJson,
     ClientSettings.defaults.sort_hand,
   )
   open ClientSettings
   {
-    volume: volume,
-    client_id: client_id,
-    client_profile_type: client_profile_type,
-    client_initials: client_initials,
-    sort_hand: sort_hand,
+    volume,
+    client_id,
+    client_profile_type,
+    client_initials,
+    sort_hand,
   }
 }
 
 let updateClientSettings = newSettings => {
   setItem(
     keyToJs(#Volume),
-    ClientSettings.volume_encode(newSettings.ClientSettings.volume) |> Js.Json.stringify,
+    Js.Json.stringify(ClientSettings.volume_encode(newSettings.ClientSettings.volume)),
   )
 
   setItem(keyToJs(#ClientId), newSettings.client_id)
 
   setItem(
     keyToJs(#ClientProfileType),
-    ClientSettings.profileType_encode(
-      newSettings.ClientSettings.client_profile_type,
-    ) |> Js.Json.stringify,
+    Js.Json.stringify(
+      ClientSettings.profileType_encode(newSettings.ClientSettings.client_profile_type),
+    ),
   )
 
   setItem(keyToJs(#ClientInitials), newSettings.ClientSettings.client_initials)

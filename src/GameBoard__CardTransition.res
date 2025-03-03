@@ -56,32 +56,32 @@ module PlayCard = {
         (),
       ),
     )
-    Array.map((transition: PlayCardTransition.transition) => {
-      let card = transition->PlayCardTransition.itemGet
-      let key = Card.stringOfCard(card)
-      let props = transition->PlayCardTransition.propsGet
+    React.array(Array.map((transition: PlayCardTransition.transition) => {
+        let card = transition->PlayCardTransition.itemGet
+        let key = Card.stringOfCard(card)
+        let props = transition->PlayCardTransition.propsGet
 
-      let springStyle = switch props->PlayCardTransitionConf.leftGet {
-      | None => ReactDOM.Style.make(~left="0", ())
-      | Some(left) => ReactDOM.Style.make(~left, ())
-      }
+        let springStyle = switch props->PlayCardTransitionConf.leftGet {
+        | None => ReactDOM.Style.make(~left="0", ())
+        | Some(left) => ReactDOM.Style.make(~left, ())
+        }
 
-      let springStyle = switch props->PlayCardTransitionConf.topGet {
-      | None => ReactDOM.Style.make(~top="0", ())
-      | Some(top) =>
-        open ReactDOM
-        Style.combine(springStyle, ReactDOM.Style.make(~top, ()))
-      }
+        let springStyle = switch props->PlayCardTransitionConf.topGet {
+        | None => ReactDOM.Style.make(~top="0", ())
+        | Some(top) =>
+          open ReactDOM
+          Style.combine(springStyle, ReactDOM.Style.make(~top, ()))
+        }
 
-      let springStyle = switch props->PlayCardTransitionConf.opacityGet {
-      | None => springStyle
-      | Some(opacity') =>
-        open ReactDOM
-        Style.combine(springStyle, Style.make(~opacity=opacity', ()))
-      }
-      <ReactSpring.AnimatedDiv key className="animated-card" style=springStyle>
-        <Card card />
-      </ReactSpring.AnimatedDiv>
-    }, transitions) |> React.array
+        let springStyle = switch props->PlayCardTransitionConf.opacityGet {
+        | None => springStyle
+        | Some(opacity') =>
+          open ReactDOM
+          Style.combine(springStyle, Style.make(~opacity=opacity', ()))
+        }
+        <ReactSpring.AnimatedDiv key className="animated-card" style=springStyle>
+          <CardView card />
+        </ReactSpring.AnimatedDiv>
+      }, transitions))
   }
 }

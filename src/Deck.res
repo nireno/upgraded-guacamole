@@ -1,21 +1,21 @@
 let suits = Card.Suit.listOfSuits()
 let ranks = Card.Rank.listOfRanks()
 
-@decco
+@spice
 type t = list<Card.t>
 
-let make = () => List.map(suit => List.map(rank => {
-      open Card
-      {rank: rank, suit: suit}
-    }, ranks), suits) |> List.flatten
+let make = () => List.flatten(List.map(suit => List.map(rank => {
+        open Card
+        {rank, suit}
+      }, ranks), suits))
 
 // https://stackoverflow.com/questions/15095541/how-to-shuffle-list-in-on-in-ocaml
 
 let shuffle = My.List.shuffle
 
 let deal = (n, d) => (
-  Belt.List.take(d, n) |> Js.Option.getWithDefault(list{}),
-  Belt.List.drop(d, n) |> Js.Option.getWithDefault(d),
+  Js.Option.getWithDefault(list{}, Belt.List.take(d, n)),
+  Js.Option.getWithDefault(d, Belt.List.drop(d, n)),
 )
 
 let deal1Exn = d => (List.hd(d), List.tl(d))

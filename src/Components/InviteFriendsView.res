@@ -17,9 +17,9 @@ let make = (
   ~private_game_host,
 ) => {
   let normalizedInviteCode = Shared.normalizeInviteCode(inviteCode)
-  let inviteUrl = j`$baseUrl/?g=$normalizedInviteCode`
+  let inviteUrl = `${baseUrl}/?g=${normalizedInviteCode}`
   let rotatedPlayers =
-    Player.playersAsQuad(~startFrom=me, ())->Quad.map(playerId => Quad.get(playerId, players), _)
+    Player.playersAsQuad(~startFrom=me, ())->(Quad.map(playerId => Quad.get(playerId, players), _))
 
   let initialCopyText = "Copy invite link"
   let (copyText, updateCopyText) = React.useState(() => initialCopyText)
@@ -69,19 +69,19 @@ let make = (
     )
   })
   <>
-    <div className="text-center text-xl"> {React.string(j`Invite friends`)} </div>
+    <div className="text-center text-xl"> {React.string(`Invite friends`)} </div>
     {
       let (bottom, right, top, left) =
-        rotatedPlayers->Quad.map(({ClientGame.pla_profile_maybe: pla_profile_maybe}) =>
-          switch pla_profile_maybe {
-          | None => <EmptySeatAvatarView />
-          | Some({client_identicon, client_profile_type}) =>
-            <img
-              src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
-              className="rounded border border-gray-300 w-full "
-            />
-          }
-        , _)
+        rotatedPlayers->(Quad.map(({ClientGame.pla_profile_maybe: pla_profile_maybe}) =>
+            switch pla_profile_maybe {
+            | None => <EmptySeatAvatarView />
+            | Some({client_identicon, client_profile_type}) =>
+              <img
+                src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
+                className="rounded border border-gray-300 w-full "
+              />
+            }
+          , _))
 
       <div
         className="w-1/2 my-4"
@@ -98,14 +98,14 @@ let make = (
             | None => React.null
             | Some(onRotateGuestsClick) =>
               <div style={ReactDOM.Style.make(~gridColumn="2", ~gridRow="2", ())}>
-                <img
+                <div
                   style={ReactDOM.Style.make(~opacity=emptySeatCount == 3 ? "0.5" : "1.0", ())}
-                  src="./static/img/rotate_tri.svg"
                   className={"w-full border border-b-4 border-blue-800 bg-blue-500 p-2 rounded-full" ++ (
                     emptySeatCount == 3 ? " cursor-not-allowed" : " cursor-pointer"
                   )}
-                  onClick=?{emptySeatCount == 3 ? None : Some(onRotateGuestsClick)}
-                />
+                  onClick=?{emptySeatCount == 3 ? None : Some(onRotateGuestsClick)}>
+                  <Svg_Control_RotateSeating />
+                </div>
               </div>
             }
           : React.null}
@@ -169,7 +169,7 @@ let make = (
               <CountdownView from=SharedGame.settings.gameStartingCountdownSeconds />
             </div>
           : <div className="text-xl mt-6">
-              {React.string(j`Waiting for $emptySeatText more $friends...`)}
+              {React.string(`Waiting for ${emptySeatText} more ${friends}...`)}
             </div>
       }
       <div className="flex justify-around">

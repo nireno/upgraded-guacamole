@@ -35,8 +35,8 @@ let make = (~onSave, ~settings) => {
   }
 
   let volumeIcon = switch volume {
-  | Mute(_) => "emoji_speaker_muted"
-  | Level(_) => "emoji_speaker"
+  | Mute(_) => <Svg_Emoji_SpeakerMuted />
+  | Level(_) => <Svg_Emoji_Speaker />
   }
 
   let handleVolumeIconClick = _event => {
@@ -65,7 +65,7 @@ let make = (~onSave, ~settings) => {
       Js.String.split("", inputVal)
       ->Belt.Array.map(Js.String.toUpperCase)
       ->Belt.Array.keepMap(Js.String.match_(%re("/[A-Za-z]/")))
-      ->Js.Array.joinWith("", _)
+      ->(Js.Array.joinWith("", _))
     updateClientInitials(_ => inputStripped)
   }
 
@@ -171,8 +171,7 @@ let make = (~onSave, ~settings) => {
         <div
           className="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold rounded inline-flex items-center cursor-pointer"
           onClick=handleVolumeIconClick>
-          <img
-            src={j`./static/img/$volumeIcon.svg`}
+          <div
             className="block mx-4"
             style={ReactDOM.Style.make(
               ~height="100%",
@@ -180,8 +179,9 @@ let make = (~onSave, ~settings) => {
               ~minHeight="32px",
               ~minWidth="32px",
               (),
-            )}
-          />
+            )}>
+            {volumeIcon}
+          </div>
         </div>
         <input
           id="volume"

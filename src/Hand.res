@@ -1,5 +1,5 @@
 module FaceDownHand = {
-  @decco
+  @spice
   type t = int
 
   module TransitionConf = {
@@ -31,7 +31,7 @@ module FaceDownHand = {
         consumed by `useTransition`. n is used to make the react key for each item.
  */
       while n.contents > 0 {
-        Js.Array.push(n.contents, ns) |> ignore
+        ignore(Js.Array.push(n.contents, ns))
         n := n.contents - 1
       }
 
@@ -63,15 +63,15 @@ module FaceDownHand = {
 
         <ReactSpring.AnimatedDiv
           key={transition->Transition.keyGet} className="hand-card" style=springStyle>
-          <img className="card" src="./static/cards/Red_Back.svg" />
+          <Svg_Card_RedBack />
         </ReactSpring.AnimatedDiv>
       }
 
       <div className="player-hand-row flex flex-row justify-around">
-        {{
+        {React.array({
           open Belt.Array
           map(transitions, makeAnimatedCard)
-        } |> React.array}
+        })}
       </div>
     }
 }
@@ -97,7 +97,7 @@ module HandTransitionConf = {
 module HandTransition = ReactSpring.MakeTransition(HandTransitionConf)
 
 module FaceUpHand = {
-  @decco
+  @spice
   type t = list<Card.t>
 
   let hasSuitTest = (targetSuit, cards) =>
@@ -107,12 +107,13 @@ module FaceUpHand = {
     | HandWaitPhase
     | HandPlayPhase
 
-  @ocaml.doc(" For generating unique keys for cards even if the same card shows up twice,
-  This is important when testing by duplicating decks such that the deck might have
-  two cards of the same suit and rank
- ")
+  /** 
+   * For generating unique keys for cards even if the same card shows up twice,
+   * This is important when testing by duplicating decks such that the deck might have
+   * two cards of the same suit and rank 
+   */
   let generateKey = (kCards, card) => {
-    let maxKey = kCards |> List.filter(kCard => kCard.card == card) |> List.length
+    let maxKey = List.length(List.filter(kCard => kCard.card == card, kCards))
     Card.stringOfCard(card) ++ string_of_int(maxKey)
   }
 
@@ -169,7 +170,7 @@ module FaceUpHand = {
     }
 
     <ReactSpring.AnimatedDiv key=kCard.key className="hand-card" style=springStyle>
-      <Card ?clickAction card=kCard.card />
+      <CardView ?clickAction card=kCard.card />
     </ReactSpring.AnimatedDiv>
   }
 
@@ -183,13 +184,13 @@ module FaceUpHand = {
     ~onInvalidCardClick: string => unit,
   ) => {
     let keyedCards = List.fold_left(
-      (acc, card) => list{{card: card, key: generateKey(acc, card)}, ...acc},
+      (acc, card) => list{{card, key: generateKey(acc, card)}, ...acc},
       list{},
       cards,
     )
 
     let transitions = HandTransition.useTransition(
-      keyedCards |> Belt.List.toArray,
+      Belt.List.toArray(keyedCards),
       HandTransition.options(
         ~from=HandTransitionConf.props(~left="300px", ~top="-500px", ~opacity="1", ()),
         ~enter=HandTransitionConf.props(~left="0", ~top="0", ()),
@@ -224,33 +225,37 @@ module FaceUpHand = {
       }
 
       let clickAction = card => {
-        let leadSuit = Js.Option.getWithDefault(
-          {
-            open Card
-            {rank: Rank.Ace, suit: Suit.Spades}
-          },
-          maybeLeadCard,
-        ).suit |> Card.Suit.toString
+        let leadSuit = Card.Suit.toString(
+          Js.Option.getWithDefault(
+            {
+              open Card
+              {rank: Rank.Ace, suit: Suit.Spades}
+            },
+            maybeLeadCard,
+          ).suit,
+        )
 
-        let trumpSuit = Js.Option.getWithDefault(
-          {
-            open Card
-            {rank: Rank.Ace, suit: Suit.Spades}
-          },
-          maybeTrumpCard,
-        ).suit |> Card.Suit.toString
+        let trumpSuit = Card.Suit.toString(
+          Js.Option.getWithDefault(
+            {
+              open Card
+              {rank: Rank.Ace, suit: Suit.Spades}
+            },
+            maybeTrumpCard,
+          ).suit,
+        )
 
         let msg =
           handPhase != HandPlayPhase
             ? "Wait for your turn"
-            : j`You must follow suit ($leadSuit) or play trump ($trumpSuit)`
+            : `You must follow suit (${leadSuit}) or play trump (${trumpSuit})`
 
         checkIsCardPlayable(kCard.card) ? sendPlayCard(card) : onInvalidCardClick(msg)
       }
 
       <ReactSpring.AnimatedDiv
         key=kCard.key className="hand-card pointer-events-auto" style=springStyle>
-        <Card clickAction card=kCard.card />
+        <CardView clickAction card=kCard.card />
       </ReactSpring.AnimatedDiv>
     }
 
@@ -258,21 +263,21 @@ module FaceUpHand = {
       <div className="player-hand-row flex flex-row justify-around content-center">
         {
           let first6 = transitions->Belt.Array.slice(~offset=0, ~len=6)
-          Array.map(makeAnimatedCard, first6) |> React.array
+          React.array(Array.map(makeAnimatedCard, first6))
         }
       </div>
       <div
         className="player-hand-row flex flex-row justify-center content-center pointer pointer-events-none">
         {
           let second6 = transitions->Belt.Array.slice(~offset=6, ~len=6)
-          Array.map(makeAnimatedCard, second6) |> React.array
+          React.array(Array.map(makeAnimatedCard, second6))
         }
       </div>
     </>
   }
 }
 
-@decco type handFacing = FaceUpHand(FaceUpHand.t) | FaceDownHand(FaceDownHand.t)
+@spice type handFacing = FaceUpHand(FaceUpHand.t) | FaceDownHand(FaceDownHand.t)
 
 @react.component
 let make = (

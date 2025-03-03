@@ -3,21 +3,21 @@ let make = (~emptySeatCount as n, ~onLeaveClick, ~players: Quad.t<ClientGame.pla
   let playersWord = Grammar.byNumber(n, "player")
   let nText = string_of_int(n)
   let rotatedPlayers =
-    Player.playersAsQuad(~startFrom=me, ())->Quad.map(playerId => Quad.get(playerId, players), _)
+    Player.playersAsQuad(~startFrom=me, ())->(Quad.map(playerId => Quad.get(playerId, players), _))
   <>
     <HintsView />
     {
       let (bottom, right, top, left) =
-        rotatedPlayers->Quad.map(({ClientGame.pla_profile_maybe: pla_profile_maybe}) =>
-          switch pla_profile_maybe {
-          | None => <EmptySeatAvatarView />
-          | Some({client_identicon, client_profile_type}) =>
-            <img
-              src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
-              className="rounded border border-gray-300 w-full"
-            />
-          }
-        , _)
+        rotatedPlayers->(Quad.map(({ClientGame.pla_profile_maybe: pla_profile_maybe}) =>
+            switch pla_profile_maybe {
+            | None => <EmptySeatAvatarView />
+            | Some({client_identicon, client_profile_type}) =>
+              <img
+                src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
+                className="rounded border border-gray-300 w-full"
+              />
+            }
+          , _))
       <div
         className="w-2/3 my-8"
         style={ReactDOM.Style.make(
@@ -38,8 +38,8 @@ let make = (~emptySeatCount as n, ~onLeaveClick, ~players: Quad.t<ClientGame.pla
           <CountdownView from=SharedGame.settings.gameStartingCountdownSeconds />
         </div>
       : <div className="text-center">
-          <div> {React.string(j`$nText $playersWord disconnected`)} </div>
-          <div> {React.string(j`Please wait while I find substitutes...`)} </div>
+          <div> {React.string(`${nText} ${playersWord} disconnected`)} </div>
+          <div> {React.string(`Please wait while I find substitutes...`)} </div>
         </div>}
     <button className="btn btn-blue mt-4" onClick=onLeaveClick>
       {React.string("Leave Game")}

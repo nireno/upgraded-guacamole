@@ -82,10 +82,10 @@ let actionOfIO_Action: SocketMessages.clientToServer => Game.Action.t = x =>
   | IO_TransitionGameNow => Noop
 
   | IO_PlayCard(ioPlayerId, ioCard) =>
-    switch Player.id_decode(ioPlayerId |> Js.Json.parseExn) {
+    switch Player.id_decode(Js.Json.parseExn(ioPlayerId)) {
     | Belt.Result.Error(_) => Noop
     | Belt.Result.Ok(playerId) =>
-      switch Card.t_decode(ioCard |> Js.Json.parseExn) {
+      switch Card.t_decode(Js.Json.parseExn(ioCard)) {
       | Belt.Result.Error(_) => Noop
       | Belt.Result.Ok(card) => PlayCard(playerId, card)
       }
@@ -259,7 +259,7 @@ SocketServer.onConnect(io, socket => {
       | IO_PrivateToPublic => ServerStore.dispatch(PrivateToPublic(sock_id))
       | IO_Signal(signal) => ServerStore.dispatch(RelaySignal(sock_id, signal))
       | ioAction =>
-        let action = ioAction |> actionOfIO_Action
+        let action = actionOfIO_Action(ioAction)
         ServerStore.dispatch(UpdateGameBySocket(sock_id, action))
       }
     })
@@ -270,7 +270,7 @@ SocketServer.onConnect(io, socket => {
   } else {
     logger.warn2("Handshake failed. Disconnecting socket.", socket->SocketServer.Socket.getId)
     SocketServer.Socket.emit(socket, SocketMessages.HandshakeFailed)
-    socket->SocketServer.Socket.disconnect(true) |> ignore
+    ignore(socket->SocketServer.Socket.disconnect(true))
   }
 })
 
@@ -292,66 +292,68 @@ switch Js.Nullable.toOption(ServerEnv.adminPasswordEnv) {
     } = ServerStore.getState()
     let gameStates = StringMap.valuesToArray(db_game)
     let activeGames =
-      gameStates->Array.keep(x => {x.clients |> Quad.every(y => y->Game.isClientAttached)})
+      gameStates->Array.keep(x => {Quad.every(y => y->Game.isClientAttached, x.clients)})
 
     /*
      * Filters out the stalled games from the gameStates array.
      * A game is considered stalled if all clients seats were taken but at least one client is detached.
      */
     let stalledGames = gameStates->Array.keep(x => {
-      x.clients |> Quad.every(y => !(y->Game.isClientVacant)) &&
-        x.clients |> Quad.exists(y => y->Game.isClientDetached)
+      Quad.every(y => !(y->Game.isClientVacant), x.clients) &&
+      Quad.exists(y => y->Game.isClientDetached, x.clients)
     })
 
     let bootingGames = gameStates->Array.keep(x => {
-      x.clients |> Quad.exists(y => y->Game.isClientVacant)
+      Quad.exists(y => y->Game.isClientVacant, x.clients)
     })
 
-    let html = <div>
+    let html = ReactDOMServer.renderToStaticMarkup(
       <div>
-        <span> {"Server started at: " |> React.string} </span>
-        <span> {db_server_started_at->Js.Date.toISOString |> React.string} </span>
-      </div>
-      <div>
-        <span> {"Public games created: " |> React.string} </span>
-        <span> {db_public_games_created |> string_of_int |> React.string} </span>
-      </div>
-      <div>
-        <span> {"Public games started:" |> React.string} </span>
-        <span> {db_public_games_started |> string_of_int |> React.string} </span>
-      </div>
-      <div>
-        <span> {"Private games created: " |> React.string} </span>
-        <span> {db_private_games_created |> string_of_int |> React.string} </span>
-      </div>
-      <div>
-        <span> {"Private games started:" |> React.string} </span>
-        <span> {db_private_games_started |> string_of_int |> React.string} </span>
-      </div>
-      <hr />
-      <div>
-        <span> {"Total Active/Booting/Stalled Games: " |> React.string} </span>
-        <span> {Array.length(gameStates) |> string_of_int |> React.string} </span>
-      </div>
-      <div>
-        <span> {"Currently Stalled games: " |> React.string} </span>
-        <span> {Array.length(stalledGames) |> string_of_int |> React.string} </span>
-      </div>
-      <div>
-        <span> {"Currently Booting games: " |> React.string} </span>
-        <span> {Array.length(bootingGames) |> string_of_int |> React.string} </span>
-      </div>
-      <div>
-        <span> {"Currently Active games: " |> React.string} </span>
-        <span> {Array.length(activeGames) |> string_of_int |> React.string} </span>
-      </div>
-      <h1> {"Active Games"->React.string} </h1>
-      <DashView gameStates=activeGames />
-      <h1> {"Booting Games"->React.string} </h1>
-      <DashView gameStates=bootingGames />
-      <h1> {"Stalled Games"->React.string} </h1>
-      <DashView gameStates=stalledGames />
-    </div> |> ReactDOMServer.renderToStaticMarkup
+        <div>
+          <span> {React.string("Server started at: ")} </span>
+          <span> {React.string(db_server_started_at->Js.Date.toISOString)} </span>
+        </div>
+        <div>
+          <span> {React.string("Public games created: ")} </span>
+          <span> {React.string(string_of_int(db_public_games_created))} </span>
+        </div>
+        <div>
+          <span> {React.string("Public games started:")} </span>
+          <span> {React.string(string_of_int(db_public_games_started))} </span>
+        </div>
+        <div>
+          <span> {React.string("Private games created: ")} </span>
+          <span> {React.string(string_of_int(db_private_games_created))} </span>
+        </div>
+        <div>
+          <span> {React.string("Private games started:")} </span>
+          <span> {React.string(string_of_int(db_private_games_started))} </span>
+        </div>
+        <hr />
+        <div>
+          <span> {React.string("Total Active/Booting/Stalled Games: ")} </span>
+          <span> {React.string(string_of_int(Array.length(gameStates)))} </span>
+        </div>
+        <div>
+          <span> {React.string("Currently Stalled games: ")} </span>
+          <span> {React.string(string_of_int(Array.length(stalledGames)))} </span>
+        </div>
+        <div>
+          <span> {React.string("Currently Booting games: ")} </span>
+          <span> {React.string(string_of_int(Array.length(bootingGames)))} </span>
+        </div>
+        <div>
+          <span> {React.string("Currently Active games: ")} </span>
+          <span> {React.string(string_of_int(Array.length(activeGames)))} </span>
+        </div>
+        <h1> {"Active Games"->React.string} </h1>
+        <DashView gameStates=activeGames />
+        <h1> {"Booting Games"->React.string} </h1>
+        <DashView gameStates=bootingGames />
+        <h1> {"Stalled Games"->React.string} </h1>
+        <DashView gameStates=stalledGames />
+      </div>,
+    )
     Express.send(res, html)->ignore
   })
 // })
@@ -363,7 +365,8 @@ switch Js.Nullable.toOption(ServerEnv.adminPasswordEnv) {
  ")
 Express.get(app, "/*", (_req, res) => Express.redirect(res, "/")->ignore)
 
-let httpPort =
-  Js.Nullable.toOption(ServerEnv.httpPortEnv) |> Js.Option.getWithDefault("3000") |> int_of_string
+let httpPort = int_of_string(
+  Js.Option.getWithDefault("3000", Js.Nullable.toOption(ServerEnv.httpPortEnv)),
+)
 
 Http.listen(http, httpPort, () => logger.info("Listening on *:" ++ string_of_int(httpPort)))

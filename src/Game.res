@@ -3,14 +3,14 @@ include SharedGame
 
 let logger = appLogger.makeChild({"_context": "Game.res"})
 
-@decco
+@spice
 type playerData = {
   pla_hand: Hand.FaceUpHand.t,
   pla_tricks: list<Trick.t>,
   pla_card: option<Card.t> /* Card on board */,
 }
 
-@decco
+@spice
 type clientData = {
   client_socket_id: sock_id,
   client_username: string,
@@ -20,10 +20,10 @@ type clientData = {
   client_connected_at: milliseconds,
 }
 
-@decco
+@spice
 type clientMetaData = {client_detached_at: milliseconds}
 
-@decco
+@spice
 type clientState =
   | Attached(clientData)
   | Detached(clientData, clientMetaData)
@@ -51,7 +51,7 @@ let isClientVacant = clientState =>
   }
 
 let getUsername = (clients, quadId) =>
-  switch clients->Quad.get(quadId, _) {
+  switch clients->(Quad.get(quadId, _)) {
   | Attached(client)
   | Detached(client, _) =>
     client.client_username
@@ -87,7 +87,7 @@ let initPlayerData = () => {
   pla_card: None,
 }
 
-@decco type notis = list<Noti.t>
+@spice type notis = list<Noti.t>
 
 type findPlayersContext = {emptySeatCount: int, canSub: bool}
 type begPhaseContext = BegPhaseDeciding | BegPhaseStanding
@@ -194,7 +194,7 @@ let isFaceDownPhase = (x: Phase.t) =>
   | _ => false
   }
 
-@decco
+@spice
 type state = {
   game_id: game_id,
   deck: Deck.t,
@@ -217,24 +217,26 @@ module SockServ = BsSocketio.Server.Make(SocketMessages)
 let debugOfState = state => {
   let stringOfPlayer = player => {
     let card = Card.codeOfMaybeCard(player.pla_card)
-    let tricks =
-      List.map(Trick.codeOfTrick, player.pla_tricks) |> Belt.List.toArray |> Js.Array.joinWith(", ")
+    let tricks = Js.Array.joinWith(
+      ", ",
+      Belt.List.toArray(List.map(Trick.codeOfTrick, player.pla_tricks)),
+    )
 
-    j`{card-on-board: $card, tricks-taken: [$tricks] }`
+    `{card-on-board: ${card}, tricks-taken: [${tricks}] }`
   }
 
   let stringOfClientData = ({client_socket_id, client_username, client_id, client_initials}) =>
-    j`{$client_socket_id, $client_username, $client_id, $client_initials}`
+    `{${client_socket_id}, ${client_username}, ${client_id}, ${client_initials}}`
 
   let stringOfClient = client =>
     switch client {
     | Vacant => "Vacant"
     | Attached(clientData) =>
       let clientDataText = clientData->stringOfClientData
-      j`Attached($clientDataText)`
+      `Attached(${clientDataText})`
     | Detached(clientData, _) =>
       let clientDataText = clientData->stringOfClientData
-      j`Detached($clientDataText)`
+      `Detached(${clientDataText})`
     }
 
   let stringOfTeamHigh =
@@ -283,7 +285,7 @@ let debugOfState = state => {
 
 let initialState = () => {
   game_id: Public(""),
-  deck: Deck.make() |> Deck.shuffle,
+  deck: Deck.shuffle(Deck.make()),
   players: (initPlayerData(), initPlayerData(), initPlayerData(), initPlayerData()),
   clients: (Vacant, Vacant, Vacant, Vacant),
   teams: (initialTeamState, initialTeamState),
@@ -301,14 +303,15 @@ let initialState = () => {
 let initPrivateGame = () => {
   // Generate a random string based on the string representation of
   // cards selected from the deck
-  let key =
-    Deck.make()
-    |> Deck.shuffle
-    |> Belt.List.take(_, 4)
-    |> Js.Option.getExn
-    |> List.map(Card.codeOfCard)
-    |> Belt.List.toArray
-    |> Js.Array.joinWith(" ")
+  let key = Js.Array.joinWith(
+    " ",
+    Belt.List.toArray(
+      List.map(
+        Card.codeOfCard,
+        Js.Option.getExn((Belt.List.take(_, 4))(Deck.shuffle(Deck.make()))),
+      ),
+    ),
+  )
 
   {...initialState(), game_id: Private({private_game_key: key, private_game_host: Quad.N1})}
 }
@@ -324,7 +327,7 @@ let isGameOverTest = state =>
     GameTeams.get(T2, state.teams).team_score >= SharedGame.settings.winningScore
 
 let trickContainsCard: (Card.t, Trick.t) => bool = (testCard, trick) =>
-  Quad.toDict(trick) |> List.exists(((_, card)) => card == testCard)
+  List.exists(((_, card)) => card == testCard, Quad.toDict(trick))
 
 let playerOfIntUnsafe = x =>
   switch x {
@@ -365,7 +368,7 @@ let isEmpty = state => {
     | Detached(_, _)
     | Vacant => true
     }
-  state.clients->Quad.every(isHeadless, _)
+  state.clients->(Quad.every(isHeadless, _))
 }
 
 let isPublic = state =>

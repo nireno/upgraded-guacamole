@@ -1,16 +1,16 @@
 @val external env_settings: Js.Nullable.t<string> = "process.env.SETTINGS"
 
 let settings = Settings.fromString(
-  env_settings |> Js.Nullable.toOption |> Js.Option.getWithDefault("default"),
+  Js.Option.getWithDefault("default", Js.Nullable.toOption(env_settings)),
 )
 
-@decco
+@spice
 type privateGameContext = {
   private_game_key: string,
   private_game_host: Quad.id,
 }
 
-@decco
+@spice
 type game_id =
   | Public(string)
   | Private(privateGameContext)
@@ -21,13 +21,13 @@ let game_idToKey = x =>
   | Private({private_game_key: key}) => key
   }
 
-@decco
+@spice
 type rematchDecision =
   | RematchUnknown
   | RematchAccepted
   | RematchDenied
 
-@decco
+@spice
 type rematchDecisions = Quad.t<rematchDecision>
 
 let isRematchDecisionKnown = x =>
@@ -74,10 +74,10 @@ let stringOfGameId = x =>
 
 let debugOfGameId = x =>
   switch x {
-  | Public(key) => j`Public($key)`
+  | Public(key) => `Public(${key})`
   | Private({private_game_key: key, private_game_host: quadId}) =>
     let quadIdText = quadId->Quad.stringifyId
-    j`Private($key, $quadIdText)`
+    `Private(${key}, ${quadIdText})`
   }
 
 let kickPoints = {
@@ -92,7 +92,7 @@ let kickPoints = {
     }
 }
 
-@decco
+@spice
 type teamState = {
   team_score: int,
   team_points: int /* "Game" points */,
@@ -113,6 +113,6 @@ let teamOfPlayer = x =>
     Team.T2
   }
 
-@decco
+@spice
 type idleReason = DelayTrickCollection
 // | DelayGameStart;

@@ -20,7 +20,9 @@ let infoTextOfPhase = x =>
 @react.component
 let make = (~gamePhase) =>
   <div className="layer flex flex-col justify-center items-center">
-    <img src="./static/img/emoji_thinking.svg" className="w-1/4" />
+    <div className="w-1/4">
+      <Svg_Emoji_Thinking />
+    </div>
     <CountdownView
       className="player-tags__item self-center text-center"
       from={SharedGame.settings.kickPlayerMillis / 1000}

@@ -1,17 +1,13 @@
-
 open AppPrelude
 open Belt
 
-
 let logger = appLogger.makeChild({"_context": "ServerStore"})
 
-let store: ref<ServerState.db> = switch ServerEnv.nodeEnv {
-| "development" =>
-  logger.debug("Running in development mode")
+let store: ref<ServerState.db> = switch ServerEnv.allFoursEnv->Js.Nullable.toOption {
+| Some("mock-server") =>
+  logger.debug("Running mock server state")
   ref(MockServerState.make())
-| _ =>
-  logger.debug("Running in production mode")
-  ref(ServerState.empty())
+| _ => ref(ServerState.empty())
 }
 
 let getState: unit => ServerState.db = () => store.contents
@@ -45,8 +41,8 @@ and perform: (ServerState.db, ServerEvent.effect) => unit = ({db_game} as db, ef
   | EmitClientState(sock_id, clientState) =>
     // let {db_socket} = ServerStore.getState();
     // let socket = db_socket->StringMap.get(sock_id);
-    let clientStateJson = clientState |> ClientGame.state_encode // #unsafe
-    let msg: SocketMessages.serverToClient = SetState(clientStateJson |> Js.Json.stringify)
+    let clientStateJson = ClientGame.state_encode(clientState) // #unsafe
+    let msg: SocketMessages.serverToClient = SetState(Js.Json.stringify(clientStateJson))
     SocketServer.emit(msg, sock_id)
 
   | EmitStateByGame(game_key) =>
@@ -66,7 +62,7 @@ and perform: (ServerState.db, ServerEvent.effect) => unit = ({db_game} as db, ef
   | EmitClientToasts(clientToasts) =>
     clientToasts->List.forEach(clientToast => {
       let msg: SocketMessages.serverToClient = ShowToast(
-        clientToast.toast |> Noti.t_encode |> Js.Json.stringify,
+        Js.Json.stringify(Noti.t_encode(clientToast.toast)),
       )
       SocketServer.emit(msg, clientToast.sock_id)
     })
@@ -78,11 +74,9 @@ and perform: (ServerState.db, ServerEvent.effect) => unit = ({db_game} as db, ef
     switch db_game->StringMap.get(game_key) {
     | None => ()
     | Some(game) =>
-      switch game.clients->Quad.get(seat_id, _) {
+      switch game.clients->(Quad.get(seat_id, _)) {
       | Attached({client_socket_id}) =>
-        let msg: SocketMessages.serverToClient = ShowToast(
-          noti |> Noti.t_encode |> Js.Json.stringify,
-        )
+        let msg: SocketMessages.serverToClient = ShowToast(Js.Json.stringify(Noti.t_encode(noti)))
         SocketServer.emit(msg, client_socket_id)
       | _ => ()
       }

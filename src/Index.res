@@ -4,12 +4,12 @@ open AppPrelude
 @val external allfours_rules_url: Js.Nullable.t<string> = "process.env.allfours_rules_url"
 @val external allfours_help_url: Js.Nullable.t<string> = "process.env.allfours_help_url"
 
-let node_env = node_env |> Js.Nullable.toOption |> Js.Option.getWithDefault("production")
+let node_env = Js.Option.getWithDefault("production", Js.Nullable.toOption(node_env))
 
 let isProduction = node_env == "production"
 
 @val external username: Js.Nullable.t<string> = "g_display_name"
-let username = username |> Js.Nullable.toOption |> Js.Option.getWithDefault("")
+let username = Js.Option.getWithDefault("", Js.Nullable.toOption(username))
 
 open ClientGame
 
@@ -71,7 +71,7 @@ module App = {
       ClientSocket.T.on(socket, x =>
         switch x {
         | SetState(ioClientState) =>
-          switch ClientGame.state_decode(ioClientState |> Js.Json.parseExn) {
+          switch ClientGame.state_decode(Js.Json.parseExn(ioClientState)) {
           | Belt.Result.Error(err) => Js.log(err)
           | Belt.Result.Ok(serverState) =>
             let update = machineState =>
@@ -90,7 +90,7 @@ module App = {
             updateMachineState(update)
           }
         | ShowToast(ioToast) =>
-          switch Noti.t_decode(ioToast |> Js.Json.parseExn) {
+          switch Noti.t_decode(Js.Json.parseExn(ioToast)) {
           | Belt.Result.Error(err) => Js.log(err)
           | Belt.Result.Ok(toast) => updateNotis(AddOne(toast))
           }
@@ -109,11 +109,11 @@ module App = {
         | HandshakeFailed => updateMachineState(_curr => MainMenuState(MainMenuReloadState))
         | ShowSignal(fromQid, signal) =>
           updateSignals(
-            signals => signals->Quad.update(fromQid, _ => Some((signal, Nanoid.nanoid())), _),
+            signals => signals->(Quad.update(fromQid, _ => Some((signal, Nanoid.nanoid())), _)),
           )
 
           let timeoutId = Js.Global.setTimeout(
-            () => updateSignals(_ => signals->Quad.update(fromQid, _ => None, _)),
+            () => updateSignals(_ => signals->(Quad.update(fromQid, _ => None, _))),
             2->secondsToMillis,
           )
 
@@ -148,11 +148,11 @@ module App = {
       <div className="column">
         {List.length(tricks) == 0
           ? <div> {React.string("No tricks")} </div>
-          : <div> {List.map(trick =>
-                <div key={Trick.stringOfTrick(trick)} className="section">
-                  <Trick trick />
-                </div>
-              , tricks) |> Belt.List.toArray |> React.array} </div>}
+          : <div> {React.array(Belt.List.toArray(List.map(trick =>
+                    <div key={Trick.stringOfTrick(trick)} className="section">
+                      <Trick trick />
+                    </div>
+                  , tricks)))} </div>}
       </div>
 
     let handleAppClick = _ =>
@@ -161,7 +161,7 @@ module App = {
 
     let handleCreatePrivateGameClick = _event =>
       sendIO(
-        IO_StartPrivateGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        IO_StartPrivateGame(username, Js.Json.stringify(ClientSettings.t_encode(clientSettings))),
       )
 
     let sendIoJoinPrivateGame = (inviteCode, ack) =>
@@ -169,7 +169,7 @@ module App = {
         IO_JoinPrivateGame(
           inviteCode,
           username,
-          ClientSettings.t_encode(clientSettings) |> Js.Json.stringify,
+          Js.Json.stringify(ClientSettings.t_encode(clientSettings)),
         ),
         ack,
       )
@@ -183,7 +183,7 @@ module App = {
         RescriptReactRouter.replace("./")
       }
       sendIOWithAck(
-        IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        IO_JoinGame(username, Js.Json.stringify(ClientSettings.t_encode(clientSettings))),
         ackJoinGame,
       )
     }
@@ -197,7 +197,7 @@ module App = {
       updateCanJoinPublicGame(_ => false)
       let ackJoinGame = _response => updateCanJoinPublicGame(_ => true)
       sendIOWithAck(
-        IO_JoinGame(username, ClientSettings.t_encode(clientSettings) |> Js.Json.stringify),
+        IO_JoinGame(username, Js.Json.stringify(ClientSettings.t_encode(clientSettings))),
         ackJoinGame,
       )
     }
@@ -205,14 +205,14 @@ module App = {
     let onToggleSortClick = _event => {
       updateSortHand(b => !b)
       open LocalStorage
-      setItem(keyToJs(#SortHand), Decco.boolToJson(sortHand)->Js.Json.stringify)
+      setItem(keyToJs(#SortHand), Spice.boolToJson(sortHand)->Js.Json.stringify)
     }
 
     let onSignalClick = (signal, _event) =>
       signalsEnabled
         ? {
             updateSignalsEnabled(_ => false)
-            Js.Global.setTimeout(() => updateSignalsEnabled(_ => true), 350) |> ignore
+            ignore(Js.Global.setTimeout(() => updateSignalsEnabled(_ => true), 350))
             sendIO(IO_Signal(signal))
           }
         : ()
@@ -388,7 +388,7 @@ module App = {
               westInitials,
               westSignal,
             ),
-          ) = Player.playersAsQuad(~startFrom=state.me, ()) |> Quad.map(playerId =>
+          ) = Quad.map(playerId =>
             Quad.select(
               playerId,
               x => {
@@ -410,7 +410,7 @@ module App = {
                 | Some(profile) => (profile.client_identicon, profile.client_profile_type)
                 }
 
-                let signal = signals->Quad.get(playerId, _)
+                let signal = signals->(Quad.get(playerId, _))
 
                 (
                   Player.stringOfId(playerId),
@@ -426,7 +426,7 @@ module App = {
               },
               state.players,
             )
-          )
+          , Player.playersAsQuad(~startFrom=state.me, ()))
 
           @ocaml.doc("
           When it is time to remove cards from the board, state.leader should also
@@ -494,13 +494,13 @@ module App = {
               demPoints=demTeam.team_points
             />
             <div
-              className={j`the-rest relative flex-grow flex $bgBoard justify-between`}
+              className={`the-rest relative flex-grow flex ${bgBoard} justify-between`}
               style={ReactDOM.Style.make(~minHeight="50vh", ())}>
               {
                 Belt.List.forEach(notis, notiToRemove =>
                   switch notiToRemove.noti_kind {
                   | Duration(millis) =>
-                    Js.Global.setTimeout(() => updateNotis(Remove(notiToRemove)), millis) |> ignore
+                    ignore(Js.Global.setTimeout(() => updateNotis(Remove(notiToRemove)), millis))
                   | _ => ()
                   }
                 )
@@ -596,12 +596,24 @@ module App = {
               className="player-hand flex flex-col z-20"
               style={ReactDOM.Style.make(~gridColumn="1 / 4", ~gridRow="6", ())}>
               <div className="player-hand__placeholder-row flex flex-row justify-around">
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
-                <img className="hand-card" src="./static/img/card_placeholder.svg" />
+                <div className="hand-card">
+                  <Svg_Layout_CardPlaceholder />
+                </div>
+                <div className="hand-card">
+                  <Svg_Layout_CardPlaceholder />
+                </div>
+                <div className="hand-card">
+                  <Svg_Layout_CardPlaceholder />
+                </div>
+                <div className="hand-card">
+                  <Svg_Layout_CardPlaceholder />
+                </div>
+                <div className="hand-card">
+                  <Svg_Layout_CardPlaceholder />
+                </div>
+                <div className="hand-card">
+                  <Svg_Layout_CardPlaceholder />
+                </div>
               </div>
               <Hand
                 handFacing=state.handFacing
@@ -623,8 +635,8 @@ module App = {
                       {
                         open SocketMessages
                         IO_PlayCard(
-                          Player.id_encode(state.me) |> Js.Json.stringify,
-                          Card.t_encode(card) |> Js.Json.stringify,
+                          Js.Json.stringify(Player.id_encode(state.me)),
+                          Js.Json.stringify(Card.t_encode(card)),
                         )
                       },
                     )

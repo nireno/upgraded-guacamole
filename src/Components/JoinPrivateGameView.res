@@ -44,10 +44,9 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=?) => {
   <div
     className="bg-white shadow-md border border-solid border-gray-200 rounded px-8 pt-6 pb-8 mb-4 w-11/12">
     {switch state {
-    | Initial => <>
-        <div className="mb-4 text-xl text-center">
-          {React.string("Enter your invite code")}
-        </div>
+    | Initial =>
+      <>
+        <div className="mb-4 text-xl text-center"> {React.string("Enter your invite code")} </div>
         <div>
           <form className="flex flex-row justify-center mb-4">
             <input
@@ -63,7 +62,8 @@ let make = (~sendJoinGame, ~inviteCode as maybeInviteCode=?) => {
           </form>
         </div>
         <div className="flex items-center justify-around">
-          <div onClick={_ => RescriptReactRouter.replace("../")} className="link link-blue" href="#">
+          <div
+            onClick={_ => RescriptReactRouter.replace("../")} className="link link-blue" href="#">
             {React.string("Cancel")}
           </div>
           <button

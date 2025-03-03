@@ -16,17 +16,15 @@ let reducer = (prevState, action) =>
     | _ => (false, 0)
     }
 
-    let prevNumCardsOnBoard =
-      Quad.map(
-        player => Js.Option.isSome(player.pla_card) ? 1 : 0,
-        prevState.players,
-      ) |> Quad.foldLeft((acc, x) => acc + x)
+    let prevNumCardsOnBoard = Quad.foldLeft(
+      (acc, x) => acc + x,
+      Quad.map(player => Js.Option.isSome(player.pla_card) ? 1 : 0, prevState.players),
+    )
 
-    let currNumCardsOnBoard =
-      Quad.map(
-        player => Js.Option.isSome(player.pla_card) ? 1 : 0,
-        nextState.players,
-      ) |> Quad.foldLeft((acc, x) => acc + x)
+    let currNumCardsOnBoard = Quad.foldLeft(
+      (acc, x) => acc + x,
+      Quad.map(player => Js.Option.isSome(player.pla_card) ? 1 : 0, nextState.players),
+    )
 
     let clientSettings = LocalStorage.getClientSettings()
     let volume = switch clientSettings.volume {
@@ -35,12 +33,14 @@ let reducer = (prevState, action) =>
     }
 
     let howlOptions = Howler.options(~volume)
+
     @ocaml.doc(" \"playing a card\" sound effect ")
     if currNumCardsOnBoard > prevNumCardsOnBoard {
       let sound = {
         open Howler
         makeHowl(howlOptions(~src=["./static/audio/play_card.mp3"], ()))
       }
+
       @ocaml.doc(" Sound needs to Match speed of card animation ")
       Howler.rate(sound, 0.8)
       Howler.play(sound)
@@ -117,7 +117,8 @@ let reducer = (prevState, action) =>
     }
 
     // "player turn" sound effect.
-    if !isGameStarting && (!wasActivePlayer && isActivePlayer) { //only play if not already playing the "Game starting" sound effect // only play the first time the player becomes active.
+    if !isGameStarting && (!wasActivePlayer && isActivePlayer) {
+      //only play if not already playing the "Game starting" sound effect // only play the first time the player becomes active.
       let sound = {
         open Howler
         makeHowl(howlOptions(~src=["./static/audio/your_turn_subtle.mp3"], ()))

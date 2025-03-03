@@ -3,7 +3,7 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
   let playersText = Grammar.byNumber(emptySeatCount, "player")
   let emptySeatText = string_of_int(emptySeatCount)
   let rotatedPlayers =
-    Player.playersAsQuad(~startFrom=me, ())->Quad.map(playerId => Quad.get(playerId, players), _)
+    Player.playersAsQuad(~startFrom=me, ())->(Quad.map(playerId => Quad.get(playerId, players), _))
 
   <>
     <HintsView />
@@ -23,16 +23,16 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
     </div>
     {
       let (bottom, right, top, left) =
-        rotatedPlayers->Quad.map(({ClientGame.pla_profile_maybe: pla_profile_maybe}) =>
-          switch pla_profile_maybe {
-          | None => <EmptySeatAvatarView />
-          | Some({client_identicon, client_profile_type}) =>
-            <img
-              src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
-              className="rounded border border-gray-300 w-full"
-            />
-          }
-        , _)
+        rotatedPlayers->(Quad.map(({ClientGame.pla_profile_maybe: pla_profile_maybe}) =>
+            switch pla_profile_maybe {
+            | None => <EmptySeatAvatarView />
+            | Some({client_identicon, client_profile_type}) =>
+              <img
+                src={LibAvatar.getAvatarUri(~client_id=client_identicon, ~client_profile_type)}
+                className="rounded border border-gray-300 w-full"
+              />
+            }
+          , _))
 
       <div
         className="w-2/3 my-8"
@@ -54,7 +54,7 @@ let make = (~emptySeatCount, ~canSub, ~onLeaveClick, ~onSubClick, ~players, ~me)
           <CountdownView from=SharedGame.settings.gameStartingCountdownSeconds />
         </div>
       : <div className="text-xl mt-6">
-          {React.string(j`Finding $emptySeatText more $playersText`)}
+          {React.string(`Finding ${emptySeatText} more ${playersText}`)}
         </div>}
     <button className="btn btn-blue mt-4" onClick=onLeaveClick> {React.string("Cancel")} </button>
   </>

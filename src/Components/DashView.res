@@ -2,12 +2,14 @@ module PlayerState = {
   @react.component
   let make = (~playerId, ~playerState) =>
     <div className="player_state">
-      <div> {playerId |> Player.stringOfId |> React.string} </div>
+      <div> {React.string(Player.stringOfId(playerId))} </div>
       <div>
-        {switch playerState.ClientGame.pla_profile_maybe {
-        | None => "not connected"
-        | Some(profile) => profile.client_username ++ " connected"
-        } |> React.string}
+        {React.string(
+          switch playerState.ClientGame.pla_profile_maybe {
+          | None => "not connected"
+          | Some(profile) => profile.client_username ++ " connected"
+          },
+        )}
       </div>
     </div>
 }
@@ -16,9 +18,7 @@ module GameState = {
   @react.component
   let make = (~gameState) =>
     <pre className="game-state">
-      {React.string(
-        Game.debugOfState(gameState) |> Obj.magic |> Js.Json.stringifyWithSpace(_, 2),
-      )}
+      {React.string((Js.Json.stringifyWithSpace(_, 2))(Obj.magic(Game.debugOfState(gameState))))}
     </pre>
 }
 

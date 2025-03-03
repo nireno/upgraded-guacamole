@@ -1,7 +1,7 @@
-@decco
+@spice
 type hand = list<Card.t>
 
-@decco
+@spice
 type id = Quad.id
 
 @ocaml.doc(" 
@@ -47,10 +47,10 @@ let stringOfMaybeId = x =>
   | Some(player) => stringOfId(player)
   }
 
-@decco
+@spice
 type begPhaseContext = PlayerBegPhaseDeciding | PlayerBegPhaseStanding
 
-@decco
+@spice
 type phase =
   | PlayerIdlePhase
   | PlayerTurnPhase(id)
@@ -66,7 +66,7 @@ let stringOfPhase = x =>
   | PlayerIdlePhase => "PlayerIdlePhase"
   | PlayerTurnPhase(id) =>
     let str_playerId = stringOfId(id)
-    j`PlayerTurnPhase($str_playerId)`
+    `PlayerTurnPhase(${str_playerId})`
   | PlayerDealPhase => "PlayerDealPhase"
   | PlayerBegPhase(PlayerBegPhaseDeciding) => "PlayerBegPhase(PlayerBegPhaseDeciding)"
   | PlayerBegPhase(PlayerBegPhaseStanding) => "PlayerBegPhase(PlayerBegPhaseStanding)"
@@ -76,7 +76,7 @@ let stringOfPhase = x =>
   | PlayerRedealPhase => "PlayerRedealPhase"
   }
 
-let maybeIdEqual = (maybeId, id) => Js.Option.isSomeValue((. x, y) => x == y, id, maybeId)
+let maybeIdEqual = (maybeId, id) => Belt.Option.eq(maybeId, Some(id), (x, y) => x == y)
 
 @react.component
 let make = (

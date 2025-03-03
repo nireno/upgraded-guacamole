@@ -110,16 +110,15 @@ and gameTimerType =
   | KickInactiveClientCountdown
 @@warning("+30")
 
-
 let debugOfEffect = x =>
   switch x {
-  | ResetClient(_) => j`ResetClient`
-  | EmitClientState(_, _) => j`EmitClientState`
-  | EmitStateByGame(_) => j`EmitStateByGame`
-  | EmitAck(_, _) => j`EmitAck`
-  | EmitClientToasts(_) => j`EmitClientToasts`
-  | NotifyPlayer(_) => j`NotifyPlayer`
-  | CreateGameTimer(_) => j`CreateGameTimer`
-  | DiscardGameTimer(_) => j`DiscardGameTimer`
-  | EmitSignal(_) => j`EmitSignal`
+  | ResetClient(_) => `ResetClient`
+  | EmitClientState(_, _) => `EmitClientState`
+  | EmitStateByGame(_) => `EmitStateByGame`
+  | EmitAck(_, _) => `EmitAck`
+  | EmitClientToasts(_) => `EmitClientToasts`
+  | NotifyPlayer(_) => `NotifyPlayer`
+  | CreateGameTimer(_) => `CreateGameTimer`
+  | DiscardGameTimer(_) => `DiscardGameTimer`
+  | EmitSignal(_) => `EmitSignal`
   }

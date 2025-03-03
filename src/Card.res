@@ -1,5 +1,5 @@
 module Suit = {
-  @decco
+  @spice
   type t =
     | Clubs
     | Diamonds
@@ -60,7 +60,7 @@ module Suit = {
 }
 
 module Rank = {
-  @decco
+  @spice
   type t =
     | Two
     | Three
@@ -201,7 +201,7 @@ module Rank = {
   }
 }
 
-@decco
+@spice
 type t = {
   rank: Rank.t,
   suit: Suit.t,
@@ -232,12 +232,6 @@ let stringOfSpriteOffset = ({rank, suit}) => {
   "-" ++ (string_of_int(xOffset) ++ ("px " ++ ("-" ++ (string_of_int(yOffset) ++ "px"))))
 }
 
-let getImageSrc = ({rank, suit}) => {
-  let suitCode = Suit.codeOfSuit(suit)
-  let rankCode = Rank.codeOfRank(rank)
-  "./static/cards/" ++ (rankCode ++ (suitCode ++ ".svg"))
-}
-
 let sort = cards => {
   let cmp = (c1, c2) => {
     let multiplier = x =>
@@ -254,18 +248,4 @@ let sort = cards => {
     v1 > v2 ? -1 : v1 == v2 ? 0 : 1
   }
   List.sort(cmp, cards)
-}
-
-@react.component
-let make = (~card, ~clickAction=?, ~style=?) => {
-  let (onClick, isClickable) = switch clickAction {
-  | None => (None, false)
-  | Some(handleClick) => (Some(_event => handleClick(card)), true)
-  }
-  <ReactSpring.AnimatedImg
-    ?style
-    className={"card" ++ (isClickable ? " cursor-pointer" : "")}
-    ?onClick
-    src={getImageSrc(card)}
-  />
 }

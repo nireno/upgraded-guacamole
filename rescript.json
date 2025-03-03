@@ -1,6 +1,9 @@
 {
   "name": "all-fours",
-  "reason": { "react-jsx": 3 },
+  "jsx": {
+    "version": 4,
+    "mode": "classic"
+  },
   "sources": [
     {
       "dir": "src",
@@ -16,13 +19,14 @@
   "suffix": ".bs.js",
   "namespace": true,
   "bs-dependencies": [
-    "@nireno/reasonably-typed",
+    "@greenlabs/ppx-spice",
     "@nireno/rescript-socket.io",
     "@rescript/react",
-    "decco",
     "rescript-express",
     "rescript-webapi"
   ],
-  "ppx-flags": ["decco/ppx"],
-  "refmt": 3
+  "ppx-flags": [
+    "@greenlabs/ppx-spice/ppx"
+  ],
+  "uncurried": false
 }
