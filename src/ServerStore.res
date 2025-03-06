@@ -3,7 +3,7 @@ open Belt
 
 let logger = appLogger.makeChild({"_context": "ServerStore"})
 
-let store: ref<ServerState.db> = switch ServerEnv.allFoursEnv->Js.Nullable.toOption {
+let store: ref<ServerState.db> = switch ServerEnv.allFoursDebugPreset->Js.Nullable.toOption {
 | Some("mock-server") =>
   logger.debug("Running mock server state")
   ref(MockServerState.make())
@@ -74,7 +74,7 @@ and perform: (ServerState.db, ServerEvent.effect) => unit = ({db_game} as db, ef
     switch db_game->StringMap.get(game_key) {
     | None => ()
     | Some(game) =>
-      switch game.clients->(Quad.get(seat_id, _)) {
+      switch game.clients->Quad.get(seat_id, _) {
       | Attached({client_socket_id}) =>
         let msg: SocketMessages.serverToClient = ShowToast(Js.Json.stringify(Noti.t_encode(noti)))
         SocketServer.emit(msg, client_socket_id)
