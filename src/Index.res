@@ -109,11 +109,11 @@ module App = {
         | HandshakeFailed => updateMachineState(_curr => MainMenuState(MainMenuReloadState))
         | ShowSignal(fromQid, signal) =>
           updateSignals(
-            signals => signals->(Quad.update(fromQid, _ => Some((signal, Nanoid.nanoid())), _)),
+            signals => signals->Quad.update(fromQid, _ => Some((signal, Nanoid.nanoid())), _),
           )
 
           let timeoutId = Js.Global.setTimeout(
-            () => updateSignals(_ => signals->(Quad.update(fromQid, _ => None, _))),
+            () => updateSignals(_ => signals->Quad.update(fromQid, _ => None, _)),
             2->secondsToMillis,
           )
 
@@ -410,7 +410,7 @@ module App = {
                 | Some(profile) => (profile.client_identicon, profile.client_profile_type)
                 }
 
-                let signal = signals->(Quad.get(playerId, _))
+                let signal = signals->Quad.get(playerId, _)
 
                 (
                   Player.stringOfId(playerId),
@@ -754,8 +754,9 @@ module App = {
   }
 }
 
-let rootEl = Util.getElementById("all-fours-app")
-switch rootEl {
+switch ReactDOM.querySelector("#all-fours-app") {
 | None => ()
-| Some(rootEl) => ReactDOM.render(<App />, rootEl)
+| Some(rootElement) =>
+  let root = ReactDOM.Client.createRoot(rootElement)
+  root->ReactDOM.Client.Root.render(<App />)
 }
