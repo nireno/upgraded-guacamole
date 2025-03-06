@@ -3,7 +3,7 @@
   "version": "0.13.0",
   "scripts": {
     "dev": "npm-run-all dev:preflight -p dev:res dev:styles dev:pack dev:server",
-    "build": "run-s build:preflight clean:res build:res build:styles build:pack",
+    "build": "NODE_ENV=production run-s build:preflight clean:res build:res build:styles build:pack",
     "start": "dotenvx run -- node src/Server.bs.js",
     "dev:preflight": "run-s build:res build:pack",
     "dev:styles": "postcss src/styles --verbose --dir ./build -w",
@@ -40,7 +40,7 @@
     "express": "^4.18.2",
     "fs-extra": "^8.1.0",
     "howler": "^2.1.2",
-    "nanoid": "^2.1.2",
+    "nanoid": "^3.3.8",
     "pino": "^9.6.0",
     "postcss-cli": "^10.1.0",
     "react": "^18.3.1",
@@ -50,7 +50,7 @@
     "rescript-webapi": "^0.10.0"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^0.38.0",
+    "@dotenvx/dotenvx": "^1.38.4",
     "autoprefixer": "^10.4.16",
     "bs-platform": "^7.3.2",
     "html-webpack-plugin": "^5.5.3",
