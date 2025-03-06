@@ -3,7 +3,7 @@
   "version": "0.13.0",
   "scripts": {
     "dev": "npm-run-all dev:preflight -p dev:res dev:styles dev:pack dev:server",
-    "build": "run-s build:preflight clean:res build:res build:styles build:pack",
+    "build": "NODE_ENV=production run-s build:preflight clean:res build:res build:styles build:pack",
     "start": "dotenvx run -- node src/Server.bs.js",
     "dev:preflight": "run-s build:res build:pack",
     "dev:styles": "postcss src/styles --verbose --dir ./build -w",
@@ -50,7 +50,7 @@
     "rescript-webapi": "^0.10.0"
   },
   "devDependencies": {
-    "@dotenvx/dotenvx": "^0.38.0",
+    "@dotenvx/dotenvx": "^1.38.4",
     "autoprefixer": "^10.4.16",
     "bs-platform": "^7.3.2",
     "html-webpack-plugin": "^5.5.3",
