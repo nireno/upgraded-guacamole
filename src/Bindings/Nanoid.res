@@ -1,1 +1,2 @@
-@module external nanoid: unit => string = "nanoid"
+type t
+@module("nanoid") external nanoid: unit => string = "nanoid"
