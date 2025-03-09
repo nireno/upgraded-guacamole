@@ -11,7 +11,7 @@ let make = () => List.flatten(List.map(suit => List.map(rank => {
 
 // https://stackoverflow.com/questions/15095541/how-to-shuffle-list-in-on-in-ocaml
 
-let shuffle = My.List.shuffle
+let shuffle = Belt.List.shuffle
 
 let deal = (n, d) => (
   Js.Option.getWithDefault(list{}, Belt.List.take(d, n)),

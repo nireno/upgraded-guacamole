@@ -22,10 +22,12 @@ let getTeamHighAndLowMaybes: (
       player4Hand->Belt.List.map(card => (Quad.N4, card)),
     })
 
-    let playersTrumpAsc: list<(Player.id, Card.t)> = List.sort(
-      ((_, {Card.rank: rank1}), (_, {rank: rank2})) => compare(rank1, rank2),
-      List.filter(((_, {Card.suit: suit})) => suit == trumpSuit, playerCards),
-    )
+    let playersTrumpAsc: list<(Player.id, Card.t)> =
+      playerCards
+      ->Belt.List.keep(((_, {Card.suit: suit})) => suit == trumpSuit)
+      ->Belt.List.sort(((_, {Card.rank: rank1}), (_, {rank: rank2})) =>
+        compare(rank1->Card.Rank.intOfRank, rank2->Card.Rank.intOfRank)
+      )
 
     let playersTrumpDesc = List.rev(playersTrumpAsc)
 

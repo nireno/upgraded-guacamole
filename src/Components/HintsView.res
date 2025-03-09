@@ -7,7 +7,7 @@ let changeIdenticon =
     </span>
   </>
 
-let randomizedHints = My.List.shuffle(list{changeIdenticon})
+let randomizedHints = Belt.List.shuffle(list{changeIdenticon})
 
 @react.component
 let make = () => {
