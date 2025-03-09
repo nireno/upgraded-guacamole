@@ -2,13 +2,6 @@
   My extensions for existing modules such as Js.Nullable.
 ")
 module List = {
-  let shuffle = d => {
-    Random.self_init()
-    let nd = List.map(c => (Random.bits(), c), d)
-    let sond = List.sort(compare, nd)
-    List.map(snd, sond)
-  }
-
   let addSome = (list, x) =>
     switch x {
     | Some(item) => list{item, ...list}
